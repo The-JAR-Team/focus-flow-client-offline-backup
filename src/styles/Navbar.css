@@ -1,0 +1,20 @@
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #333;
+    padding: 10px 20px;
+    color: #fff;
+  }
+  .navbar h1 {
+    margin: 0;
+  }
+  .navbar button {
+    padding: 8px 12px;
+    background: #fff;
+    color: #333;
+    border: none;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  
