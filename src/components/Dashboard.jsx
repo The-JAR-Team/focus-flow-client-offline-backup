@@ -9,7 +9,6 @@ function Dashboard() {
   const lectureInfo = { videoId: 'U5CsAJqptW8', subject: 'Demo Lecture' };
   const userInfo = { name: 'Test User', profile: 'default' };
   
-  // Toggle debugging mode (only one FaceMesh instance should be active)
   const isDebugging = false; // set to true if you want to see the debugger
 
   return (
