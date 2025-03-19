@@ -1,4 +1,5 @@
-.login-container {
+.login-container,
+.register-container {
   max-width: 400px;
   margin: 40px auto;
   padding: 20px;
@@ -6,11 +7,9 @@
   border: 1px solid #ccc;
   border-radius: 4px;
 }
-.login-form label {
-  display: block;
-  margin-bottom: 10px;
-}
-.login-form input {
+
+.login-form input,
+.register-form input {
   width: 100%;
   padding: 8px;
   margin-top: 5px;
@@ -18,10 +17,22 @@
   border: 1px solid #aaa;
   border-radius: 2px;
 }
-.login-form button {
+
+.login-form button,
+.register-form button {
   padding: 10px 20px;
   border: none;
   background: #333;
   color: #fff;
   cursor: pointer;
+  width: 100%;
+}
+
+@media (max-width: 500px) {
+  .login-container,
+  .register-container {
+    max-width: 90%;
+    margin: 20px auto;
+    padding: 15px;
+  }
 }

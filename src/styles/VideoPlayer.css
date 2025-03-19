@@ -1,41 +1,54 @@
 .video-player {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 20px;
-  }
-  .status-info {
-    margin: 10px 0;
-  }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.video-player iframe {
+  width: 640px;
+  height: 390px;
+}
+
+.status-info {
+  margin: 10px 0;
+}
+
+.focus-graph {
+  width: 640px;
+  margin-top: 20px;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  width: 90%;
+  max-width: 400px;
+}
+
+.answers button,
+.decision-buttons button {
+  margin: 5px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .video-player iframe,
   .focus-graph {
-    width: 640px;
-    margin-top: 20px;
-  }
-  
-  /* Modal Styles */
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  .modal-content {
-    background: #fff;
-    padding: 20px;
-    border-radius: 4px;
     width: 90%;
-    max-width: 400px;
+    height: auto;
   }
-  .answers button,
-  .decision-buttons button {
-    margin: 5px;
-    padding: 8px 12px;
-    cursor: pointer;
-  }
-  
+}

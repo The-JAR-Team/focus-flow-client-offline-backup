@@ -1,7 +1,13 @@
 .dashboard-container {
-    padding: 20px;
+  padding: 20px;
+}
+
+.dashboard-content {
+  margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+  .dashboard-container {
+    padding: 10px;
   }
-  .dashboard-content {
-    margin-top: 20px;
-  }
-  
+}
