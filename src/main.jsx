@@ -9,9 +9,7 @@ import './index.css';
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter basename="/focus-flow-client">
-
       <App />
-      </BrowserRouter>
-
+    </BrowserRouter>
   </React.StrictMode>
 );
