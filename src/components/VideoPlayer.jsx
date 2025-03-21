@@ -215,7 +215,8 @@ function VideoPlayer({ lectureInfo, mode }) {
 
   const handleDecision = (action) => {
     if (action === 'rewind') {
-      playerRef.current.seekTo(currentQuestion.originalTime - 5);
+      console.log('Rewinding to:', currentQuestion);
+      playerRef.current.seekTo(currentQuestion.originalTime);
     }
     setAnsweredQIDs(prev => [...prev, currentQuestion.q_id]);
     setCurrentQuestion(null);
