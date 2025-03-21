@@ -61,3 +61,31 @@
     padding: 10px;
   }
 }
+
+
+.mode-selector {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.mode-button {
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: 1px solid #333;
+  background: white;
+  color: #333;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.mode-button:hover {
+  background: #f0f0f0;
+}
+
+.mode-button.active {
+  background: #333;
+  color: white;
+}

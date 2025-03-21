@@ -32,11 +32,49 @@
 
 .modal-content {
   background: #fff;
-  padding: 20px;
-  border-radius: 4px;
+  padding: 30px 25px;
+  border-radius: 12px;
   width: 90%;
-  max-width: 400px;
+  max-width: 450px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
+
+.modal-content h3 {
+  margin-bottom: 10px;
+  font-size: 1.3rem;
+}
+
+.modal-content p {
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.answers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.answers button {
+  padding: 10px 20px;
+  width: 100%;
+  max-width: 300px;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-weight: bold;
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+.answers button:hover {
+  background-color: #555;
+}
+
 
 .answers button,
 .decision-buttons button {

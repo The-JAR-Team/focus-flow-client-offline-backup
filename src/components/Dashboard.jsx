@@ -13,6 +13,7 @@ function Dashboard() {
   const [mode, setMode] = useState('pause');
 
   useEffect(() => {
+    setMode('pause');
     fetchVideoMetadata().then(setVideos).catch(console.error);
     setTimeout(() => setEyeDebuggerOn(true), 5000);
   }, []);
@@ -39,38 +40,17 @@ function Dashboard() {
             </select>
 
             <div className="mode-selector">
-              <label>
-                <input
-                  type="radio"
-                  name="mode"
-                  value="pause"
-                  checked={mode === 'pause'}
-                  onChange={() => setMode('pause')}
-              
-                />
-                Pause Mode
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="mode"
-                  value="question"
-                  checked={mode === 'question'}
-                  onChange={() => setMode('question')}
-                />
-                Question Mode
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="mode"
-                  value="analytics"
-                  checked={mode === 'analytics'}
-                  onChange={() => setMode('analytics')}
-                />
-                Analytics Mode
-              </label>
-            </div>
+            {['pause', 'question', 'analytics'].map((m) => (
+              <button
+                key={m}
+                className={`mode-button ${mode === m ? 'active' : ''}`}
+                onClick={() => setMode(m)}
+              >
+                {m.charAt(0).toUpperCase() + m.slice(1)} Mode
+              </button>
+            ))}
+          </div>
+
 
             <div className="videos-grid">
               {filteredVideos.map(video => (
