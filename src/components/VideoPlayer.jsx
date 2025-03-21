@@ -13,47 +13,15 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-// Import the shared FaceMesh context hook (assumes you set it up)
 import { useFaceMesh } from '../components/FaceMeshContext';
+import { estimateGaze } from '../services/videoLogic';
+import { QuestionModal, DecisionModal } from './QuestionModals';
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 // Global flags
-window.noStop = true;    // When true, video is not actually paused
-window.noPopUp = true;   // When true, question modal will not be shown
-
-function QuestionModal({ question, onAnswer }) {
-  return (
-    <div className="modal-overlay" role="dialog" aria-modal="true">
-      <div className="modal-content">
-        <h3>Question:</h3>
-        <p>{question.text}</p>
-        <div className="answers">
-          {question.answers.map((ans) => (
-            <button key={ans.key} onClick={() => onAnswer(ans.key)}>
-              {ans.text}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DecisionModal({ isCorrect, onDecision }) {
-  return (
-    <div className="modal-overlay" role="dialog" aria-modal="true">
-      <div className="modal-content">
-        <h3>{isCorrect ? 'Correct!' : 'Incorrect.'}</h3>
-        <p>What would you like to do?</p>
-        <div className="decision-buttons">
-          <button onClick={() => onDecision('continue')}>Continue Watching</button>
-          <button onClick={() => onDecision('rewind')}>Rewind</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+window.noStop = true;
+window.noPopUp = true;
 
 function VideoPlayer({ mode, sessionPaused, sessionEnded, onSessionData, lectureInfo, userInfo }) {
   const webcamRef = useRef(null);
@@ -77,7 +45,6 @@ function VideoPlayer({ mode, sessionPaused, sessionEnded, onSessionData, lecture
     ],
   };
 
-  // Use shared FaceMesh from context if available; otherwise, fallback to local initialization.
   const { faceMesh: sharedFaceMesh } = useFaceMesh() || {};
 
   useEffect(() => {
@@ -131,38 +98,7 @@ function VideoPlayer({ mode, sessionPaused, sessionEnded, onSessionData, lecture
     };
   }, [sharedFaceMesh]);
 
-  const estimateGaze = (landmarks) => {
-    const leftEye = {
-      outer: landmarks[33],
-      inner: landmarks[133],
-      center: landmarks[468],
-    };
-    const rightEye = {
-      outer: landmarks[362],
-      inner: landmarks[263],
-      center: landmarks[473],
-    };
-
-    const leftGazeRatio =
-      (leftEye.center.x - leftEye.outer.x) /
-      (leftEye.inner.x - leftEye.outer.x);
-    const rightGazeRatio =
-      (rightEye.center.x - rightEye.outer.x) /
-      (rightEye.inner.x - rightEye.outer.x);
-
-    const avgGazeRatio = (leftGazeRatio + rightGazeRatio) / 2;
-    if (avgGazeRatio < 0.42) {
-      return 'Looking left';
-    } else if (avgGazeRatio > 0.58) {
-      return 'Looking right';
-    } else {
-      return 'Looking center';
-    }
-  };
-
   const handleVideoPlayback = (gaze, deltaTime) => {
-    // When gaze is not center, update state.
-    // Only call pauseVideo/seekTo if noStop is false.
     if (gaze !== 'Looking center') {
       systemPauseRef.current = true;
       if (playerRef.current && !window.noStop) {
@@ -170,7 +106,6 @@ function VideoPlayer({ mode, sessionPaused, sessionEnded, onSessionData, lecture
       }
       setIsPlaying(false);
       setPauseStatus("Paused (Not Engagement)");
-      // Only show question popup if mode is 'question' and noPopUp is false
       if (mode === 'question' && !showQuestionModal && !window.noPopUp) {
         setCurrentQuestion(dummyQuestion);
         setShowQuestionModal(true);
@@ -260,7 +195,7 @@ function VideoPlayer({ mode, sessionPaused, sessionEnded, onSessionData, lecture
           playerVars: {
             autoplay: 1,
             controls: 1,
-            origin: window.location.origin, // fixes postMessage origin errors
+            origin: window.location.origin,
           },
         }}
         onReady={onPlayerReady}
@@ -272,8 +207,8 @@ function VideoPlayer({ mode, sessionPaused, sessionEnded, onSessionData, lecture
       <div className="focus-graph">
         <Bar data={chartData} options={chartOptions} />
       </div>
-      {/* Hidden webcam for engagement detection */}
       <video ref={webcamRef} style={{ display: 'none' }} />
+      
       {showQuestionModal && currentQuestion && (
         <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />
       )}
