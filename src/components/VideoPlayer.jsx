@@ -27,6 +27,8 @@ function VideoPlayer({ lectureInfo, mode }) {
   const playerRef = useRef(null);
   const systemPauseRef = useRef(false);
   const lastGazeTime = useRef(Date.now());
+  // New ref to hold the time when a question was last answered.
+  const lastQuestionAnsweredTime = useRef(0);
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
@@ -65,7 +67,7 @@ function VideoPlayer({ lectureInfo, mode }) {
     }
   }, [lectureInfo.videoId, mode]);
 
-  // Create FaceMesh instance once (or only when loaded/mode changes), not on every currentQuestion update.
+  // Create FaceMesh instance once (or only when loaded/mode changes).
   useEffect(() => {
     if (!loaded) return;
 
@@ -83,7 +85,7 @@ function VideoPlayer({ lectureInfo, mode }) {
 
     faceMesh.onResults((results) => {
       try {
-        // If a question is active, simply skip processing further gaze changes.
+        // If a question is active, freeze further gaze changes.
         if (mode === 'question' && questionActiveRef.current) {
           return;
         }
@@ -172,6 +174,10 @@ function VideoPlayer({ lectureInfo, mode }) {
         console.log('Video paused due to non-engagement. Gaze:', stableGaze.current);
 
         if (mode === 'question' && !questionActiveRef.current) {
+          // Only trigger a new question if more than 3 seconds have passed since the last answer.
+          if (now - lastQuestionAnsweredTime.current < 3000) {
+            return;
+          }
           const currentVideoTime = playerRef.current.getCurrentTime();
           const availableQuestions = questions.filter(q => {
             const qSec = parseTimeToSeconds(q.time_start_I_can_ask_about_it);
@@ -214,6 +220,8 @@ function VideoPlayer({ lectureInfo, mode }) {
     setAnsweredQIDs(prev => [...prev, currentQuestion.q_id]);
     setCurrentQuestion(null);
     setDecisionPending(null);
+    // Set the timestamp for the grace period.
+    lastQuestionAnsweredTime.current = Date.now();
     playerRef.current.playVideo();
     setIsPlaying(true);
     setPauseStatus('Playing');
