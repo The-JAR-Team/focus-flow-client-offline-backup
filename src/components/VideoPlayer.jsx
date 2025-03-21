@@ -13,176 +13,239 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { useFaceMesh } from '../components/FaceMeshContext';
 import { estimateGaze } from '../services/videoLogic';
+import { fetchTranscriptQuestions } from '../services/videos';
+import { parseTimeToSeconds, shuffleAnswers } from '../services/questionLogic';
 import { QuestionModal, DecisionModal } from './QuestionModals';
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
-// Global flags
-window.noStop = true;
-window.noPopUp = true;
+window.noStop = false;
 
-function VideoPlayer({ mode, sessionPaused, sessionEnded, onSessionData, lectureInfo, userInfo }) {
+function VideoPlayer({ lectureInfo, mode }) {
   const webcamRef = useRef(null);
   const playerRef = useRef(null);
   const systemPauseRef = useRef(false);
   const lastGazeTime = useRef(Date.now());
 
   const [isPlaying, setIsPlaying] = useState(true);
-  const [pauseStatus, setPauseStatus] = useState("Playing");
+  const [pauseStatus, setPauseStatus] = useState('Playing');
+  const [userPaused, setUserPaused] = useState(false);
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
-  const [showQuestionModal, setShowQuestionModal] = useState(false);
-  const [showDecisionModal, setShowDecisionModal] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const [questions, setQuestions] = useState([]);
+  const [answeredQIDs, setAnsweredQIDs] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [isAnswerCorrect, setIsAnswerCorrect] = useState(null);
+  const [decisionPending, setDecisionPending] = useState(null);
+  const [stats, setStats] = useState({ correct: 0, wrong: 0 });
 
-  const dummyQuestion = {
-    text: 'Are you paying attention?',
-    answers: [
-      { key: 'a', text: 'Yes', correct: true },
-      { key: 'b', text: 'No', correct: false },
-    ],
-  };
-
-  const { faceMesh: sharedFaceMesh } = useFaceMesh() || {};
-
+  // Use a ref to always hold the current question (if any)
+  const questionActiveRef = useRef(null);
   useEffect(() => {
-    let faceMesh;
-    if (sharedFaceMesh) {
-      faceMesh = sharedFaceMesh;
-    } else {
-      faceMesh = new FaceMesh({
-        locateFile: (file) =>
-          `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
-      });
-      faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      });
+    questionActiveRef.current = currentQuestion;
+  }, [currentQuestion]);
+
+  const immediateGaze = useRef('Looking center');
+  const immediateGazeChangeTime = useRef(Date.now());
+  const stableGaze = useRef('Looking center');
+  const stableGazeChangeTime = useRef(Date.now());
+
+  const SMOOTHING_MS = 300;
+  const CENTER_THRESHOLD_MS = 100;
+  const AWAY_THRESHOLD_MS = 400;
+
+  // Mark loaded and, if in question mode, fetch questions.
+  useEffect(() => {
+    setTimeout(() => setLoaded(true), 1000);
+    if (mode === 'question') {
+      fetchTranscriptQuestions(lectureInfo.videoId)
+        .then(data => setQuestions(data.questions))
+        .catch(console.error);
     }
+  }, [lectureInfo.videoId, mode]);
 
-    faceMesh.onResults((results) => {
-      const currentTime = Date.now();
-      const deltaTime = currentTime - lastGazeTime.current;
-      lastGazeTime.current = currentTime;
+  // Create FaceMesh instance once (or only when loaded/mode changes), not on every currentQuestion update.
+  useEffect(() => {
+    if (!loaded) return;
 
-      let gaze = 'Face not detected';
-      if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-        gaze = estimateGaze(results.multiFaceLandmarks[0]);
-      }
-      handleVideoPlayback(gaze, deltaTime);
+    const faceMesh = new FaceMesh({
+      locateFile: (file) =>
+        `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
     });
 
-    let camera;
-    if (webcamRef.current) {
-      camera = new Camera(webcamRef.current, {
-        onFrame: async () => {
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+
+    faceMesh.onResults((results) => {
+      try {
+        // If a question is active, simply skip processing further gaze changes.
+        if (mode === 'question' && questionActiveRef.current) {
+          return;
+        }
+
+        lastGazeTime.current = Date.now();
+
+        let gaze = 'Face not detected';
+        if (results.multiFaceLandmarks?.length > 0) {
+          gaze = estimateGaze(results.multiFaceLandmarks[0]);
+        }
+
+        handleVideoPlayback(gaze);
+      } catch (error) {
+        console.error("Error in FaceMesh onResults callback:", error);
+      }
+    });
+
+    const camera = new Camera(webcamRef.current, {
+      onFrame: async () => {
+        try {
           await faceMesh.send({ image: webcamRef.current });
-        },
-        width: 640,
-        height: 480,
-      });
-      camera.start();
-    }
+        } catch (err) {
+          console.error('FaceMesh send error:', err);
+        }
+      },
+      width: 640,
+      height: 480,
+    });
+
+    camera.start();
 
     return () => {
-      if (camera) {
-        camera.stop();
-      }
-      if (!sharedFaceMesh) {
-        faceMesh.close();
-      }
+      camera.stop();
+      faceMesh.close();
     };
-  }, [sharedFaceMesh]);
+  }, [loaded, mode]);
 
-  const handleVideoPlayback = (gaze, deltaTime) => {
-    if (gaze !== 'Looking center') {
-      systemPauseRef.current = true;
-      if (playerRef.current && !window.noStop) {
-        playerRef.current.pauseVideo();
+  // Unified gaze handler
+  const handleVideoPlayback = (newGaze) => {
+    const now = Date.now();
+
+    if (newGaze !== immediateGaze.current) {
+      immediateGaze.current = newGaze;
+      immediateGazeChangeTime.current = now;
+    }
+
+    const timeSinceImmediateChange = now - immediateGazeChangeTime.current;
+    if (timeSinceImmediateChange >= SMOOTHING_MS) {
+      if (stableGaze.current !== immediateGaze.current) {
+        stableGaze.current = immediateGaze.current;
+        stableGazeChangeTime.current = now;
       }
-      setIsPlaying(false);
-      setPauseStatus("Paused (Not Engagement)");
-      if (mode === 'question' && !showQuestionModal && !window.noPopUp) {
-        setCurrentQuestion(dummyQuestion);
-        setShowQuestionModal(true);
+    }
+
+    const stableDuration = now - stableGazeChangeTime.current;
+
+    // When gaze is centered, resume video (only if no question is active)
+    if (stableGaze.current === 'Looking center') {
+      if (mode === 'question' && questionActiveRef.current) {
+        // Freeze the state until an answer is provided.
+        return;
       }
-    } else {
-      if (playerRef.current && !sessionPaused && !window.noStop) {
+      const ytState = playerRef.current?.getPlayerState?.();
+      const isActuallyPaused = ytState !== 1;
+      const shouldResume =
+        isActuallyPaused && !userPaused && stableDuration >= CENTER_THRESHOLD_MS;
+
+      if (shouldResume && playerRef.current && !window.noStop) {
         playerRef.current.playVideo();
+        setTimeout(() => {
+          if (playerRef.current.getPlayerState() === 1) {
+            setIsPlaying(true);
+            setPauseStatus('Playing');
+            setUserPaused(false);
+          }
+        }, 200);
       }
-      setIsPlaying(true);
-      setPauseStatus("Playing");
-    }
-  };
-
-  const onPlayerReady = (event) => {
-    playerRef.current = event.target;
-    if (sessionPaused) {
-      event.target.pauseVideo();
-      setIsPlaying(false);
-      setPauseStatus("Paused (Engagement)");
     } else {
-      event.target.playVideo();
-      setIsPlaying(true);
-      setPauseStatus("Playing");
-    }
-  };
+      // When not looking center, pause video and, in question mode, trigger question.
+      if (isPlaying && stableDuration >= AWAY_THRESHOLD_MS) {
+        if (playerRef.current && !window.noStop) {
+          playerRef.current.pauseVideo();
+          setIsPlaying(false);
+        }
+        systemPauseRef.current = true;
+        console.log('Video paused due to non-engagement. Gaze:', stableGaze.current);
 
-  const onPlayerStateChange = (event) => {
-    const playerState = event.data;
-    if (playerState === 1) {
-      setIsPlaying(true);
-      setPauseStatus("Playing");
-    } else if (playerState === 2) {
-      if (systemPauseRef.current) {
-        systemPauseRef.current = false;
-      } else {
-        setIsPlaying(false);
-        setPauseStatus("Paused Manually");
+        if (mode === 'question' && !questionActiveRef.current) {
+          const currentVideoTime = playerRef.current.getCurrentTime();
+          const availableQuestions = questions.filter(q => {
+            const qSec = parseTimeToSeconds(q.time_start_I_can_ask_about_it);
+            return qSec <= currentVideoTime && !answeredQIDs.includes(q.q_id);
+          });
+          if (availableQuestions.length > 0) {
+            const lastQuestion = availableQuestions.reduce((prev, curr) =>
+              parseTimeToSeconds(curr.time_start_I_can_ask_about_it) >
+              parseTimeToSeconds(prev.time_start_I_can_ask_about_it)
+                ? curr
+                : prev
+            );
+            console.log('Triggering question:', lastQuestion);
+            setCurrentQuestion({
+              q_id: lastQuestion.q_id,
+              text: lastQuestion.question,
+              answers: shuffleAnswers(lastQuestion),
+              originalTime: parseTimeToSeconds(lastQuestion.time_start_I_can_ask_about_it)
+            });
+          }
+        }
       }
     }
   };
 
   const handleAnswer = (selectedKey) => {
-    const isCorrect = currentQuestion.answers.find((ans) => ans.key === selectedKey)?.correct;
-    setIsAnswerCorrect(isCorrect);
-    setShowQuestionModal(false);
-    setShowDecisionModal(true);
+    const correctKey = 'answer1';
+    const isCorrect = selectedKey === correctKey;
+    setStats((prev) => ({
+      ...prev,
+      [isCorrect ? 'correct' : 'wrong']: prev[isCorrect ? 'correct' : 'wrong'] + 1
+    }));
+    setDecisionPending(isCorrect);
   };
 
-  const handleDecision = (decision) => {
-    setShowDecisionModal(false);
-    if (decision === 'continue') {
-      if (playerRef.current && !window.noStop) {
-        playerRef.current.playVideo();
-      }
-      setIsPlaying(true);
-      setPauseStatus("Playing");
-    } else if (decision === 'rewind') {
-      if (playerRef.current && !window.noStop) {
-        playerRef.current.seekTo(0, true);
-        playerRef.current.playVideo();
-      }
-      setIsPlaying(true);
-      setPauseStatus("Playing");
+  const handleDecision = (action) => {
+    if (action === 'rewind') {
+      playerRef.current.seekTo(currentQuestion.originalTime - 5);
     }
+    setAnsweredQIDs(prev => [...prev, currentQuestion.q_id]);
+    setCurrentQuestion(null);
+    setDecisionPending(null);
+    playerRef.current.playVideo();
+    setIsPlaying(true);
+    setPauseStatus('Playing');
   };
 
-  const chartOptions = {
-    scales: {
-      x: { title: { display: true, text: 'Time (s)' } },
-      y: {
-        title: { display: true, text: 'Focus' },
-        min: 0,
-        max: 1,
-        ticks: { stepSize: 1 },
-      },
-    },
-    plugins: { legend: { display: false } },
+  const onPlayerReady = (event) => {
+    playerRef.current = event.target;
+    playerRef.current.playVideo();
+  };
+
+  const onPlayerStateChange = (event) => {
+    const playerState = event.data;
+    switch (playerState) {
+      case 1:
+        setIsPlaying(true);
+        setPauseStatus('Playing');
+        setUserPaused(false);
+        break;
+      case 2:
+        if (systemPauseRef.current) {
+          systemPauseRef.current = false;
+          setIsPlaying(false);
+          setPauseStatus('Paused (Not Engaged)');
+        } else {
+          setIsPlaying(false);
+          setPauseStatus('Paused Manually');
+          setUserPaused(true);
+        }
+        break;
+      default:
+        break;
+    }
   };
 
   return (
@@ -192,28 +255,35 @@ function VideoPlayer({ mode, sessionPaused, sessionEnded, onSessionData, lecture
         opts={{
           height: '390',
           width: '640',
-          playerVars: {
-            autoplay: 1,
-            controls: 1,
-            origin: window.location.origin,
-          },
+          playerVars: { autoplay: 1, controls: 1, origin: window.location.origin },
         }}
         onReady={onPlayerReady}
         onStateChange={onPlayerStateChange}
       />
       <div className="status-info">
-        <p>Video Status: {isPlaying ? "Playing" : pauseStatus}</p>
+        <p>Mode: {mode}</p>
+        <p>Status: {pauseStatus}</p>
       </div>
-      <div className="focus-graph">
-        <Bar data={chartData} options={chartOptions} />
-      </div>
+      {mode === 'analytics' && (
+        <div className="focus-graph">
+          <Bar
+            data={chartData}
+            options={{
+              scales: {
+                x: { title: { display: true, text: 'Time (s)' } },
+                y: { title: { display: true, text: 'Focus' }, min: 0, max: 1 },
+              },
+              plugins: { legend: { display: false } },
+            }}
+          />
+        </div>
+      )}
       <video ref={webcamRef} style={{ display: 'none' }} />
-      
-      {showQuestionModal && currentQuestion && (
+      {currentQuestion && (
         <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />
       )}
-      {showDecisionModal && (
-        <DecisionModal isCorrect={isAnswerCorrect} onDecision={handleDecision} />
+      {decisionPending !== null && (
+        <DecisionModal isCorrect={decisionPending} onDecision={handleDecision} />
       )}
     </div>
   );

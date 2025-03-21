@@ -4,28 +4,18 @@
 const BASE_URL = 'https://api.example.com'; // Replace with your actual API base URL
 const LOGIN_ENDPOINT = `${BASE_URL}/login`;
 const REGISTER_ENDPOINT = `${BASE_URL}/register`;
+/////////////////////////
 
-// Set this flag to true during development/debugging
+
+
+
+
+
 const DEBUG_MODE = true;
 
-export const fetchQuestionsForVideo = async (videoId) => {
-  // Simulated API call: return dummy question data
-  return [
-    {
-      q_id: 1,
-      question: 'What is the main topic of the lecture?',
-      answer1: 'Topic A',
-      answer1_correct: true,
-      answer2: 'Topic B',
-      answer2_correct: false,
-      answer3: 'Topic C',
-      answer3_correct: false,
-      answer4: 'Topic D',
-      answer4_correct: false,
-      time_start_I_can_ask_about_it: '00:05:00',
-    },
-  ];
-};
+
+
+
 
 // Simulated login API call
 export const loginUser = async ({ email, password }) => {

@@ -1,3 +1,53 @@
+
+.group-filter {
+  padding: 8px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+}
+
+.videos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 25%));
+  justify-content: center;
+  gap: 15px;
+}
+
+
+.video-card {
+  background: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.video-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 10px rgba(0,0,0,0.15);
+}
+
+.video-card img {
+  width: 100%;
+  border-radius: 4px;
+}
+
+.video-info {
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.back-button {
+  margin-bottom: 20px;
+  padding: 6px 12px;
+  border: none;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+
 .dashboard-container {
   padding: 20px;
 }
