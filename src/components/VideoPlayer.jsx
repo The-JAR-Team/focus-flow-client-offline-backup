@@ -18,6 +18,7 @@ import { fetchTranscriptQuestions } from '../services/videos';
 import { parseTimeToSeconds, shuffleAnswers } from '../services/questionLogic';
 import { QuestionModal, DecisionModal } from './QuestionModals';
 
+
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 window.noStop = false;
@@ -198,6 +199,7 @@ function VideoPlayer({ lectureInfo, mode }) {
               originalTime: parseTimeToSeconds(lastQuestion.time_start_I_can_ask_about_it)
             });
           }
+          
         }
       }
     }

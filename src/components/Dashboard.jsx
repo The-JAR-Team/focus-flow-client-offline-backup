@@ -8,7 +8,7 @@ import { fetchVideoMetadata } from '../services/videos';
 function Dashboard() {
   const [eyeDebuggerOn, setEyeDebuggerOn] = useState(false);
   const [videos, setVideos] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState('All');
+  const [selectedGroup, setSelectedGroup] = useState('All Lectures');
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [mode, setMode] = useState('pause');
 
@@ -18,9 +18,9 @@ function Dashboard() {
     setTimeout(() => setEyeDebuggerOn(true), 5000);
   }, []);
 
-  const groups = ['All', ...new Set(videos.map(v => v.group))];
+  const groups = ['All Lectures', ...new Set(videos.map(v => v.group))];
 
-  const filteredVideos = selectedGroup === 'All'
+  const filteredVideos = selectedGroup === 'All Lectures'
     ? videos
     : videos.filter(v => v.group === selectedGroup);
 
@@ -30,28 +30,30 @@ function Dashboard() {
       <div className="dashboard-content">
         {!selectedVideo ? (
           <>
-            <h2>Select Lecture</h2>
-            <select 
-              value={selectedGroup} 
-              onChange={(e) => setSelectedGroup(e.target.value)}
-              className="group-filter"
-            >
-              {groups.map(group => <option key={group} value={group}>{group}</option>)}
-            </select>
-
-            <div className="mode-selector">
-            {['pause', 'question', 'analytics'].map((m) => (
-              <button
-                key={m}
-                className={`mode-button ${mode === m ? 'active' : ''}`}
-                onClick={() => setMode(m)}
+            <h2>{selectedGroup}</h2>
+            <div className="controls-row">
+              <select 
+                value={selectedGroup} 
+                onChange={(e) => setSelectedGroup(e.target.value)}
+                className="group-filter"
               >
-                {m.charAt(0).toUpperCase() + m.slice(1)} Mode
-              </button>
-            ))}
-          </div>
-
-
+                {groups.map(group => (
+                  <option key={group} value={group}>{group}</option>
+                ))}
+              </select>
+              <button className="add-video-button">Add Video</button>
+            </div>
+            <div className="mode-selector">
+              {['pause', 'question', 'analytics'].map((m) => (
+                <button
+                  key={m}
+                  className={`mode-button ${mode === m ? 'active' : ''}`}
+                  onClick={() => setMode(m)}
+                >
+                  {m.charAt(0).toUpperCase() + m.slice(1)} Mode
+                </button>
+              ))}
+            </div>
             <div className="videos-grid">
               {filteredVideos.map(video => (
                 <div 
@@ -74,10 +76,15 @@ function Dashboard() {
           </>
         ) : (
           <>
-            <button className="back-button" onClick={() => setSelectedVideo(null)}>← Back to Lectures</button>
+            <button className="back-button" onClick={() => setSelectedVideo(null)}>
+              ← Back to Lectures
+            </button>
             <VideoPlayer 
               mode={mode}
-              lectureInfo={{ videoId: selectedVideo.video_id, subject: selectedVideo.group }}
+              lectureInfo={{
+                videoId: selectedVideo.video_id,
+                subject: selectedVideo.group
+              }}
               userInfo={{ name: 'Test User', profile: 'default' }}
             />
           </>

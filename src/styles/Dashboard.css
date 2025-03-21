@@ -56,6 +56,12 @@
   margin-top: 20px;
 }
 
+h2 {
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 50px;
+}
+
 @media (max-width: 600px) {
   .dashboard-container {
     padding: 10px;
@@ -88,4 +94,22 @@
 .mode-button.active {
   background: #333;
   color: white;
+}
+
+
+.add-video-button {
+  background-color: #333;; /* A pleasant green */
+  color: #fff;
+  font-size: 16px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  margin-left: 10px;
+}
+
+.add-video-button:hover {
+  background-color: #324933;
+  transform: scale(1.03);
 }
