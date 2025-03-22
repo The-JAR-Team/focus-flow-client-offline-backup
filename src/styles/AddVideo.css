@@ -1,0 +1,52 @@
+/* Container styling */
+.add-video-container {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+  }
+  
+  /* Form styling */
+  .add-video-form {
+    max-width: 400px;    /* Smaller width for the form */
+    margin: 0 auto;      /* Centers the form within the container */
+    background-color: #f4f4f4;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  /* Label styling */
+  .form-label {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+  
+  /* Input styling */
+  .form-input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+  
+  /* Submit button styling */
+  .submit-btn {
+    background-color: #28a745;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    width: 100%;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .submit-btn:hover {
+    background-color: #218838;
+  }
+  

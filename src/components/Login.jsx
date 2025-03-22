@@ -46,6 +46,7 @@ function Login() {
             type="email" 
             value={email} 
             onChange={(e) => setEmail(e.target.value)} 
+            placeholder="JAR@gmail.com"
             required 
           />
         </label>

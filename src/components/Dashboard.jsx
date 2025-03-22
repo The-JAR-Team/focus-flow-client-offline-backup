@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import VideoPlayer from './VideoPlayer';
 import EyeDebugger from './EyeDebugger';
@@ -6,6 +7,7 @@ import '../styles/Dashboard.css';
 import { fetchVideoMetadata } from '../services/videos';
 
 function Dashboard() {
+  const navigate = useNavigate(); // initialize the navigate hook
   const [eyeDebuggerOn, setEyeDebuggerOn] = useState(false);
   const [videos, setVideos] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('All Lectures');
@@ -41,7 +43,13 @@ function Dashboard() {
                   <option key={group} value={group}>{group}</option>
                 ))}
               </select>
-              <button className="add-video-button">Add Video</button>
+              {/* Navigate to the AddVideo form when clicked */}
+              <button 
+                className="add-video-button" 
+                onClick={() => navigate('/add-video')}
+              >
+                Add Video
+              </button>
             </div>
             <div className="mode-selector">
               {['pause', 'question', 'analytics'].map((m) => (
