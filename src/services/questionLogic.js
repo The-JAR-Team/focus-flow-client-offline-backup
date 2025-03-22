@@ -20,3 +20,20 @@ export function parseTimeToSeconds(timeStr) {
     return options;
   }
   
+
+  export function getAvailableQuestions(currentTime, questions, answeredQIDs) {
+    return questions.filter(q => {
+      const qSec = parseTimeToSeconds(q.time_start_I_can_ask_about_it);
+      return qSec <= currentTime && !answeredQIDs.includes(q.q_id);
+    });
+  }
+  
+  export function selectNextQuestion(availableQuestions) {
+    if (!availableQuestions || availableQuestions.length === 0) return null;
+    return availableQuestions.reduce((prev, curr) =>
+      parseTimeToSeconds(curr.time_start_I_can_ask_about_it) >
+        parseTimeToSeconds(prev.time_start_I_can_ask_about_it)
+        ? curr
+        : prev
+    );
+  }

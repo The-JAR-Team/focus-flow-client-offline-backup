@@ -1,9 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import YouTube from 'react-youtube';
 import { Bar } from 'react-chartjs-2';
 import '../styles/VideoPlayer.css';
-import { FaceMesh } from '@mediapipe/face_mesh';
-import { Camera } from '@mediapipe/camera_utils';
 import {
   Chart as ChartJS,
   BarElement,
@@ -15,8 +13,14 @@ import {
 } from 'chart.js';
 import { estimateGaze } from '../services/videoLogic';
 import { fetchTranscriptQuestions } from '../services/videos';
-import { parseTimeToSeconds, shuffleAnswers } from '../services/questionLogic';
+import {
+  parseTimeToSeconds,
+  shuffleAnswers,
+  getAvailableQuestions,
+  selectNextQuestion,
+} from '../services/questionLogic';
 import { QuestionModal, DecisionModal } from './QuestionModals';
+import useFaceMesh from '../hooks/useFaceMesh';
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
@@ -42,13 +46,13 @@ function VideoPlayer({ lectureInfo, mode }) {
   const [decisionPending, setDecisionPending] = useState(null);
   const [stats, setStats] = useState({ correct: 0, wrong: 0 });
 
-  // Create a ref to always hold the latest questions state.
+  // Ref to always hold the latest questions state.
   const questionsRef = useRef(questions);
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
 
-  // Use a ref to always hold the current question (if any)
+  // Ref to always hold the current question (if any)
   const questionActiveRef = useRef(null);
   useEffect(() => {
     questionActiveRef.current = currentQuestion;
@@ -63,7 +67,7 @@ function VideoPlayer({ lectureInfo, mode }) {
   const CENTER_THRESHOLD_MS = 100;
   const AWAY_THRESHOLD_MS = 400;
 
-  // Mark loaded and, if in question mode, fetch questions.
+  // Mark loaded and fetch questions (if in question mode)
   useEffect(() => {
     setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
@@ -76,63 +80,23 @@ function VideoPlayer({ lectureInfo, mode }) {
     }
   }, [lectureInfo.videoId, mode]);
 
-  // Create FaceMesh instance once (or only when loaded/mode changes).
-  useEffect(() => {
-    if (!loaded) return;
+  // Callback for FaceMesh results
+  const handleFaceMeshResults = useCallback((results) => {
+    // If a question is active, skip processing.
+    if (mode === 'question' && questionActiveRef.current) return;
+    lastGazeTime.current = Date.now();
+    let gaze = 'Face not detected';
+    if (results.multiFaceLandmarks?.length > 0) {
+      gaze = estimateGaze(results.multiFaceLandmarks[0]);
+    }
+    console.log("Detected gaze:", gaze);
+    handleVideoPlayback(gaze);
+  }, [mode]);
 
-    const faceMesh = new FaceMesh({
-      locateFile: (file) =>
-        `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
-    });
+  // Use the generic FaceMesh hook
+  useFaceMesh(loaded, webcamRef, handleFaceMeshResults);
 
-    faceMesh.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
-
-    faceMesh.onResults((results) => {
-      try {
-        // If a question is active, freeze further gaze changes.
-        if (mode === 'question' && questionActiveRef.current) {
-          return;
-        }
-
-        lastGazeTime.current = Date.now();
-
-        let gaze = 'Face not detected';
-        if (results.multiFaceLandmarks?.length > 0) {
-          gaze = estimateGaze(results.multiFaceLandmarks[0]);
-        }
-        console.log("Detected gaze:", gaze);
-        handleVideoPlayback(gaze);
-      } catch (error) {
-        console.error("Error in FaceMesh onResults callback:", error);
-      }
-    });
-
-    const camera = new Camera(webcamRef.current, {
-      onFrame: async () => {
-        try {
-          await faceMesh.send({ image: webcamRef.current });
-        } catch (err) {
-          console.error('FaceMesh send error:', err);
-        }
-      },
-      width: 640,
-      height: 480,
-    });
-
-    camera.start();
-
-    return () => {
-      camera.stop();
-      faceMesh.close();
-    };
-  }, [loaded, mode]);
-
-  // Unified gaze handler
+  // Unified gaze handler.
   const handleVideoPlayback = (newGaze) => {
     const now = Date.now();
 
@@ -140,7 +104,6 @@ function VideoPlayer({ lectureInfo, mode }) {
       immediateGaze.current = newGaze;
       immediateGazeChangeTime.current = now;
     }
-
     const timeSinceImmediateChange = now - immediateGazeChangeTime.current;
     if (timeSinceImmediateChange >= SMOOTHING_MS) {
       if (stableGaze.current !== immediateGaze.current) {
@@ -148,19 +111,14 @@ function VideoPlayer({ lectureInfo, mode }) {
         stableGazeChangeTime.current = now;
       }
     }
-
     const stableDuration = now - stableGazeChangeTime.current;
 
-    // When gaze is centered, resume video (only if no question is active)
+    // Resume video if gaze is centered and no question is active.
     if (stableGaze.current === 'Looking center') {
-      if (mode === 'question' && questionActiveRef.current) {
-        return;
-      }
+      if (mode === 'question' && questionActiveRef.current) return;
       const ytState = playerRef.current?.getPlayerState?.();
       const isActuallyPaused = ytState !== 1;
-      const shouldResume =
-        isActuallyPaused && !userPaused && stableDuration >= CENTER_THRESHOLD_MS;
-
+      const shouldResume = isActuallyPaused && !userPaused && stableDuration >= CENTER_THRESHOLD_MS;
       if (shouldResume && playerRef.current && !window.noStop) {
         console.log("Resuming video. Gaze is centered.");
         playerRef.current.playVideo();
@@ -173,7 +131,7 @@ function VideoPlayer({ lectureInfo, mode }) {
         }, 200);
       }
     } else {
-      // When not looking center, pause video and, in question mode, trigger question.
+      // Pause video and trigger a question in question mode.
       if (isPlaying && stableDuration >= AWAY_THRESHOLD_MS) {
         if (playerRef.current && !window.noStop) {
           playerRef.current.pauseVideo();
@@ -181,33 +139,26 @@ function VideoPlayer({ lectureInfo, mode }) {
         }
         systemPauseRef.current = true;
         console.log('Video paused due to non-engagement. Gaze:', stableGaze.current);
-
         if (mode === 'question' && !questionActiveRef.current) {
-          // Only trigger a new question if more than 3 seconds have passed since the last answer.
-          if (now - lastQuestionAnsweredTime.current < 3000) {
-            return;
-          }
+          if (now - lastQuestionAnsweredTime.current < 3000) return;
           const currentVideoTime = playerRef.current.getCurrentTime();
-          // Use the updated questions from the ref
-          const availableQuestions = questionsRef.current.filter(q => {
-            const qSec = parseTimeToSeconds(q.time_start_I_can_ask_about_it);
-            return qSec <= currentVideoTime && !answeredQIDs.includes(q.q_id);
-          });
+          const availableQuestions = getAvailableQuestions(
+            currentVideoTime,
+            questionsRef.current,
+            answeredQIDs
+          );
           console.log("Available questions:", availableQuestions);
           if (availableQuestions.length > 0) {
-            const lastQuestion = availableQuestions.reduce((prev, curr) =>
-              parseTimeToSeconds(curr.time_start_I_can_ask_about_it) >
-              parseTimeToSeconds(prev.time_start_I_can_ask_about_it)
-                ? curr
-                : prev
-            );
-            console.log('Triggering question:', lastQuestion);
-            setCurrentQuestion({
-              q_id: lastQuestion.q_id,
-              text: lastQuestion.question,
-              answers: shuffleAnswers(lastQuestion),
-              originalTime: parseTimeToSeconds(lastQuestion.time_start_I_can_ask_about_it)
-            });
+            const nextQuestion = selectNextQuestion(availableQuestions);
+            if (nextQuestion) {
+              console.log('Triggering question:', nextQuestion);
+              setCurrentQuestion({
+                q_id: nextQuestion.q_id,
+                text: nextQuestion.question,
+                answers: shuffleAnswers(nextQuestion),
+                originalTime: parseTimeToSeconds(nextQuestion.time_start_I_can_ask_about_it)
+              });
+            }
           }
         }
       }
@@ -218,7 +169,7 @@ function VideoPlayer({ lectureInfo, mode }) {
     const correctKey = 'answer1';
     const isCorrect = selectedKey === correctKey;
     console.log("User selected:", selectedKey, "Correct key:", correctKey, "Is correct?", isCorrect);
-    setStats((prev) => ({
+    setStats(prev => ({
       ...prev,
       [isCorrect ? 'correct' : 'wrong']: prev[isCorrect ? 'correct' : 'wrong'] + 1
     }));
@@ -232,10 +183,10 @@ function VideoPlayer({ lectureInfo, mode }) {
     }
     if (decisionPending === true) {
       console.log("User answered correctly. Removing question:", currentQuestion);
-      setQuestions(prevQuestions => {
-        const updatedQuestions = prevQuestions.filter(q => q.q_id !== currentQuestion.q_id);
-        console.log("Updated questions list:", updatedQuestions);
-        return updatedQuestions;
+      setQuestions(prev => {
+        const updated = prev.filter(q => q.q_id !== currentQuestion.q_id);
+        console.log("Updated questions list:", updated);
+        return updated;
       });
       setAnsweredQIDs(prev => [...prev, currentQuestion.q_id]);
     } else {
@@ -243,7 +194,6 @@ function VideoPlayer({ lectureInfo, mode }) {
     }
     setCurrentQuestion(null);
     setDecisionPending(null);
-    // Set the timestamp for the grace period.
     lastQuestionAnsweredTime.current = Date.now();
     playerRef.current.playVideo();
     setIsPlaying(true);
@@ -312,9 +262,7 @@ function VideoPlayer({ lectureInfo, mode }) {
         </div>
       )}
       <video ref={webcamRef} style={{ display: 'none' }} />
-      {currentQuestion && (
-        <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />
-      )}
+      {currentQuestion && <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />}
       {decisionPending !== null && (
         <DecisionModal isCorrect={decisionPending} onDecision={handleDecision} />
       )}
