@@ -31,12 +31,17 @@ function VideoPlayer({ lectureInfo, mode }) {
   const playerRef = useRef(null);
   const systemPauseRef = useRef(false);
   const lastGazeTime = useRef(Date.now());
-  // Ref to hold the time when a question was last answered.
   const lastQuestionAnsweredTime = useRef(0);
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
   const [userPaused, setUserPaused] = useState(false);
+  // Use a ref for immediate access to the userPaused flag
+  const userPausedRef = useRef(userPaused);
+  useEffect(() => {
+    userPausedRef.current = userPaused;
+  }, [userPaused]);
+
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
   const [loaded, setLoaded] = useState(false);
 
@@ -46,13 +51,13 @@ function VideoPlayer({ lectureInfo, mode }) {
   const [decisionPending, setDecisionPending] = useState(null);
   const [stats, setStats] = useState({ correct: 0, wrong: 0 });
 
-  // Ref to always hold the latest questions state.
+  // Maintain the latest questions in a ref
   const questionsRef = useRef(questions);
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
 
-  // Ref to always hold the current question (if any)
+  // Maintain the active question in a ref
   const questionActiveRef = useRef(null);
   useEffect(() => {
     questionActiveRef.current = currentQuestion;
@@ -67,7 +72,7 @@ function VideoPlayer({ lectureInfo, mode }) {
   const CENTER_THRESHOLD_MS = 100;
   const AWAY_THRESHOLD_MS = 400;
 
-  // Mark loaded and fetch questions (if in question mode)
+  // Set loaded after a short delay and fetch questions if in question mode.
   useEffect(() => {
     setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
@@ -80,20 +85,19 @@ function VideoPlayer({ lectureInfo, mode }) {
     }
   }, [lectureInfo.videoId, mode]);
 
-  // Callback for FaceMesh results
+  // FaceMesh results callback.
   const handleFaceMeshResults = useCallback((results) => {
-    // If a question is active, skip processing.
     if (mode === 'question' && questionActiveRef.current) return;
     lastGazeTime.current = Date.now();
     let gaze = 'Face not detected';
     if (results.multiFaceLandmarks?.length > 0) {
       gaze = estimateGaze(results.multiFaceLandmarks[0]);
     }
-    console.log("Detected gaze:", gaze);
+    //console.log("Detected gaze:", gaze);
     handleVideoPlayback(gaze);
   }, [mode]);
 
-  // Use the generic FaceMesh hook
+  // Use the shared FaceMesh hook.
   useFaceMesh(loaded, webcamRef, handleFaceMeshResults);
 
   // Unified gaze handler.
@@ -113,14 +117,14 @@ function VideoPlayer({ lectureInfo, mode }) {
     }
     const stableDuration = now - stableGazeChangeTime.current;
 
-    // Resume video if gaze is centered and no question is active.
+    // If gaze is centered, auto-resume video only if not manually paused.
     if (stableGaze.current === 'Looking center') {
       if (mode === 'question' && questionActiveRef.current) return;
       const ytState = playerRef.current?.getPlayerState?.();
       const isActuallyPaused = ytState !== 1;
-      const shouldResume = isActuallyPaused && !userPaused && stableDuration >= CENTER_THRESHOLD_MS;
+      const shouldResume = isActuallyPaused && !userPausedRef.current && stableDuration >= CENTER_THRESHOLD_MS;
       if (shouldResume && playerRef.current && !window.noStop) {
-        console.log("Resuming video. Gaze is centered.");
+        //console.log("Resuming video. Gaze is centered.");
         playerRef.current.playVideo();
         setTimeout(() => {
           if (playerRef.current.getPlayerState() === 1) {
@@ -131,14 +135,14 @@ function VideoPlayer({ lectureInfo, mode }) {
         }, 200);
       }
     } else {
-      // Pause video and trigger a question in question mode.
+      // When gaze is away, pause video and trigger question (in question mode).
       if (isPlaying && stableDuration >= AWAY_THRESHOLD_MS) {
         if (playerRef.current && !window.noStop) {
           playerRef.current.pauseVideo();
           setIsPlaying(false);
         }
         systemPauseRef.current = true;
-        console.log('Video paused due to non-engagement. Gaze:', stableGaze.current);
+        //console.log('Video paused due to non-engagement. Gaze:', stableGaze.current);
         if (mode === 'question' && !questionActiveRef.current) {
           if (now - lastQuestionAnsweredTime.current < 3000) return;
           const currentVideoTime = playerRef.current.getCurrentTime();
@@ -208,7 +212,7 @@ function VideoPlayer({ lectureInfo, mode }) {
 
   const onPlayerStateChange = (event) => {
     const playerState = event.data;
-    console.log("Player state changed:", playerState);
+    //console.log("Player state changed:", playerState);
     switch (playerState) {
       case 1:
         setIsPlaying(true);
