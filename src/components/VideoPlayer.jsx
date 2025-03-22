@@ -18,7 +18,6 @@ import { fetchTranscriptQuestions } from '../services/videos';
 import { parseTimeToSeconds, shuffleAnswers } from '../services/questionLogic';
 import { QuestionModal, DecisionModal } from './QuestionModals';
 
-
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 window.noStop = false;
@@ -28,7 +27,7 @@ function VideoPlayer({ lectureInfo, mode }) {
   const playerRef = useRef(null);
   const systemPauseRef = useRef(false);
   const lastGazeTime = useRef(Date.now());
-  // New ref to hold the time when a question was last answered.
+  // Ref to hold the time when a question was last answered.
   const lastQuestionAnsweredTime = useRef(0);
 
   const [isPlaying, setIsPlaying] = useState(true);
@@ -42,6 +41,12 @@ function VideoPlayer({ lectureInfo, mode }) {
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [decisionPending, setDecisionPending] = useState(null);
   const [stats, setStats] = useState({ correct: 0, wrong: 0 });
+
+  // Create a ref to always hold the latest questions state.
+  const questionsRef = useRef(questions);
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
 
   // Use a ref to always hold the current question (if any)
   const questionActiveRef = useRef(null);
@@ -63,7 +68,10 @@ function VideoPlayer({ lectureInfo, mode }) {
     setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
       fetchTranscriptQuestions(lectureInfo.videoId)
-        .then(data => setQuestions(data.questions))
+        .then(data => {
+          console.log("Fetched questions:", data.questions);
+          setQuestions(data.questions);
+        })
         .catch(console.error);
     }
   }, [lectureInfo.videoId, mode]);
@@ -97,7 +105,7 @@ function VideoPlayer({ lectureInfo, mode }) {
         if (results.multiFaceLandmarks?.length > 0) {
           gaze = estimateGaze(results.multiFaceLandmarks[0]);
         }
-
+        console.log("Detected gaze:", gaze);
         handleVideoPlayback(gaze);
       } catch (error) {
         console.error("Error in FaceMesh onResults callback:", error);
@@ -146,7 +154,6 @@ function VideoPlayer({ lectureInfo, mode }) {
     // When gaze is centered, resume video (only if no question is active)
     if (stableGaze.current === 'Looking center') {
       if (mode === 'question' && questionActiveRef.current) {
-        // Freeze the state until an answer is provided.
         return;
       }
       const ytState = playerRef.current?.getPlayerState?.();
@@ -155,6 +162,7 @@ function VideoPlayer({ lectureInfo, mode }) {
         isActuallyPaused && !userPaused && stableDuration >= CENTER_THRESHOLD_MS;
 
       if (shouldResume && playerRef.current && !window.noStop) {
+        console.log("Resuming video. Gaze is centered.");
         playerRef.current.playVideo();
         setTimeout(() => {
           if (playerRef.current.getPlayerState() === 1) {
@@ -180,10 +188,12 @@ function VideoPlayer({ lectureInfo, mode }) {
             return;
           }
           const currentVideoTime = playerRef.current.getCurrentTime();
-          const availableQuestions = questions.filter(q => {
+          // Use the updated questions from the ref
+          const availableQuestions = questionsRef.current.filter(q => {
             const qSec = parseTimeToSeconds(q.time_start_I_can_ask_about_it);
             return qSec <= currentVideoTime && !answeredQIDs.includes(q.q_id);
           });
+          console.log("Available questions:", availableQuestions);
           if (availableQuestions.length > 0) {
             const lastQuestion = availableQuestions.reduce((prev, curr) =>
               parseTimeToSeconds(curr.time_start_I_can_ask_about_it) >
@@ -199,7 +209,6 @@ function VideoPlayer({ lectureInfo, mode }) {
               originalTime: parseTimeToSeconds(lastQuestion.time_start_I_can_ask_about_it)
             });
           }
-          
         }
       }
     }
@@ -208,6 +217,7 @@ function VideoPlayer({ lectureInfo, mode }) {
   const handleAnswer = (selectedKey) => {
     const correctKey = 'answer1';
     const isCorrect = selectedKey === correctKey;
+    console.log("User selected:", selectedKey, "Correct key:", correctKey, "Is correct?", isCorrect);
     setStats((prev) => ({
       ...prev,
       [isCorrect ? 'correct' : 'wrong']: prev[isCorrect ? 'correct' : 'wrong'] + 1
@@ -220,7 +230,17 @@ function VideoPlayer({ lectureInfo, mode }) {
       console.log('Rewinding to:', currentQuestion);
       playerRef.current.seekTo(currentQuestion.originalTime);
     }
-    setAnsweredQIDs(prev => [...prev, currentQuestion.q_id]);
+    if (decisionPending === true) {
+      console.log("User answered correctly. Removing question:", currentQuestion);
+      setQuestions(prevQuestions => {
+        const updatedQuestions = prevQuestions.filter(q => q.q_id !== currentQuestion.q_id);
+        console.log("Updated questions list:", updatedQuestions);
+        return updatedQuestions;
+      });
+      setAnsweredQIDs(prev => [...prev, currentQuestion.q_id]);
+    } else {
+      console.log("User answered incorrectly. Keeping question for future attempts:", currentQuestion);
+    }
     setCurrentQuestion(null);
     setDecisionPending(null);
     // Set the timestamp for the grace period.
@@ -232,11 +252,13 @@ function VideoPlayer({ lectureInfo, mode }) {
 
   const onPlayerReady = (event) => {
     playerRef.current = event.target;
+    console.log("Player ready, starting video");
     playerRef.current.playVideo();
   };
 
   const onPlayerStateChange = (event) => {
     const playerState = event.data;
+    console.log("Player state changed:", playerState);
     switch (playerState) {
       case 1:
         setIsPlaying(true);
