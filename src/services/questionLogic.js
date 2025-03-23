@@ -23,7 +23,7 @@ export function parseTimeToSeconds(timeStr) {
 
   export function getAvailableQuestions(currentTime, questions, answeredQIDs) {
     return questions.filter(q => {
-      const qSec = parseTimeToSeconds(q.time_start_I_can_ask_about_it);
+      const qSec = parseTimeToSeconds(q.time_start_I_can_ask_about_it)-4;
       return qSec <= currentTime && !answeredQIDs.includes(q.q_id);
     });
   }

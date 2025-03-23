@@ -183,7 +183,9 @@ function VideoPlayer({ lectureInfo, mode }) {
   const handleDecision = (action) => {
     if (action === 'rewind') {
       console.log('Rewinding to:', currentQuestion);
-      playerRef.current.seekTo(currentQuestion.originalTime);
+      const rewindTime = Math.max(0, currentQuestion.originalTime - 8);
+      playerRef.current.seekTo(rewindTime);
+
     }
     if (decisionPending === true) {
       console.log("User answered correctly. Removing question:", currentQuestion);
