@@ -69,12 +69,14 @@ function Dashboard() {
                   key={video.video_id}
                   onClick={() => setSelectedVideo(video)}
                 >
+                <h4 style={{ textAlign: 'center', margin:'5px' }}>{video.video_name}</h4>
+
                   <img 
                     src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} 
                     alt={video.group}
                   />
                   <div className="video-info">
-                    <h4>{video.group}</h4>
+                    <h5>group: {video.group}</h5>
                     <small>Uploaded by: {video.uploadby}</small><br />
                     <small>Length: {video.length}</small>
                   </div>
