@@ -3,8 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../services/api';
 import '../styles/Login.css';
 
-// Set debug mode true to bypass login API and go to dashboard immediately.
-const DEBUG_MODE = true;
+// DEBUG_MODE is now false so that login checks work.
+const DEBUG_MODE = false;
 
 function Login() {
   const navigate = useNavigate();
@@ -15,23 +15,17 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (DEBUG_MODE) {
-      // In debug mode, proceed directly to the dashboard with a test user.
-      navigate('/dashboard');
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await loginUser({ email, password });
-      if (response.success) {
+      if (response.status === "success") {
         navigate('/dashboard');
       } else {
-        setErrorMsg(response.error);
+        setErrorMsg(response.reason);
       }
     } catch (error) {
-      setErrorMsg('An error occurred');
+      const errMsg = error.reason || error.message || 'An error occurred during login.';
+      setErrorMsg(errMsg);
     }
     setLoading(false);
   };

@@ -5,24 +5,31 @@
     background: #fff;
     border: 1px solid #ccc;
     border-radius: 4px;
-  }
-  .register-form label {
+}
+.register-form label {
     display: block;
     margin-bottom: 10px;
-  }
-  .register-form input {
+}
+.register-form input {
     width: 100%;
     padding: 8px;
     margin-top: 5px;
     margin-bottom: 15px;
     border: 1px solid #aaa;
     border-radius: 2px;
-  }
-  .register-form button {
+}
+.register-form button {
     padding: 10px 20px;
     border: none;
     background: #333;
     color: #fff;
     cursor: pointer;
-  }
-  
+}
+/* New error message style */
+.error {
+  color: #d8000c;
+  background-color: #ffbaba;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}

@@ -28,6 +28,14 @@
   width: 100%;
 }
 
+.error {
+  color: #d8000c;
+  background-color: #ffbaba;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
 @media (max-width: 500px) {
   .login-container,
   .register-container {

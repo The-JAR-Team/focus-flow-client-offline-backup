@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { registerUser } from '../services/api';
 import '../styles/Register.css';
 
 function Register() {
@@ -7,17 +8,63 @@ function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [age, setAge] = useState('');
+  const [errorMsg, setErrorMsg] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulate registration logic
-    navigate('/');
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match.");
+      return;
+    }
+    try {
+      const response = await registerUser({ email, password, firstName, lastName, age: parseInt(age) });
+      console.log(response.status);
+      if(response.status === "success"){
+        navigate('/');
+      } else {
+        setErrorMsg(response.reason);
+      }
+    } catch (error) {
+      const errMsg = error.reason || error.message || 'An error occurred during registration.';
+      setErrorMsg(errMsg);
+    }
   };
 
   return (
     <div className="register-container">
       <h2>Register</h2>
+      {errorMsg && <p className="error">{errorMsg}</p>}
       <form onSubmit={handleSubmit} className="register-form">
+        <label>
+          First Name:
+          <input 
+            type="text" 
+            value={firstName} 
+            onChange={(e)=>setFirstName(e.target.value)} 
+            required 
+          />
+        </label>
+        <label>
+          Last Name:
+          <input 
+            type="text" 
+            value={lastName} 
+            onChange={(e)=>setLastName(e.target.value)} 
+            required 
+          />
+        </label>
+        <label>
+          Age:
+          <input 
+            type="number" 
+            value={age} 
+            onChange={(e)=>setAge(e.target.value)} 
+            required 
+          />
+        </label>
         <label>
           Email:
           <input 
