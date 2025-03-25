@@ -55,7 +55,7 @@ function Login() {
         </label>
         {errorMsg && <p className="error">{errorMsg}</p>}
         <button type="submit" disabled={loading}>
-          {loading ? 'Logging in...' : 'Log In'}
+          {loading ? (<><div className="spinner"></div>Logging in...</>) : 'Log In'}
         </button>
       </form>
       <p>

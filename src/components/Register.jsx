@@ -12,6 +12,7 @@ function Register() {
   const [lastName, setLastName] = useState('');
   const [age, setAge] = useState('');
   const [errorMsg, setErrorMsg] = useState(null);
+  const [loading, setLoading] = useState(false); // new loading state
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,6 +20,7 @@ function Register() {
       setErrorMsg("Passwords do not match.");
       return;
     }
+    setLoading(true); // start loading
     try {
       const response = await registerUser({ email, password, firstName, lastName, age: parseInt(age) });
       console.log(response.status);
@@ -30,6 +32,8 @@ function Register() {
     } catch (error) {
       const errMsg = error.reason || error.message || 'An error occurred during registration.';
       setErrorMsg(errMsg);
+    } finally {
+      setLoading(false); // end loading regardless
     }
   };
 
@@ -37,6 +41,7 @@ function Register() {
     <div className="register-container">
       <h2>Register</h2>
       {errorMsg && <p className="error">{errorMsg}</p>}
+      {loading && <p>Please wait...</p>} {/* loading message */}
       <form onSubmit={handleSubmit} className="register-form">
         <label>
           First Name:
@@ -92,7 +97,7 @@ function Register() {
             required 
           />
         </label>
-        <button type="submit">Register</button>
+        <button type="submit" disabled={loading}>Register</button>
       </form>
       <p>
         Already have an account? <Link to="/">Login Here</Link>
