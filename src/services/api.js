@@ -12,7 +12,8 @@ const DEBUG_MODE = true;
 // Simulated login API call
 export const loginUser = async ({ email, password }) => {
   try {
-    const response = await axios.post(LOGIN_ENDPOINT, { email, password }); // using axios
+    //const response = await axios.post(LOGIN_ENDPOINT, { email, password }); // using axios
+        const response = await axios.post(LOGIN_ENDPOINT, { email, password }, { withCredentials: true });
     return response.data;
   } catch (error) {
     // changed: throw error.response.data if reason available
@@ -32,7 +33,7 @@ export const registerUser = async ({ email, password, firstName, lastName, age }
       "first name": firstName, // changed key
       "last name": lastName,   // changed key
       "age": age,
-    }); // using axios with updated request body
+    }, { withCredentials: true }); // using axios with credentials
     return response.data;
   } catch (error) {
     if (error.response?.data?.reason) {
