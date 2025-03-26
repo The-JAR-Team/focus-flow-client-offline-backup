@@ -77,9 +77,9 @@ function VideoPlayer({ lectureInfo, mode }) {
     setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
       fetchTranscriptQuestions(lectureInfo.videoId)
-        .then(data => {
-          console.log("Fetched questions:", data.questions);
-          setQuestions(data.questions);
+        .then(questions => {
+          console.log("Fetched questions:", questions);
+          setQuestions(questions); // questions is now the array from video_questions
         })
         .catch(console.error);
     }

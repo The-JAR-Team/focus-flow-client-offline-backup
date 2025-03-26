@@ -46,3 +46,30 @@ export const registerUser = async ({ email, password, firstName, lastName, age }
     throw error;
   }
 };
+
+export const fetchUserInfo = async () => {
+  try {
+    const response = await axios.get(`${BASE_URL}/user_info`, { withCredentials: true });
+    if (response.status !== 200) throw new Error("Failed to fetch user info");
+    return response.data.user;
+  } catch (error) {
+    if (error.response?.data?.reason) {
+      throw error.response.data;
+    }
+    throw error;
+  }
+};
+
+// New logout API call
+export const logoutUser = async () => {
+  try {
+    const response = await axios.post(`${BASE_URL}/logout`, {}, { withCredentials: true });
+    if (response.status !== 200) throw new Error("Failed to logout");
+    return response.data;
+  } catch (error) {
+    if (error.response?.data?.reason) {
+      throw error.response.data;
+    }
+    throw error;
+  }
+};

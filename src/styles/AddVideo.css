@@ -49,4 +49,21 @@
   .submit-btn:hover {
     background-color: #218838;
   }
+
+  /* Playlist selection styling */
+  .playlist-select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
   
+  /* New playlist form styling */
+  .new-playlist-form {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #e9ecef;
+    border-radius: 8px;
+  }

@@ -5,23 +5,45 @@ import VideoPlayer from './VideoPlayer';
 import EyeDebugger from './EyeDebugger';
 import '../styles/Dashboard.css';
 import { fetchVideoMetadata } from '../services/videos';
+import { fetchUserInfo, logoutUser } from '../services/api';
 
 function Dashboard() {
-  const navigate = useNavigate(); // initialize the navigate hook
+  const navigate = useNavigate();
   const [eyeDebuggerOn, setEyeDebuggerOn] = useState(false);
   const [videos, setVideos] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('All Lectures');
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [mode, setMode] = useState('pause');
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setMode('pause');
     fetchVideoMetadata().then(setVideos).catch(console.error);
     setTimeout(() => setEyeDebuggerOn(true), 5000);
+
+    const getUserInfo = async () => {
+      try {
+        const userData = await fetchUserInfo();
+        setUser(userData);
+      } catch (err) {
+        setError(err.message || 'Failed to fetch user info');
+      }
+    };
+    getUserInfo();
   }, []);
 
-  const groups = ['All Lectures', ...new Set(videos.map(v => v.group))];
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      setUser(null);
+      navigate('/'); // redirect to base page
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  };
 
+  const groups = ['All Lectures', ...new Set(videos.map(v => v.group))];
   const filteredVideos = selectedGroup === 'All Lectures'
     ? videos
     : videos.filter(v => v.group === selectedGroup);
@@ -30,6 +52,21 @@ function Dashboard() {
     <div className="dashboard-container">
       <Navbar />
       <div className="dashboard-content">
+        {user ? (
+          <>
+            <div className="user-greeting">
+              <h1>Hello {user.first_name} {user.last_name}</h1>
+              <button className="logout-button" onClick={handleLogout}>Logout</button>
+            </div>
+          </>
+        ) : (
+          <div className="login-prompt">
+            <p>{error || 'No user logged in.'}</p>
+            <p>
+              Please <button onClick={() => navigate('/login')}>Log in</button> or <button onClick={() => navigate('/register')}>Register</button>.
+            </p>
+          </div>
+        )}
         {!selectedVideo ? (
           <>
             <h2>{selectedGroup}</h2>
@@ -43,7 +80,6 @@ function Dashboard() {
                   <option key={group} value={group}>{group}</option>
                 ))}
               </select>
-              {/* Navigate to the AddVideo form when clicked */}
               <button 
                 className="add-video-button" 
                 onClick={() => navigate('/add-video')}
@@ -69,8 +105,7 @@ function Dashboard() {
                   key={video.video_id}
                   onClick={() => setSelectedVideo(video)}
                 >
-                <h4 style={{ textAlign: 'center', margin:'5px' }}>{video.video_name}</h4>
-
+                  <h4 style={{ textAlign: 'center', margin:'5px' }}>{video.video_name}</h4>
                   <img 
                     src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} 
                     alt={video.group}
