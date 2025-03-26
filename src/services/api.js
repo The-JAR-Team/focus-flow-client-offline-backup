@@ -1,9 +1,13 @@
 import axios from 'axios';
 
+axios.defaults.withCredentials = true; // Global setting for credentials
+
 // services/api.js
 
 // Define your base URL and endpoints
 const BASE_URL = 'https://focus-flow-236589840712.me-west1.run.app'; // Replace with your actual API base URL
+//const BASE_URL = 'http://127.0.0.1:5000'; // Replace with your actual API base URL
+
 const LOGIN_ENDPOINT = `${BASE_URL}/login`;
 const REGISTER_ENDPOINT = `${BASE_URL}/register`;
 
