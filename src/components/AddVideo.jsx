@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import YouTube from 'react-youtube';
 import Navbar from './Navbar';
 import '../styles/AddVideo.css';
 import { uploadVideo, createPlaylist, getPlaylists } from '../services/addVideo';
-import axios from 'axios';
 
 const AddVideo = () => {
-  const [url, setUrl] = useState('');
   const [videoId, setVideoId] = useState('');
-  const [videoName, setVideoName] = useState('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
-  const [length, setLength] = useState('');
   const [uploadby, setUploadby] = useState('');
   const [allPlaylists, setAllPlaylists] = useState([]);
   const [selectedPlaylists, setSelectedPlaylists] = useState([]);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistPermission, setNewPlaylistPermission] = useState('');
+  const [duration, setDuration] = useState('');
 
   const navigate = useNavigate();
 
@@ -31,28 +29,35 @@ const AddVideo = () => {
       .catch(err => console.error(err));
   }, []);
 
+  const handleReady = (event) => {
+    const durationInSeconds = event.target.getDuration();
+    const hours = Math.floor(durationInSeconds / 3600);
+    const minutes = Math.floor((durationInSeconds % 3600) / 60);
+    const seconds = Math.floor(durationInSeconds % 60);
+    const formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    setDuration(formattedDuration);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
       video_id: videoId,
-      video_name: videoName,
       subject,
       playlists: selectedPlaylists,
       description,
-      length,
-      uploadby
+      uploadby,
+      length: duration // Add duration to payload
     };
 
     try {
       await uploadVideo(payload);
       // Clear fields after successful upload
       setVideoId('');
-      setVideoName('');
       setSubject('');
       setDescription('');
-      setLength('');
       setUploadby('');
       setSelectedPlaylists([]);
+      setDuration('');
     } catch (error) {
       console.error(error);
     }
@@ -99,113 +104,132 @@ const AddVideo = () => {
     <div className="dashboard-container">
       <Navbar />
       <div className="dashboard-content">
-        <h2>Add a New Video</h2>
         <button 
           className="back-button"
           onClick={() => navigate('/dashboard')}
         >
           ← Back to Lectures
         </button>
-        <form onSubmit={handleSubmit} className="add-video-form">
-          <label htmlFor="videoId" className="form-label">Video ID:</label>
-          <input
-            type="text"
-            id="videoId"
-            className="form-input"
-            value={videoId}
-            onChange={(e) => setVideoId(e.target.value)}
-            placeholder="OJu7kIFXzxg"
-            required
-          />
-          <label htmlFor="videoName" className="form-label">Video Name:</label>
-          <input
-            type="text"
-            id="videoName"
-            className="form-input"
-            value={videoName}
-            onChange={(e) => setVideoName(e.target.value)}
-            placeholder="Statistics"
-            required
-          />
-          <label htmlFor="subject" className="form-label">Subject:</label>
-          <input 
-            type="text" 
-            id="subject" 
-            className="form-input" 
-            value={subject} 
-            onChange={(e) => setSubject(e.target.value)}
-            placeholder="Statistics" 
-            required
-          />
-          <label htmlFor="description" className="form-label">Description:</label>
-          <textarea
-            id="description"
-            className="form-input"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Some description..."
-            required
-          />
-          <label htmlFor="length" className="form-label">Length:</label>
-          <input
-            type="text"
-            id="length"
-            className="form-input"
-            value={length}
-            onChange={(e) => setLength(e.target.value)}
-            placeholder="03:12:34"
-            required
-          />
-          <label htmlFor="uploadby" className="form-label">Upload By:</label>
-          <input
-            type="text"
-            id="uploadby"
-            className="form-input"
-            value={uploadby}
-            onChange={(e) => setUploadby(e.target.value)}
-            placeholder="Prof. Jane AI"
-            required
-          />
-          <label htmlFor="playlists" className="form-label">Select Playlists:</label>
-          <select
-            id="playlists"
-            className="playlist-select"
-            multiple
-            value={selectedPlaylists}
-            onChange={handlePlaylistSelect}
-          >
-            {allPlaylists.map((playlist) => (
-              <option key={playlist.playlist_id} value={playlist.playlist_id}>
-                {playlist.playlist_name}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="submit-btn">Add Video</button>
-        </form>
-        <div className="new-playlist-form">
-          <h3>Create New Playlist</h3>
-          <form onSubmit={handleCreatePlaylist}>
-            <label htmlFor="newPlaylistName" className="form-label">Playlist Name:</label>
-            <input
-              type="text"
-              id="newPlaylistName"
-              className="form-input"
-              value={newPlaylistName}
-              onChange={(e) => setNewPlaylistName(e.target.value)}
-              placeholder="My Favorite Songs"
-              required
-            />
-            <label htmlFor="newPlaylistPermission" className="form-label">Playlist Permission (optional):</label>
-            <input
-              type="text"
-              id="newPlaylistPermission"
-              className="form-input"
-              value={newPlaylistPermission}
-              onChange={(e) => setNewPlaylistPermission(e.target.value)}
-              placeholder="unlisted"
-            />
-            <button type="submit" className="submit-btn">Create Playlist</button>
-          </form>
+        
+        <div className="form-container">
+          {/* Main video form */}
+          <div className="video-card">
+            <h2 className="section-title">Add a New Video</h2>
+            <form onSubmit={handleSubmit} className="add-video-form">
+              <label htmlFor="videoId" className="form-label">Video ID</label>
+              <input
+                type="text"
+                id="videoId"
+                className="form-input"
+                value={videoId}
+                onChange={(e) => setVideoId(e.target.value)}
+                placeholder="Enter YouTube video ID (e.g., dQw4w9WgXcQ)"
+                required
+              />
+              
+              {/^[a-zA-Z0-9_-]{11}$/.test(videoId) && (
+                <div className="video-preview">
+                  <YouTube 
+                    videoId={videoId} 
+                    opts={{
+                      width: '100%',
+                      height: '400',
+                      playerVars: {
+                        controls: 1,
+                      },
+                    }}
+                    onReady={handleReady}
+                  />
+                  {duration && <div className="video-duration">{duration}</div>}
+                </div>
+              )}
+
+              <div className="form-grid">
+                <div>
+                  <label htmlFor="subject" className="form-label">Subject</label>
+                  <input 
+                    type="text" 
+                    id="subject" 
+                    className="form-input" 
+                    value={subject} 
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="e.g., Mathematics" 
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="uploadby" className="form-label">Instructor</label>
+                  <input
+                    type="text"
+                    id="uploadby"
+                    className="form-input"
+                    value={uploadby}
+                    onChange={(e) => setUploadby(e.target.value)}
+                    placeholder="e.g., Prof. Smith"
+                    required
+                  />
+                </div>
+              </div>
+
+              <label htmlFor="description" className="form-label">Description</label>
+              <textarea
+                id="description"
+                className="form-input"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter video description..."
+                rows="4"
+                required
+              />
+
+              <label htmlFor="playlists" className="form-label">Add to Playlists</label>
+              <select
+                id="playlists"
+                className="playlist-select"
+                multiple
+                value={selectedPlaylists}
+                onChange={handlePlaylistSelect}
+              >
+                {allPlaylists.map((playlist) => (
+                  <option key={playlist.playlist_id} value={playlist.playlist_id}>
+                    {playlist.playlist_name}
+                  </option>
+                ))}
+              </select>
+
+              <button type="submit" className="submit-btn">
+                Add Video
+              </button>
+            </form>
+          </div>
+
+          {/* Playlist creation sidebar */}
+          <div className="video-card new-playlist-card">
+            <h3 className="section-title">Create New Playlist</h3>
+            <form onSubmit={handleCreatePlaylist}>
+              <label htmlFor="newPlaylistName" className="form-label">Playlist Name:</label>
+              <input
+                type="text"
+                id="newPlaylistName"
+                className="form-input"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                placeholder="My Favorite Songs"
+                required
+              />
+              <label htmlFor="newPlaylistPermission" className="form-label">Playlist Permission (optional):</label>
+              <input
+                type="text"
+                id="newPlaylistPermission"
+                className="form-input"
+                value={newPlaylistPermission}
+                onChange={(e) => setNewPlaylistPermission(e.target.value)}
+                placeholder="unlisted"
+              />
+              <button type="submit" className="submit-btn">Create Playlist</button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

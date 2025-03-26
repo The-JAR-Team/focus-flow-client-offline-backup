@@ -63,7 +63,7 @@ function Dashboard() {
           <div className="login-prompt">
             <p>{error || 'No user logged in.'}</p>
             <p>
-              Please <button onClick={() => navigate('/login')}>Log in</button> or <button onClick={() => navigate('/register')}>Register</button>.
+              Please <button onClick={() => navigate('/')}>Log in</button> or <button onClick={() => navigate('/register')}>Register</button>.
             </p>
           </div>
         )}

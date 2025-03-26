@@ -15,7 +15,7 @@ export async function uploadVideo(videoData) {
   try {
     const response = await axios.post(`${baseUrl}/videos/upload`, videoData, {
       headers: { 'Content-Type': 'application/json' },
-      withCredentials: true  // added withCredentials
+      withCredentials: true  // keep for internal API calls
     });
     return response.data;
   } catch (error) {
@@ -32,7 +32,7 @@ export async function createPlaylist(playlistData) {
   try {
     const response = await axios.post(`${baseUrl}/playlists`, playlistData, {
       headers: { 'Content-Type': 'application/json' },
-      withCredentials: true  // added withCredentials
+      withCredentials: true
     });
     return response.data;
   } catch (error) {
