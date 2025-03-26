@@ -31,6 +31,18 @@
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .form-input:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+    outline: none;
+  }
+
+  textarea.form-input {
+    min-height: 120px;
+    resize: vertical;
   }
   
   /* Submit button styling */
@@ -44,10 +56,27 @@
     font-size: 1rem;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    margin-top: 1.5rem;
+    height: 48px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
   }
   
   .submit-btn:hover {
     background-color: #218838;
+  }
+
+  .submit-btn:after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background: linear-gradient(rgba(255,255,255,0.2), transparent);
+    pointer-events: none;
   }
 
   /* Playlist selection styling */
@@ -58,6 +87,24 @@
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
+    background-color: #fff;
+    min-height: 150px;
+    border: 1px solid #ddd;
+    transition: all 0.2s ease;
+  }
+
+  .playlist-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+  }
+
+  .playlist-select option {
+    padding: 8px 12px;
+  }
+
+  .playlist-select option:checked {
+    background: linear-gradient(0deg, #28a745 0%, #218838 100%);
+    color: white;
   }
   
   /* New playlist form styling */
@@ -66,4 +113,79 @@
     padding: 20px;
     background-color: #e9ecef;
     border-radius: 8px;
+  }
+
+  /* Enhanced form container layout */
+  .form-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  @media (max-width: 1024px) {
+    .form-container {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Form grid for side-by-side inputs */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Enhanced video preview */
+  .video-preview {
+    position: relative;
+    margin: 1.5rem -1.5rem;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  .video-preview iframe {
+    display: block;
+    width: 100%;
+    border: none;
+  }
+
+  .video-duration {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Section title enhancement */
+  .section-title {
+    position: relative;
+    margin-bottom: 2rem;
+  }
+
+  .section-title:after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    width: 60px;
+    height: 4px;
+    background: #28a745;
+    border-radius: 2px;
   }
