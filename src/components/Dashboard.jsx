@@ -73,6 +73,12 @@ function Dashboard() {
     }
   };
 
+  const handlePlaylistClick = (playlist) => {
+    // Store playlist data temporarily in localStorage
+    localStorage.setItem('selectedPlaylist', JSON.stringify(playlist));
+    navigate(`/playlist/${playlist.playlist_id}`);
+  };
+
   const groups = ['All Lectures', ...new Set(videos.map(v => v.group))];
   const filteredVideos = selectedGroup === 'All Lectures'
     ? videos
@@ -103,13 +109,31 @@ function Dashboard() {
               <button className="add-video-button" onClick={() => navigate('/add-video')}>
                 Add Video
               </button>
+              <div className="mode-selector">
+                <button
+                  className={`mode-button ${mode === 'pause' ? 'active' : ''}`}
+                  onClick={() => setMode('pause')}
+                >
+                  Pause Mode
+                </button>
+                <button
+                  className={`mode-button ${mode === 'question' ? 'active' : ''}`}
+                  onClick={() => setMode('question')}
+                >
+                  Question Mode
+                </button>
+              </div>
             </div>
             
             {/* My Playlists Section */}
             <h2>My Playlists</h2>
             <div className="content-grid">
               {myPlaylists.map(playlist => (
-                <div className="playlist-card" key={playlist.playlist_id}>
+                <div 
+                  className="playlist-card" 
+                  key={playlist.playlist_id}
+                  onClick={() => handlePlaylistClick(playlist)}
+                >
                   <h4>{playlist.playlist_name}</h4>
                   <div className="playlist-info">
                     <p>Permission: {playlist.playlist_permission}</p>
@@ -123,7 +147,11 @@ function Dashboard() {
             <h2>Public Playlists</h2>
             <div className="content-grid">
               {otherPlaylists.map(playlist => (
-                <div className="playlist-card" key={playlist.playlist_id}>
+                <div 
+                  className="playlist-card" 
+                  key={playlist.playlist_id}
+                  onClick={() => handlePlaylistClick(playlist)}
+                >
                   <h4>{playlist.playlist_name}</h4>
                   <div className="playlist-info">
                     <p>Owner: {playlist.playlist_owner_name}</p>
