@@ -72,6 +72,8 @@ function VideoPlayer({ lectureInfo, mode }) {
   const CENTER_THRESHOLD_MS = 100;
   const AWAY_THRESHOLD_MS = 400;
 
+  const [faceMeshStatus, setFaceMeshStatus] = useState('Initializing');
+
   // Set loaded after a short delay and fetch questions if in question mode.
   useEffect(() => {
     setTimeout(() => setLoaded(true), 1000);
@@ -92,13 +94,13 @@ function VideoPlayer({ lectureInfo, mode }) {
     let gaze = 'Face not detected';
     if (results.multiFaceLandmarks?.length > 0) {
       gaze = estimateGaze(results.multiFaceLandmarks[0]);
+      setFaceMeshStatus('Working');
     }
-    //console.log("Detected gaze:", gaze);
     handleVideoPlayback(gaze);
   }, [mode]);
 
   // Use the shared FaceMesh hook.
-  useFaceMesh(loaded, webcamRef, handleFaceMeshResults);
+  useFaceMesh(loaded, webcamRef, handleFaceMeshResults, setFaceMeshStatus);
 
   // Unified gaze handler.
   const handleVideoPlayback = (newGaze) => {
@@ -252,6 +254,7 @@ function VideoPlayer({ lectureInfo, mode }) {
       <div className="status-info">
         <p>Mode: {mode}</p>
         <p>Status: {pauseStatus}</p>
+        <p>FaceMesh: {faceMeshStatus}</p>
       </div>
       {mode === 'analytics' && (
         <div className="focus-graph">
