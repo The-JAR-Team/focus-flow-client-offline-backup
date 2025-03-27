@@ -73,6 +73,18 @@ function VideoPlayer({ lectureInfo, mode }) {
   const AWAY_THRESHOLD_MS = 400;
 
   const [faceMeshStatus, setFaceMeshStatus] = useState('Initializing');
+  const [showRetryButton, setShowRetryButton] = useState(false);
+  const [faceMeshEnabled, setFaceMeshEnabled] = useState(true);
+
+  const handleFaceMeshRetry = () => {
+    setShowRetryButton(false);
+    setFaceMeshStatus('Initializing');
+    setFaceMeshEnabled(false);
+    // Give time for cleanup
+    setTimeout(() => {
+      setFaceMeshEnabled(true);
+    }, 1000);
+  };
 
   // Set loaded after a short delay and fetch questions if in question mode.
   useEffect(() => {
@@ -255,6 +267,14 @@ function VideoPlayer({ lectureInfo, mode }) {
         <p>Mode: {mode}</p>
         <p>Status: {pauseStatus}</p>
         <p>FaceMesh: {faceMeshStatus}</p>
+        {showRetryButton && (
+          <button 
+            className="retry-button"
+            onClick={handleFaceMeshRetry}
+          >
+            Retry FaceMesh
+          </button>
+        )}
       </div>
       {mode === 'analytics' && (
         <div className="focus-graph">
@@ -270,7 +290,13 @@ function VideoPlayer({ lectureInfo, mode }) {
           />
         </div>
       )}
-      <video ref={webcamRef} style={{ display: 'none' }} />
+      <video 
+        ref={webcamRef}
+        style={{ display: 'none' }}
+        playsInline
+        muted
+        autoPlay
+      />
       {currentQuestion && <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />}
       {decisionPending !== null && (
         <DecisionModal isCorrect={decisionPending} onDecision={handleDecision} />
