@@ -15,6 +15,7 @@ const AddVideo = () => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistPermission, setNewPlaylistPermission] = useState('');
   const [duration, setDuration] = useState('');
+  const [videoTitle, setVideoTitle] = useState('');
 
   const navigate = useNavigate();
 
@@ -36,23 +37,29 @@ const AddVideo = () => {
     const seconds = Math.floor(durationInSeconds % 60);
     const formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     setDuration(formattedDuration);
+    // Get video title and set it as initial description
+    const title = event.target.getVideoData().title;
+    setVideoTitle(title);
+    
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
       video_id: videoId,
-      subject,
+      video_name: videoTitle,
+      subject : subject,
       playlists: selectedPlaylists,
-      description,
-      uploadby,
-      length: duration // Add duration to payload
+      description: description,
+      length: duration,
+      uploadby : uploadby
     };
 
     try {
       await uploadVideo(payload);
       // Clear fields after successful upload
       setVideoId('');
+      setVideoTitle('');
       setSubject('');
       setDescription('');
       setUploadby('');
@@ -140,7 +147,12 @@ const AddVideo = () => {
                     }}
                     onReady={handleReady}
                   />
-                  {duration && <div className="video-duration">{duration}</div>}
+                  {duration && (
+                    <div>
+                      <div className="video-duration">Duration: {duration}</div>
+                      <div className="video-title">Title: {videoTitle}</div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -159,7 +171,7 @@ const AddVideo = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="uploadby" className="form-label">Instructor</label>
+                  <label htmlFor="uploadby" className="form-label">Upload-by</label>
                   <input
                     type="text"
                     id="uploadby"
