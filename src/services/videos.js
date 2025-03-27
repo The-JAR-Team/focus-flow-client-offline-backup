@@ -8,20 +8,7 @@ const VIDEO_TRANSCRIPT_URL = 'https://raw.githubusercontent.com/The-JAR-Team/vie
 export const fetchVideoMetadata = async () => {
   const response = await axios.get("https://focus-flow-236589840712.me-west1.run.app/videos/accessible", { withCredentials: true });
   if (response.status !== 200) throw new Error("Failed to fetch video metadata");
-  const data = response.data;
-  // Flatten playlists into a videos array and map properties to expected names.
-  let videos = [];
-  data.playlists.forEach(playlist => {
-    playlist.playlist_items.forEach(item => {
-      // Map fields to what Dashboard.jsx expects.
-      item.video_id = item.external_id;
-      item.video_name = item.video_name;
-      item.group = item.subject; 
-      item.uploadby = item.upload_by; 
-      videos.push(item);
-    });
-  });
-  return videos;
+  return response.data;
 };
 
 export const fetchTranscriptQuestions = async (videoId) => {

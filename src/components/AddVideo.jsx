@@ -48,11 +48,11 @@ const AddVideo = () => {
     const payload = {
       video_id: videoId,
       video_name: videoTitle,
-      subject : subject,
-      playlists: selectedPlaylists,
+      subject: subject,
+      playlists: selectedPlaylists, // Now directly using the playlist names
       description: description,
       length: duration,
-      uploadby : uploadby
+      uploadby: uploadby
     };
 
     try {
@@ -97,14 +97,12 @@ const AddVideo = () => {
   };
 
   const handlePlaylistSelect = (e) => {
-    const options = e.target.options;
-    const selected = [];
-    for(let i=0; i<options.length; i++){
-      if(options[i].selected){
-        selected.push(options[i].value);
-      }
+    const playlistName = e.target.value;
+    if (e.target.checked) {
+      setSelectedPlaylists(prev => [...prev, playlistName]);
+    } else {
+      setSelectedPlaylists(prev => prev.filter(name => name !== playlistName));
     }
-    setSelectedPlaylists(selected);
   };
 
   return (
@@ -196,19 +194,20 @@ const AddVideo = () => {
               />
 
               <label htmlFor="playlists" className="form-label">Add to Playlists</label>
-              <select
-                id="playlists"
-                className="playlist-select"
-                multiple
-                value={selectedPlaylists}
-                onChange={handlePlaylistSelect}
-              >
+              <div className="playlist-checkbox-container">
                 {allPlaylists.map((playlist) => (
-                  <option key={playlist.playlist_id} value={playlist.playlist_id}>
+                  <label key={playlist.playlist_id} className="playlist-checkbox-label">
+                    <input
+                      type="checkbox"
+                      value={playlist.playlist_name}
+                      checked={selectedPlaylists.includes(playlist.playlist_name)}
+                      onChange={handlePlaylistSelect}
+                      className="playlist-checkbox"
+                    />
                     {playlist.playlist_name}
-                  </option>
+                  </label>
                 ))}
-              </select>
+              </div>
 
               <button type="submit" className="submit-btn">
                 Add Video

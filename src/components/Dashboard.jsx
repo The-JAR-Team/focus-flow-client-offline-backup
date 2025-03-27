@@ -11,26 +11,56 @@ function Dashboard() {
   const navigate = useNavigate();
   const [eyeDebuggerOn, setEyeDebuggerOn] = useState(false);
   const [videos, setVideos] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState('All Lectures');
+  const [playlists, setPlaylists] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState('All');
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [mode, setMode] = useState('pause');
   const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
+  const [myPlaylists, setMyPlaylists] = useState([]);
+  const [otherPlaylists, setOtherPlaylists] = useState([]);
+  const [myGenericVideos, setMyGenericVideos] = useState([]);
+  const [otherGenericVideos, setOtherGenericVideos] = useState([]);
 
   useEffect(() => {
     setMode('pause');
-    fetchVideoMetadata().then(setVideos).catch(console.error);
-    setTimeout(() => setEyeDebuggerOn(true), 5000);
-
-    const getUserInfo = async () => {
+    const initializeDashboard = async () => {
       try {
         const userData = await fetchUserInfo();
         setUser(userData);
-      } catch (err) {
-        setError(err.message || 'Failed to fetch user info');
+        
+        const data = await fetchVideoMetadata();
+        if (data && data.playlists) {
+          const genericPlaylist = data.playlists.find(p => p.playlist_name === 'generic');
+          const otherPlaylists = data.playlists.filter(p => p.playlist_name !== 'generic');
+          
+          // Process generic playlist videos
+          if (genericPlaylist && genericPlaylist.playlist_items) {
+            const allVideos = genericPlaylist.playlist_items.map(item => ({
+              ...item,
+              video_id: item.external_id,
+              group: item.subject,
+              uploadby: item.upload_by
+            }));
+            
+            // Use playlist_owner_id instead of uploadby
+            console.log(userData)
+            setMyGenericVideos(allVideos.filter(v => v.playlist_owner_id === userData.user_id));
+            setOtherGenericVideos(allVideos.filter(v => v.playlist_owner_id !== userData.user_id));
+          }
+          
+          // Process playlists using playlist_owner_id
+          setMyPlaylists(otherPlaylists.filter(p => p.playlist_owner_id === userData.user_id));
+          setOtherPlaylists(otherPlaylists.filter(p => p.playlist_owner_id !== userData.user_id));
+        }
+      } catch (error) {
+        console.error('Error initializing dashboard:', error);
+        setError('Failed to load content');
       }
     };
-    getUserInfo();
+
+    initializeDashboard();
+    setTimeout(() => setEyeDebuggerOn(true), 5000);
   }, []);
 
   const handleLogout = async () => {
@@ -69,49 +99,65 @@ function Dashboard() {
         )}
         {!selectedVideo ? (
           <>
-            <h2>{selectedGroup}</h2>
             <div className="controls-row">
-              <select 
-                value={selectedGroup} 
-                onChange={(e) => setSelectedGroup(e.target.value)}
-                className="group-filter"
-              >
-                {groups.map(group => (
-                  <option key={group} value={group}>{group}</option>
-                ))}
-              </select>
-              <button 
-                className="add-video-button" 
-                onClick={() => navigate('/add-video')}
-              >
+              <button className="add-video-button" onClick={() => navigate('/add-video')}>
                 Add Video
               </button>
             </div>
-            <div className="mode-selector">
-              {['pause', 'question', 'analytics'].map((m) => (
-                <button
-                  key={m}
-                  className={`mode-button ${mode === m ? 'active' : ''}`}
-                  onClick={() => setMode(m)}
-                >
-                  {m.charAt(0).toUpperCase() + m.slice(1)} Mode
-                </button>
+            
+            {/* My Playlists Section */}
+            <h2>My Playlists</h2>
+            <div className="content-grid">
+              {myPlaylists.map(playlist => (
+                <div className="playlist-card" key={playlist.playlist_id}>
+                  <h4>{playlist.playlist_name}</h4>
+                  <div className="playlist-info">
+                    <p>Permission: {playlist.playlist_permission}</p>
+                    <p>Videos: {playlist.playlist_items.length}</p>
+                  </div>
+                </div>
               ))}
             </div>
-            <div className="videos-grid">
-              {filteredVideos.map(video => (
-                <div 
-                  className="video-card" 
-                  key={video.video_id}
-                  onClick={() => setSelectedVideo(video)}
-                >
-                  <h4 style={{ textAlign: 'center', margin:'5px' }}>{video.video_name}</h4>
-                  <img 
-                    src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} 
-                    alt={video.group}
-                  />
+
+            {/* Public Playlists Section */}
+            <h2>Public Playlists</h2>
+            <div className="content-grid">
+              {otherPlaylists.map(playlist => (
+                <div className="playlist-card" key={playlist.playlist_id}>
+                  <h4>{playlist.playlist_name}</h4>
+                  <div className="playlist-info">
+                    <p>Owner: {playlist.playlist_owner_name}</p>
+                    <p>Permission: {playlist.playlist_permission}</p>
+                    <p>Videos: {playlist.playlist_items.length}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* My Videos Section */}
+            <h2>My Videos</h2>
+            <div className="content-grid">
+              {myGenericVideos.map(video => (
+                <div className="video-card" key={video.video_id} onClick={() => setSelectedVideo(video)}>
+                  <h4>{video.video_name}</h4>
+                  <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
                   <div className="video-info">
-                    <h5>group: {video.group}</h5>
+                    <h5>Subject: {video.group}</h5>
+                    <small>Length: {video.length}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Other Videos Section */}
+            <h2>Public Videos</h2>
+            <div className="content-grid">
+              {otherGenericVideos.map(video => (
+                <div className="video-card" key={video.video_id} onClick={() => setSelectedVideo(video)}>
+                  <h4>{video.video_name}</h4>
+                  <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
+                  <div className="video-info">
+                    <h5>Subject: {video.group}</h5>
                     <small>Uploaded by: {video.uploadby}</small><br />
                     <small>Length: {video.length}</small>
                   </div>
