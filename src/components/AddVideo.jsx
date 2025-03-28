@@ -83,7 +83,7 @@ const AddVideo = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
-      video_id: videoId,
+      video_id: extractVideoId(videoId),  // Ensure only the video id is sent
       video_name: videoTitle,
       subject: subject,
       playlists: selectedPlaylists.length > 0 ? selectedPlaylists : ['generic'], // Fallback to generic if none selected
