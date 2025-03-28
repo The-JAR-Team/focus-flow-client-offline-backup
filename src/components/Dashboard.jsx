@@ -4,8 +4,9 @@ import Navbar from './Navbar';
 import VideoPlayer from './VideoPlayer';
 import EyeDebugger from './EyeDebugger';
 import '../styles/Dashboard.css';
-import { fetchVideoMetadata } from '../services/videos';
-import { fetchUserInfo, logoutUser } from '../services/api';
+import { logoutUser } from '../services/api';
+import { initializeDashboardData } from '../services/dashboardService';
+import StackedThumbnails from './StackedThumbnails';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -24,42 +25,28 @@ function Dashboard() {
 
   useEffect(() => {
     setMode('pause');
-    const initializeDashboard = async () => {
+    const loadDashboard = async () => {
       try {
-        const userData = await fetchUserInfo();
+        const {
+          userData,
+          myGenericVideos,
+          otherGenericVideos,
+          myPlaylists,
+          otherPlaylists
+        } = await initializeDashboardData();
+
         setUser(userData);
-        
-        const data = await fetchVideoMetadata();
-        if (data && data.playlists) {
-          const genericPlaylist = data.playlists.find(p => p.playlist_name === 'generic');
-          const otherPlaylists = data.playlists.filter(p => p.playlist_name !== 'generic');
-          
-          // Process generic playlist videos
-          if (genericPlaylist && genericPlaylist.playlist_items) {
-            const allVideos = genericPlaylist.playlist_items.map(item => ({
-              ...item,
-              video_id: item.external_id,
-              group: item.subject,
-              uploadby: item.upload_by
-            }));
-            
-            // Use playlist_owner_id instead of uploadby
-            console.log(userData)
-            setMyGenericVideos(allVideos.filter(v => v.playlist_owner_id === userData.user_id));
-            setOtherGenericVideos(allVideos.filter(v => v.playlist_owner_id !== userData.user_id));
-          }
-          
-          // Process playlists using playlist_owner_id
-          setMyPlaylists(otherPlaylists.filter(p => p.playlist_owner_id === userData.user_id));
-          setOtherPlaylists(otherPlaylists.filter(p => p.playlist_owner_id !== userData.user_id));
-        }
+        setMyGenericVideos(myGenericVideos);
+        setOtherGenericVideos(otherGenericVideos);
+        setMyPlaylists(myPlaylists);
+        setOtherPlaylists(otherPlaylists);
       } catch (error) {
         console.error('Error initializing dashboard:', error);
         setError('Failed to load content');
       }
     };
 
-    initializeDashboard();
+    loadDashboard();
     setTimeout(() => setEyeDebuggerOn(true), 5000);
   }, []);
 
@@ -135,6 +122,7 @@ function Dashboard() {
                   onClick={() => handlePlaylistClick(playlist)}
                 >
                   <h4>{playlist.playlist_name}</h4>
+                  <StackedThumbnails videos={playlist.playlist_items} />
                   <div className="playlist-info">
                     <p>Permission: {playlist.playlist_permission}</p>
                     <p>Videos: {playlist.playlist_items.length}</p>
@@ -153,6 +141,7 @@ function Dashboard() {
                   onClick={() => handlePlaylistClick(playlist)}
                 >
                   <h4>{playlist.playlist_name}</h4>
+                  <StackedThumbnails videos={playlist.playlist_items} />
                   <div className="playlist-info">
                     <p>Owner: {playlist.playlist_owner_name}</p>
                     <p>Permission: {playlist.playlist_permission}</p>

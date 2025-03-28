@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import YouTube from 'react-youtube';
 import Navbar from './Navbar';
 import '../styles/AddVideo.css';
-import { uploadVideo, createPlaylist, getPlaylists } from '../services/addVideo';
+import { uploadVideo, createPlaylist, getPlaylists, extractVideoId } from '../services/addVideo';
 
 const AddVideo = () => {
   const [videoId, setVideoId] = useState('');
@@ -13,9 +13,10 @@ const AddVideo = () => {
   const [allPlaylists, setAllPlaylists] = useState([]);
   const [selectedPlaylists, setSelectedPlaylists] = useState([]);
   const [newPlaylistName, setNewPlaylistName] = useState('');
-  const [newPlaylistPermission, setNewPlaylistPermission] = useState('');
+  const [newPlaylistPermission, setNewPlaylistPermission] = useState('unlisted');
   const [duration, setDuration] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
+  const [extractedId, setExtractedId] = useState('');
 
   const navigate = useNavigate();
 
@@ -30,17 +31,53 @@ const AddVideo = () => {
       .catch(err => console.error(err));
   }, []);
 
+  const handleVideoInput = (e) => {
+    const input = e.target.value;
+    setVideoId(input);
+    const extracted = extractVideoId(input);
+    setExtractedId(extracted);
+  };
+
   const handleReady = (event) => {
+    // Get video duration
+    console.log(event)
     const durationInSeconds = event.target.getDuration();
     const hours = Math.floor(durationInSeconds / 3600);
     const minutes = Math.floor((durationInSeconds % 3600) / 60);
     const seconds = Math.floor(durationInSeconds % 60);
     const formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     setDuration(formattedDuration);
-    // Get video title and set it as initial description
-    const title = event.target.getVideoData().title;
-    setVideoTitle(title);
+
+    // Get video data
+    const videoData = event.target.getVideoData();
+    setVideoTitle(videoData.title);
     
+    // Get channel title (uploader)
+    setUploadby(videoData.author);
+    console.log(videoData)
+
+    // Get video description
+    const player = event.target;
+    player.getIframe().contentWindow.postMessage(JSON.stringify({
+      'event': 'command',
+      'func': 'getVideoData',
+      'args': []
+    }), '*');
+
+    // Add event listener to receive description
+    const handleMessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.info && data.info.description) {
+          setDescription(data.info.description);
+          window.removeEventListener('message', handleMessage);
+        }
+      } catch (error) {
+        // Ignore parsing errors from other messages
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
   };
 
   const handleSubmit = async (e) => {
@@ -49,7 +86,7 @@ const AddVideo = () => {
       video_id: videoId,
       video_name: videoTitle,
       subject: subject,
-      playlists: selectedPlaylists, // Now directly using the playlist names
+      playlists: selectedPlaylists.length > 0 ? selectedPlaylists : ['generic'], // Fallback to generic if none selected
       description: description,
       length: duration,
       uploadby: uploadby
@@ -127,15 +164,25 @@ const AddVideo = () => {
                 id="videoId"
                 className="form-input"
                 value={videoId}
-                onChange={(e) => setVideoId(e.target.value)}
-                placeholder="Enter YouTube video ID (e.g., dQw4w9WgXcQ)"
+                onChange={handleVideoInput}
+                placeholder="Enter YouTube video ID or URL"
                 required
               />
               
-              {/^[a-zA-Z0-9_-]{11}$/.test(videoId) && (
+              {videoId && (
+                <div className="extracted-id">
+                  {extractedId ? (
+                    <span className="valid-id">Valid Video ID: {extractedId}</span>
+                  ) : (
+                    <span className="invalid-id">Invalid YouTube video ID/URL</span>
+                  )}
+                </div>
+              )}
+
+              {extractedId && (
                 <div className="video-preview">
                   <YouTube 
-                    videoId={videoId} 
+                    videoId={extractedId} 
                     opts={{
                       width: '100%',
                       height: '400',
@@ -229,15 +276,20 @@ const AddVideo = () => {
                 placeholder="My Favorite Songs"
                 required
               />
-              <label htmlFor="newPlaylistPermission" className="form-label">Playlist Permission (optional):</label>
-              <input
-                type="text"
-                id="newPlaylistPermission"
-                className="form-input"
-                value={newPlaylistPermission}
-                onChange={(e) => setNewPlaylistPermission(e.target.value)}
-                placeholder="unlisted"
-              />
+              <div className="permission-toggle-container">
+                <button
+                  type="button"
+                  className={`permission-toggle ${newPlaylistPermission === 'public' ? 'active' : ''}`}
+                  onClick={() => setNewPlaylistPermission(prev => prev === 'public' ? 'unlisted' : 'public')}
+                >
+                  {newPlaylistPermission === 'public' ? 'Public' : 'Unlisted'}
+                </button>
+                <p className="permission-description">
+                  {newPlaylistPermission === 'public' 
+                    ? '👥 Everyone can see this playlist' 
+                    : '🔒 Only people with the link can see this playlist'}
+                </p>
+              </div>
               <button type="submit" className="submit-btn">Create Playlist</button>
             </form>
           </div>

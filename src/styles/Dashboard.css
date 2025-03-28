@@ -49,11 +49,79 @@
   box-shadow: 0 3px 6px rgba(0,0,0,0.1);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  perspective: 2000px;
 }
 
-.playlist-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 5px 10px rgba(0,0,0,0.15);
+.stacked-thumbnails {
+  position: relative;
+  height: 100px;
+  width: 90%;
+  margin: 20px auto;
+  transform-style: preserve-3d;
+  transform: translateX(15px);
+}
+
+.stacked-thumbnail {
+  position: absolute;
+  width: 140px;
+  height: 80px;
+  transition: all 0.5s ease;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: -2px 2px 8px rgba(0,0,0,0.3);
+  transform-origin: left center;
+}
+
+/* Remove any opacity settings; images stay fully opaque */
+.stacked-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Update hover effects with more pronounced rotation and scaling */
+.stacked-thumbnail:hover {
+  transform: 
+    translateX(-5px) 
+    translateZ(20px) 
+    rotateY(60deg) /* Increased rotation */
+    scale(0.95); /* Slightly smaller scale */
+  box-shadow: -8px 4px 12px rgba(0,0,0,0.3);
+}
+
+.stacked-thumbnail[data-index="0"]:hover {
+  transform: 
+    translateX(-5px) 
+    translateZ(20px) 
+    rotateY(20deg) /* Significantly increased rotation for the first image */
+    scale(0.90); /* Even smaller scale for the first image */
+  box-shadow: -8px 4px 12px rgba(0,0,0,0.3);
+}
+
+.stacked-thumbnail[data-index="1"]:hover {
+  transform: 
+    translateX(8px) 
+    translateZ(-10px) 
+    rotateY(35deg) /* Increased rotation */
+    scale(0.88); /* Slightly smaller scale */
+}
+
+.stacked-thumbnail[data-index="2"]:hover {
+  transform: 
+    translateX(15px) 
+    translateZ(-20px) 
+    rotateY(25deg) /* Increased rotation */
+    scale(0.84); /* Slightly smaller scale */
+}
+
+.playlist-info {
+  margin-top: auto;
+  padding-top: 10px;
 }
 
 .playlist-info {
@@ -106,28 +174,35 @@ h2 {
 .mode-selector {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 15px;
   margin: 20px 0;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .mode-button {
-  padding: 10px 20px;
-  border-radius: 20px;
-  border: 1px solid #333;
+  padding: 12px 24px;
+  border-radius: 25px;
+  border: 2px solid #333;
   background: white;
   color: #333;
+  font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .mode-button:hover {
-  background: #f0f0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .mode-button.active {
   background: #333;
   color: white;
+  transform: translateY(1px);
 }
 
 .add-video-button {
@@ -145,4 +220,15 @@ h2 {
 .add-video-button:hover {
   background-color: #324933;
   transform: scale(1.03);
+}
+
+.playlist-header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #666;
+}
+
+.playlist-header p {
+  margin: 5px 0;
+  font-size: 1.1rem;
 }

@@ -50,3 +50,28 @@ export async function getPlaylists() {
     throw error;
   }
 }
+
+export function extractVideoId(input) {
+  let videoId = input;
+  
+  try {
+    if (input.includes('youtube.com') || input.includes('youtu.be')) {
+      const url = new URL(input);
+      if (url.hostname === 'youtu.be') {
+        videoId = url.pathname.slice(1);
+      } else {
+        videoId = url.searchParams.get('v') || '';
+      }
+    }
+    // Clean any extra parameters
+    videoId = videoId.split('&')[0];
+    
+    // Validate if it's a valid YouTube video ID
+    if (/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      return videoId;
+    }
+    return '';
+  } catch (error) {
+    return '';
+  }
+}
