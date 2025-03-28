@@ -242,18 +242,21 @@ const AddVideo = () => {
 
               <label htmlFor="playlists" className="form-label">Add to Playlists</label>
               <div className="playlist-checkbox-container">
-                {allPlaylists.map((playlist) => (
-                  <label key={playlist.playlist_id} className="playlist-checkbox-label">
-                    <input
-                      type="checkbox"
-                      value={playlist.playlist_name}
-                      checked={selectedPlaylists.includes(playlist.playlist_name)}
-                      onChange={handlePlaylistSelect}
-                      className="playlist-checkbox"
-                    />
-                    {playlist.playlist_name}
-                  </label>
-                ))}
+                {allPlaylists
+                  .filter(playlist => playlist.playlist_name.toLowerCase() !== 'generic')
+                  .map((playlist) => (
+                    <label key={playlist.playlist_id} className="playlist-checkbox-label">
+                      <input
+                        type="checkbox"
+                        value={playlist.playlist_name}
+                        checked={selectedPlaylists.includes(playlist.playlist_name)}
+                        onChange={handlePlaylistSelect}
+                        className="playlist-checkbox"
+                      />
+                      {playlist.playlist_name}
+                    </label>
+                  ))
+                }
               </div>
 
               <button type="submit" className="submit-btn">
