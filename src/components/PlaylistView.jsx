@@ -1,17 +1,21 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 import Navbar from './Navbar';
 import VideoPlayer from './VideoPlayer';
+import { getSubscriberCount } from '../services/subscriptionService';
+import SubscribeModal from './SubscribeModal';
+
+const BASE_URL = 'https://focus-flow-236589840712.me-west1.run.app';
 
 function PlaylistView() {
   const navigate = useNavigate();
   const { playlistId } = useParams();
   const [selectedVideo, setSelectedVideo] = React.useState(null);
   const [playlist, setPlaylist] = React.useState(null);
-  const [mode, setMode] = React.useState(() => {
-    // Get mode from localStorage or default to 'pause'
-    return localStorage.getItem('selectedMode') || 'pause';
-  });
+  const [mode, setMode] = React.useState(() => localStorage.getItem('selectedMode') || 'pause');
+  const [subscriberCount, setSubscriberCount] = React.useState(null); // null indicates not fetched or not authorized
+  const [showSubscribeModal, setShowSubscribeModal] = React.useState(false);
 
   React.useEffect(() => {
     // Get playlist data from localStorage (temporarily)
@@ -19,10 +23,22 @@ function PlaylistView() {
     setPlaylist(playlistData);
   }, [playlistId]);
 
-  // Update mode in localStorage when it changes
   React.useEffect(() => {
     localStorage.setItem('selectedMode', mode);
   }, [mode]);
+
+  // Fetch subscriber count; if fails, do not show subscriber section
+  React.useEffect(() => {
+    if (playlist && playlist.playlist_id) {
+      getSubscriberCount(playlist.playlist_id)
+        .then(count => setSubscriberCount(count))
+        .catch(error => {
+          console.error(error);
+          console.log('Not authorized to view subscrwe got the errrrrrrrrrrrrrrrrrrrrrunt');
+          setSubscriberCount(null);
+        });
+    }
+  }, [playlist]);
 
   if (!playlist) return <div>Loading...</div>;
 
@@ -33,28 +49,19 @@ function PlaylistView() {
         <button className="back-button" onClick={() => navigate('/dashboard')}>
           ← Back to Dashboard
         </button>
-        
         <h2>{playlist.playlist_name}</h2>
         <div className="playlist-header">
           <p>Owner: {playlist.playlist_owner_name}</p>
           <p>Permission: {playlist.playlist_permission}</p>
+          {subscriberCount !== null && (
+            <>
+              <p>Subscribers: {subscriberCount}</p>
+              <button className="subscribe-button" onClick={() => setShowSubscribeModal(true)}>
+                Add Subscriber
+              </button>
+            </>
+          )}
         </div>
-
-        <div className="mode-selector">
-          <button
-            className={`mode-button ${mode === 'pause' ? 'active' : ''}`}
-            onClick={() => setMode('pause')}
-          >
-            Pause Mode
-          </button>
-          <button
-            className={`mode-button ${mode === 'question' ? 'active' : ''}`}
-            onClick={() => setMode('question')}
-          >
-            Question Mode
-          </button>
-        </div>
-
         {!selectedVideo ? (
           <div className="content-grid">
             {playlist.playlist_items.map(video => (
@@ -89,6 +96,18 @@ function PlaylistView() {
               userInfo={{ name: 'Test User', profile: 'default' }}
             />
           </>
+        )}
+        {showSubscribeModal && (
+          <SubscribeModal 
+            playlistId={playlist.playlist_id}
+            onClose={() => setShowSubscribeModal(false)}
+            onSubscribed={() => {
+              // Refresh subscriber count if authorized
+              getSubscriberCount(playlist.playlist_id)
+                .then(count => setSubscriberCount(count))
+                .catch(err => setSubscriberCount(null));
+            }}
+          />
         )}
       </div>
     </div>
