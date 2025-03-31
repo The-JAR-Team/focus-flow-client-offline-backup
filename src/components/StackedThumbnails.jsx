@@ -12,6 +12,7 @@ const StackedThumbnails = ({ videos, maxThumbnails = 3 }) => {
       className="stacked-thumbnails"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      style={{ position: 'relative' }} // ensure parent positioning
     >
       {thumbnails.map((video, index) => (
         <div
@@ -19,13 +20,15 @@ const StackedThumbnails = ({ videos, maxThumbnails = 3 }) => {
           data-index={index}
           className="stacked-thumbnail"
           style={{
-            left: '50%',  // added to center the thumbnail
+            position: 'absolute', // crucial for centering
+            top: 0,
+            left: '50%',
             zIndex: index,
             transform: hovered
-              ? `translateX(${hoverTranslateX[index]}px) rotateZ(${rotationAngles[index]}deg)`
-              : `translateX(${index * 5}px) translateZ(${-(maxThumbnails - index) * 10}px) rotateZ(${index * 2}deg) scale(${1 - index * 0.1})`,
+              ? `translateX(calc(-50% + ${hoverTranslateX[index]}px)) rotateZ(${rotationAngles[index]}deg)`
+              : `translateX(calc(-50% + ${index * 5}px)) translateZ(${-(maxThumbnails - index) * 10}px) rotateZ(${index * 2}deg) scale(${1 - index * 0.1})`,
             transition: 'transform 0.5s ease',
-            transformOrigin: 'center bottom',  // updated to match centering
+            transformOrigin: 'center bottom',
           }}
         >
           <img
