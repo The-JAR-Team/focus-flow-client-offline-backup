@@ -63,60 +63,37 @@
   width: 90%;
   margin: 20px auto;
   transform-style: preserve-3d;
-  transform: translateX(15px);
 }
 
 .stacked-thumbnail {
   position: absolute;
   width: 140px;
   height: 80px;
-  transition: all 0.5s ease;
   border-radius: 4px;
   overflow: hidden;
   box-shadow: -2px 2px 8px rgba(0,0,0,0.3);
-  transform-origin: left center;
 }
 
-/* Remove any opacity settings; images stay fully opaque */
 .stacked-thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-/* Update hover effects with more pronounced rotation and scaling */
-.stacked-thumbnail:hover {
-  transform: 
-    translateX(-5px) 
-    translateZ(20px) 
-    rotateY(60deg) /* Increased rotation */
-    scale(0.95); /* Slightly smaller scale */
-  box-shadow: -8px 4px 12px rgba(0,0,0,0.3);
-}
-
+/* New spread hover effects for stacked thumbnails */
 .stacked-thumbnail[data-index="0"]:hover {
-  transform: 
-    translateX(-5px) 
-    translateZ(20px) 
-    rotateY(20deg) /* Significantly increased rotation for the first image */
-    scale(0.90); /* Even smaller scale for the first image */
+  transform: translateX(-10px) translateY(-10px) rotate(30deg) scale(0.95);
   box-shadow: -8px 4px 12px rgba(0,0,0,0.3);
 }
 
 .stacked-thumbnail[data-index="1"]:hover {
-  transform: 
-    translateX(8px) 
-    translateZ(-10px) 
-    rotateY(35deg) /* Increased rotation */
-    scale(0.88); /* Slightly smaller scale */
+  transform: translateX(0px) translateY(-5px) rotate(10deg) scale(0.95);
+  box-shadow: -8px 4px 12px rgba(0,0,0,0.3);
 }
 
 .stacked-thumbnail[data-index="2"]:hover {
-  transform: 
-    translateX(15px) 
-    translateZ(-20px) 
-    rotateY(25deg) /* Increased rotation */
-    scale(0.84); /* Slightly smaller scale */
+  transform: translateX(10px) translateY(0px) rotate(0deg) scale(0.95);
+  box-shadow: -8px 4px 12px rgba(0,0,0,0.3);
 }
 
 .playlist-info {
