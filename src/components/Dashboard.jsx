@@ -79,7 +79,6 @@ function Dashboard() {
           <>
             <div className="user-greeting">
               <h1>Hello {user.first_name} {user.last_name}</h1>
-              <button className="logout-button" onClick={handleLogout}>Logout</button>
             </div>
           </>
         ) : (

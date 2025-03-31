@@ -29,8 +29,14 @@ function UnsubscribeModal({ playlistId, onClose, onUnsubscribed }) {
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
-      <div className="modal-content">
-        <button className="modal-close" onClick={onClose}>×</button>
+      <div className="modal-content" style={{ position: 'relative' }}>
+        <button 
+          className="modal-close" 
+          onClick={onClose}
+          style={{ position: 'absolute', top: '10px', right: '10px' }} // now relative to modal-content
+        >
+          ×
+        </button>
         <h3>Unsubscribe from Playlist</h3>
         <form onSubmit={handleUnsubscribe}>
           <input
