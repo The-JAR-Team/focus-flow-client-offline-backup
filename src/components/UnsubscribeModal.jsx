@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
-import { subscribeToPlaylist } from '../services/subscriptionService';
+import { unsubscribeToPlaylist } from '../services/subscriptionService';
 
-function SubscribeModal({ playlistId, onClose, onSubscribed }) {
+function UnsubscribeModal({ playlistId, onClose, onUnsubscribed }) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubscribe = async (e) => {
+  const handleUnsubscribe = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      await subscribeToPlaylist(email, playlistId);
-      onSubscribed();
+      await unsubscribeToPlaylist(email, playlistId);
+      onUnsubscribed();
       onClose();
     } catch (err) {
-      setError('Subscription failed.');
+      setError('Unsubscription failed.');
     } finally {
       setLoading(false);
     }
@@ -31,8 +31,8 @@ function SubscribeModal({ playlistId, onClose, onSubscribed }) {
     <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-content">
         <button className="modal-close" onClick={onClose}>×</button>
-        <h3>Subscribe to Playlist</h3>
-        <form onSubmit={handleSubscribe}>
+        <h3>Unsubscribe from Playlist</h3>
+        <form onSubmit={handleUnsubscribe}>
           <input
             type="email"
             placeholder="Enter your email"
@@ -41,7 +41,7 @@ function SubscribeModal({ playlistId, onClose, onSubscribed }) {
             required
           />
           <button type="submit" disabled={loading}>
-            {loading ? 'Subscribing...' : 'Subscribe'}
+            {loading ? 'Unsubscribing...' : 'Unsubscribe'}
           </button>
           {error && <p className="error">{error}</p>}
         </form>
@@ -50,4 +50,4 @@ function SubscribeModal({ playlistId, onClose, onSubscribed }) {
   );
 }
 
-export default SubscribeModal;
+export default UnsubscribeModal;

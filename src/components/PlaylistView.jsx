@@ -5,6 +5,7 @@ import Navbar from './Navbar';
 import VideoPlayer from './VideoPlayer';
 import { getSubscriberCount } from '../services/subscriptionService';
 import SubscribeModal from './SubscribeModal';
+import UnsubscribeModal from './UnsubscribeModal'; // added import
 
 const BASE_URL = 'https://focus-flow-236589840712.me-west1.run.app';
 
@@ -16,6 +17,7 @@ function PlaylistView() {
   const [mode, setMode] = React.useState(() => localStorage.getItem('selectedMode') || 'pause');
   const [subscriberCount, setSubscriberCount] = React.useState(null); // null indicates not fetched or not authorized
   const [showSubscribeModal, setShowSubscribeModal] = React.useState(false);
+  const [showUnsubscribeModal, setShowUnsubscribeModal] = React.useState(false); // added state
 
   React.useEffect(() => {
     // Get playlist data from localStorage (temporarily)
@@ -58,6 +60,10 @@ function PlaylistView() {
               <p>Subscribers: {subscriberCount}</p>
               <button className="subscribe-button" onClick={() => setShowSubscribeModal(true)}>
                 Add Subscriber
+              </button>
+              |
+              <button className="unsubscribe-button" onClick={() => setShowUnsubscribeModal(true)}>
+                Remove Subscription
               </button>
             </>
           )}
@@ -103,6 +109,17 @@ function PlaylistView() {
             onClose={() => setShowSubscribeModal(false)}
             onSubscribed={() => {
               // Refresh subscriber count if authorized
+              getSubscriberCount(playlist.playlist_id)
+                .then(count => setSubscriberCount(count))
+                .catch(err => setSubscriberCount(null));
+            }}
+          />
+        )}
+        {showUnsubscribeModal && ( // added unsubscribe modal block
+          <UnsubscribeModal 
+            playlistId={playlist.playlist_id}
+            onClose={() => setShowUnsubscribeModal(false)}
+            onUnsubscribed={() => {
               getSubscriberCount(playlist.playlist_id)
                 .then(count => setSubscriberCount(count))
                 .catch(err => setSubscriberCount(null));

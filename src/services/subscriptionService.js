@@ -22,3 +22,18 @@ export async function subscribeToPlaylist(email, playlistId) {
     throw error;
   }
 }
+
+export async function unsubscribeToPlaylist(email, playlistId) {
+  try {
+    const { data } = await axios.post(
+      `${BASE_URL}/subscriptions/unsubscribe`,
+      { email, playlist_id: playlistId },
+      { withCredentials: true }
+    );
+    if (data.status === 'success') return data;
+    throw new Error('Unsubscribe failed');
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
