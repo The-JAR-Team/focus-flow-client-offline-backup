@@ -54,6 +54,7 @@
   min-height: 200px;
   display: flex;
   flex-direction: column;
+  align-items: center;  /* added to center items in the playlist cards */
   perspective: 2000px;
 }
 
