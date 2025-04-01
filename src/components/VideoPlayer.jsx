@@ -46,7 +46,13 @@ function VideoPlayer({ lectureInfo, mode }) {
   const [loaded, setLoaded] = useState(false);
 
   const [questions, setQuestions] = useState([]);
-  const [answeredQIDs, setAnsweredQIDs] = useState([]);
+  const [answeredQIDs, setAnsweredQIDs] = useState(() => {
+    const stored = localStorage.getItem(`answeredQuestions_${lectureInfo.videoId}`);
+    return stored ? JSON.parse(stored) : [];
+  });
+  useEffect(() => {
+    localStorage.setItem(`answeredQuestions_${lectureInfo.videoId}`, JSON.stringify(answeredQIDs));
+  }, [answeredQIDs, lectureInfo.videoId]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [decisionPending, setDecisionPending] = useState(null);
   const [stats, setStats] = useState({ correct: 0, wrong: 0 });
@@ -90,14 +96,27 @@ function VideoPlayer({ lectureInfo, mode }) {
   useEffect(() => {
     setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
+      console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
       fetchTranscriptQuestions(lectureInfo.videoId)
-        .then(questions => {
-          console.log("Fetched questions:", questions);
-          setQuestions(questions); // questions is now the array from video_questions
+        .then(data => {
+          console.log("[DEBUG] Raw questions received:", data);
+          if (Array.isArray(data) && data.length > 0) {
+            questionsRef.current = data;
+            setQuestions(data);
+            console.log("[DEBUG] Questions set. State and Ref updated with length:", data.length);
+          }
         })
-        .catch(console.error);
+        .catch(error => console.error("[DEBUG] Error fetching questions:", error));
     }
   }, [lectureInfo.videoId, mode]);
+
+  // Add effect to monitor questions state
+  useEffect(() => {
+    if (questions.length > 0) {
+      console.log("[DEBUG] Questions state updated. Length:", questions.length);
+      console.log("[DEBUG] First question in state:", questions[0]);
+    }
+  }, [questions]);
 
   // FaceMesh results callback.
   const handleFaceMeshResults = useCallback((results) => {
@@ -160,21 +179,28 @@ function VideoPlayer({ lectureInfo, mode }) {
         if (mode === 'question' && !questionActiveRef.current) {
           if (now - lastQuestionAnsweredTime.current < 3000) return;
           const currentVideoTime = playerRef.current.getCurrentTime();
+          
+          console.log("[DEBUG] Checking for questions at time:", {
+            currentVideoTime,
+            questionsInRef: questionsRef.current.length,
+            firstQuestionInRef: questionsRef.current[0],
+          });
+          
           const availableQuestions = getAvailableQuestions(
             currentVideoTime,
-            questionsRef.current,
+            questionsRef.current, // Use ref instead of state
             answeredQIDs
           );
-          console.log("Available questions:", availableQuestions);
+          console.log("[DEBUG] Available questions (result from getAvailableQuestions):", availableQuestions);
           if (availableQuestions.length > 0) {
             const nextQuestion = selectNextQuestion(availableQuestions);
             if (nextQuestion) {
-              console.log('Triggering question:', nextQuestion);
+              console.log('[DEBUG] Triggering question:', nextQuestion);
               setCurrentQuestion({
                 q_id: nextQuestion.q_id,
                 text: nextQuestion.question,
                 answers: shuffleAnswers(nextQuestion),
-                originalTime: parseTimeToSeconds(nextQuestion.time_start_I_can_ask_about_it)
+                originalTime: parseTimeToSeconds(nextQuestion.question_origin)
               });
             }
           }
