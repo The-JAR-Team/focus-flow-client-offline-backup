@@ -12,13 +12,10 @@ export const fetchVideoMetadata = async () => {
   return response.data;
 };
 
-export const fetchTranscriptQuestions = async (videoId) => {
+export const fetchTranscriptQuestions = async (videoId, lang = 'Hebrew') => {
     try {
-        const response = await fetch(`${config.baseURL}/api/videos/${videoId}/questions`);
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return await response.json();
+        const response = await axios.get(`${config.baseURL}/videos/${videoId}/questions?lang=${lang}`);
+        return response.data;
     } catch (error) {
         console.error('Error fetching questions:', error);
         return [];

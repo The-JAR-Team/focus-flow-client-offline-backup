@@ -18,12 +18,15 @@ function Navbar() {
 
   };
 
-
-
   return (
     <nav className="navbar">
-      <h1>Focus Flow</h1>
-      <button onClick={handleLogout}>Logout</button>
+      <div className="navbar-left">
+        <Link to="/dashboard" className="navbar-brand">Focus Flow</Link>
+        <button className="nav-button" onClick={() => navigate('/dashboard')}>Dashboard</button>
+        <button className="nav-button" onClick={() => navigate('/add-video')}>Add Video</button>
+        <button className="nav-button" onClick={() => navigate('/trivia')}>Trivia</button>
+      </div>
+      <button className="logout-button" onClick={handleLogout}>Logout</button>
     </nav>
   );
 }

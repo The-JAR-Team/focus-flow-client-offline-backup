@@ -30,7 +30,7 @@ function Dashboard() {
     const loadDashboard = async () => {
       setIsLoading(true);
             // wait 2 seconds to simulate a loading state
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            //await new Promise(resolve => setTimeout(resolve, 2000));
       try {
         const {
           userData,
@@ -114,9 +114,6 @@ function Dashboard() {
         {!selectedVideo ? (
           <>
             <div className="controls-row">
-              <button className="add-video-button" onClick={() => navigate('/add-video')}>
-                Add Video
-              </button>
               <div className="mode-selector">
                 <button
                   className={`mode-button ${mode === 'pause' ? 'active' : ''}`}
