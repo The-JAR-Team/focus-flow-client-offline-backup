@@ -223,7 +223,7 @@ function VideoPlayer({ lectureInfo, mode }) {
 
   const handleDecision = (action) => {
     if (action === 'rewind') {
-      const rewindTime = Math.max(0, currentQuestion.originalTime - 2); // Subtract 2 seconds, but don't go below 0
+      const rewindTime = Math.max(0, currentQuestion.originalTime - 4); 
       if (typeof rewindTime === 'number' && !isNaN(rewindTime)) {
         playerRef.current.seekTo(rewindTime, true);
       }

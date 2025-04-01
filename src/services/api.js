@@ -1,15 +1,13 @@
 import axios from 'axios';
+import { config } from '../config/config';
 
 axios.defaults.withCredentials = true; // Global setting for credentials
 
 // services/api.js
 
 // Define your base URL and endpoints
-const BASE_URL = 'https://focus-flow-236589840712.me-west1.run.app'; // Replace with your actual API base URL
-//const BASE_URL = 'http://127.0.0.1:5000'; // Replace with your actual API base URL
-
-const LOGIN_ENDPOINT = `${BASE_URL}/login`;
-const REGISTER_ENDPOINT = `${BASE_URL}/register`;
+const LOGIN_ENDPOINT = `${config.baseURL}/login`;
+const REGISTER_ENDPOINT = `${config.baseURL}/register`;
 
 const DEBUG_MODE = true;
 
@@ -49,7 +47,7 @@ export const registerUser = async ({ email, password, firstName, lastName, age }
 
 export const fetchUserInfo = async () => {
   try {
-    const response = await axios.get(`${BASE_URL}/user_info`, { withCredentials: true });
+    const response = await axios.get(`${config.baseURL}/user_info`, { withCredentials: true });
     if (response.status !== 200) throw new Error("Failed to fetch user info");
     return response.data.user;
   } catch (error) {
@@ -63,7 +61,7 @@ export const fetchUserInfo = async () => {
 // New logout API call
 export const logoutUser = async () => {
   try {
-    const response = await axios.post(`${BASE_URL}/logout`, {}, { withCredentials: true });
+    const response = await axios.post(`${config.baseURL}/logout`, {}, { withCredentials: true });
     if (response.status !== 200) throw new Error("Failed to logout");
     return response.data;
   } catch (error) {

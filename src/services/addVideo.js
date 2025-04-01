@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { config } from '../config/config';
+
 const baseUrl = 'https://focus-flow-236589840712.me-west1.run.app';
 
 // Expected video upload body:
@@ -13,7 +15,7 @@ const baseUrl = 'https://focus-flow-236589840712.me-west1.run.app';
 // }
 export async function uploadVideo(videoData) {
   try {
-    const response = await axios.post(`${baseUrl}/videos/upload`, videoData, {
+    const response = await axios.post(`${config.baseURL}/videos/upload`, videoData, {
       headers: { 'Content-Type': 'application/json' },
       withCredentials: true  // keep for internal API calls
     });
@@ -30,7 +32,7 @@ export async function uploadVideo(videoData) {
 // }
 export async function createPlaylist(playlistData) {
   try {
-    const response = await axios.post(`${baseUrl}/playlists`, playlistData, {
+    const response = await axios.post(`${config.baseURL}/playlists`, playlistData, {
       headers: { 'Content-Type': 'application/json' },
       withCredentials: true
     });
@@ -42,7 +44,7 @@ export async function createPlaylist(playlistData) {
 
 export async function getPlaylists() {
   try {
-    const response = await axios.get(`${baseUrl}/playlists`, {
+    const response = await axios.get(`${config.baseURL}/playlists`, {
       headers: { 'Content-Type': 'application/json' }
     });
     return response.data;
