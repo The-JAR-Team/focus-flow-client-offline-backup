@@ -15,8 +15,8 @@ export const parseTimeToSeconds = (timeStr) => {
 export const getAvailableQuestions = (currentTime, questions, answeredQIDs) => {
   if (!questions || !Array.isArray(questions)) return [];
   
-  const TIME_WINDOW_BEFORE = 5; // 5 seconds before current time
-  const TIME_WINDOW_AFTER = 10; // 10 seconds ahead of current time
+  const TIME_WINDOW_BEFORE = 100; // 5 seconds before current time
+  const TIME_WINDOW_AFTER = 100; // 10 seconds ahead of current time
   
   console.log(`[DEBUG] Time windows: -${TIME_WINDOW_BEFORE}s to +${TIME_WINDOW_AFTER}s`);
   console.log(`[DEBUG] Current video time: ${currentTime}`);
