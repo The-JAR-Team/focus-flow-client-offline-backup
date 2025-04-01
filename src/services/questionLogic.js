@@ -24,7 +24,7 @@ export function shuffleAnswers(question) {
 export const getAvailableQuestions = (currentTime, questions, answeredQIDs) => {
   if (!Array.isArray(questions)) return [];
 
-  const TIME_WINDOW = 120; 
+  const TIME_WINDOW = 1500 * 60; 
   
   const available = questions
     .filter(q => {
