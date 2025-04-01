@@ -14,7 +14,7 @@ function PlaylistView() {
   const { playlistId } = useParams();
   const [selectedVideo, setSelectedVideo] = React.useState(null);
   const [playlist, setPlaylist] = React.useState(null);
-  const [mode, setMode] = React.useState(() => localStorage.getItem('selectedMode') || 'pause');
+  const [mode, setMode] = React.useState(() => localStorage.getItem('mode') || 'pause');
   const [subscriberCount, setSubscriberCount] = React.useState(null); // null indicates not fetched or not authorized
   const [showSubscribeModal, setShowSubscribeModal] = React.useState(false);
   const [showUnsubscribeModal, setShowUnsubscribeModal] = React.useState(false); // added state
@@ -26,7 +26,8 @@ function PlaylistView() {
   }, [playlistId]);
 
   React.useEffect(() => {
-    localStorage.setItem('selectedMode', mode);
+    // Write mode to localStorage under key 'mode'
+    localStorage.setItem('mode', mode);
   }, [mode]);
 
   // Fetch subscriber count; if fails, do not show subscriber section

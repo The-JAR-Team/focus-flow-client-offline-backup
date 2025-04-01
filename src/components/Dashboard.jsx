@@ -15,7 +15,7 @@ function Dashboard() {
   const [playlists, setPlaylists] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('All');
   const [selectedVideo, setSelectedVideo] = useState(null);
-  const [mode, setMode] = useState('pause');
+  const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
   const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
   const [myPlaylists, setMyPlaylists] = useState([]);
@@ -24,7 +24,6 @@ function Dashboard() {
   const [otherGenericVideos, setOtherGenericVideos] = useState([]);
 
   useEffect(() => {
-    setMode('pause');
     const loadDashboard = async () => {
       try {
         const {
@@ -98,13 +97,19 @@ function Dashboard() {
               <div className="mode-selector">
                 <button
                   className={`mode-button ${mode === 'pause' ? 'active' : ''}`}
-                  onClick={() => setMode('pause')}
+                  onClick={() => {
+                    setMode('pause');
+                    localStorage.setItem('mode', 'pause');
+                  }}
                 >
                   Pause Mode
                 </button>
                 <button
                   className={`mode-button ${mode === 'question' ? 'active' : ''}`}
-                  onClick={() => setMode('question')}
+                  onClick={() => {
+                    setMode('question');
+                    localStorage.setItem('mode', 'question');
+                  }}
                 >
                   Question Mode
                 </button>
