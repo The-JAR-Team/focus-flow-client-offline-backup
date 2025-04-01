@@ -12,13 +12,13 @@ export const fetchVideoMetadata = async () => {
   return response.data;
 };
 
-export const fetchTranscriptQuestions = async (videoId, lang = 'Hebrew') => {
+export const fetchTranscriptQuestions = async (externalId, lang = 'Hebrew') => {
     try {
-        const response = await axios.get(`${config.baseURL}/videos/${videoId}/questions?lang=${lang}`);
+        const response = await axios.get(`${config.baseURL}/videos/${externalId}/questions?lang=${lang}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching questions:', error);
-        return [];
+        return { video_questions: { questions: [] } };
     }
 };
 

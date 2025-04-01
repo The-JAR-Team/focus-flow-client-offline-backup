@@ -64,3 +64,21 @@
   color: #666;
   font-size: 0.9rem;
 }
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 20px;
+}
+
+.spinner-container {
+  text-align: center;
+}
+
+.spinner-message {
+  margin-top: 20px;
+  font-size: 1.2em;
+  color: #666;
+}

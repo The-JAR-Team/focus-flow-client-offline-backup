@@ -41,16 +41,16 @@
 }
 
 .question-container {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background-color: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .answers-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
   margin-top: 20px;
 }
 
@@ -216,4 +216,109 @@
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.quiz-active {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 20px;  /* Changed from padding: 20px to only have horizontal padding */
+}
+
+.quiz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.back-btn {
+  padding: 8px 16px;
+  font-size: 1.1em;
+  border: none;
+  border-radius: 5px;
+  background-color: #f0f0f0;
+  cursor: pointer;
+}
+
+.quiz-info {
+  display: flex;
+  gap: 20px;
+  font-size: 1.1em;
+}
+
+.question-text {
+  font-size: 1.4em;
+  margin-bottom: 25px;
+  color: #333;
+}
+
+.answer-btn {
+  padding: 15px 20px;
+  font-size: 1.1em;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.answer-btn:hover:not(:disabled) {
+  background-color: #f5f5f5;
+  transform: translateY(-2px);
+}
+
+.answer-btn.correct {
+  background-color: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+.answer-btn.incorrect {
+  background-color: #f44336;
+  color: white;
+  border-color: #f44336;
+}
+
+.quiz-complete {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.quiz-result {
+  max-width: 500px;
+  margin: 0 auto;
+  background-color: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.score-display {
+  margin: 30px 0;
+  font-size: 1.2em;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.action-buttons button {
+  padding: 12px 24px;
+  font-size: 1.1em;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.action-buttons button:first-child {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.action-buttons button:last-child {
+  background-color: #607D8B;
+  color: white;
 }

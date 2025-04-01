@@ -4,6 +4,8 @@ import QuizMode from './QuizMode';
 import Navbar from './Navbar';
 import Spinner from './Spinner';
 import { getVideoQuestions } from '../services/triviaService';
+import { fetchTranscriptQuestions } from '../services/videos';
+import '../styles/TriviaVideoPage.css';
 
 function TriviaVideoPage() {
   const { videoId } = useParams();
@@ -11,6 +13,19 @@ function TriviaVideoPage() {
   const [video, setVideo] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [error, setError] = useState(null);
+  const [hebrewQuestions, setHebrewQuestions] = useState([]);
+  const [englishQuestions, setEnglishQuestions] = useState([]);
+  const [selectedLanguage, setSelectedLanguage] = useState('Hebrew');
+  const [showLanguageSelection, setShowLanguageSelection] = useState(true);
+  const [quizMode, setQuizMode] = useState('chronological'); // or 'random'
+  const [isQuestionsHidden, setIsQuestionsHidden] = useState(false);
+
+  const handleReset = () => {
+    setShowLanguageSelection(true);
+    setQuestions([]);
+    setSelectedLanguage('Hebrew');
+    setQuizMode('chronological');
+  };
 
   useEffect(() => {
     const fetchVideoAndQuestions = async () => {
@@ -30,22 +45,33 @@ function TriviaVideoPage() {
 
         setVideo(videoData);
         
-        // Fetch questions using the service
-        const questionsData = await getVideoQuestions(videoData.external_id);
-        // Extract video_questions array from the response
-        const formattedQuestions = questionsData.video_questions.questions.map(q => ({
-          question: q.question,
-          answers: [q.answer1, q.answer2, q.answer3, q.answer4],
-          correct_answer: q.answer1, // Assuming first answer is always correct
-          difficulty: q.difficulty
-        }));
-        
-        setQuestions(formattedQuestions);
-        console.log('Formatted questions:', formattedQuestions);
+        // Use external_id for fetching questions
+        const [hebrewData, englishData] = await Promise.all([
+          fetchTranscriptQuestions(videoData.external_id, 'Hebrew'),
+          fetchTranscriptQuestions(videoData.external_id, 'English')
+        ]);
+
+        const formatQuestions = (data) => {
+          if (!data.video_questions?.questions) return [];
+          return data.video_questions.questions.map(q => ({
+            question: q.question,
+            answers: [q.answer1, q.answer2, q.answer3, q.answer4],
+            correct_answer: q.answer1,
+            difficulty: q.difficulty
+          }));
+        };
+
+        const hebrewFormattedQuestions = formatQuestions(hebrewData);
+        const englishFormattedQuestions = formatQuestions(englishData);
+
+        console.log('Hebrew questions:', hebrewFormattedQuestions);
+        console.log('English questions:', englishFormattedQuestions);
+
+        setHebrewQuestions(hebrewFormattedQuestions);
+        setEnglishQuestions(englishFormattedQuestions);
       } catch (err) {
         console.error('Error details:', err);
         setError(err.message);
-        setQuestions([]); // Set empty array on error
       } finally {
         setLoading(false);
       }
@@ -53,6 +79,16 @@ function TriviaVideoPage() {
 
     fetchVideoAndQuestions();
   }, [videoId]);
+
+  const handleStartQuiz = () => {
+    const selectedQuestions = selectedLanguage === 'Hebrew' ? hebrewQuestions : englishQuestions;
+    const finalQuestions = quizMode === 'random' 
+      ? [...selectedQuestions].sort(() => Math.random() - 0.5)
+      : selectedQuestions;
+    
+    setQuestions(finalQuestions);
+    setShowLanguageSelection(false);
+  };
 
   if (loading) {
     return (
@@ -82,7 +118,108 @@ function TriviaVideoPage() {
     );
   }
 
-  return <QuizMode video={video} questions={questions} />;
+  if (showLanguageSelection && !loading && !error) {
+    const currentQuestions = selectedLanguage === 'Hebrew' ? hebrewQuestions : englishQuestions;
+    
+    return (
+      <div style={{ padding: '20px' }}>
+        <Navbar />
+        <div className="quiz-container">
+          <div className="language-selection">
+            <h2>Quiz for: {video?.video_name}</h2>
+            
+            <div className="control-panel">
+              <div className="language-options">
+                <button 
+                  className={`lang-btn ${selectedLanguage === 'Hebrew' ? 'active' : ''} ${hebrewQuestions.length === 0 ? 'disabled' : ''}`}
+                  onClick={() => setSelectedLanguage('Hebrew')}
+                  disabled={hebrewQuestions.length === 0}
+                >
+                  Hebrew {hebrewQuestions.length === 0 && '❌'}
+                </button>
+                <button 
+                  className={`lang-btn ${selectedLanguage === 'English' ? 'active' : ''} ${englishQuestions.length === 0 ? 'disabled' : ''}`}
+                  onClick={() => setSelectedLanguage('English')}
+                  disabled={englishQuestions.length === 0}
+                >
+                  English {englishQuestions.length === 0 && '❌'}
+                </button>
+              </div>
+
+              <div className="mode-selection">
+                <button 
+                  className={`mode-btn ${quizMode === 'chronological' ? 'active' : ''}`}
+                  onClick={() => setQuizMode('chronological')}
+                >
+                  <span className="mode-icon">🔄</span>
+                  Chronological
+                </button>
+                <button 
+                  className={`mode-btn ${quizMode === 'random' ? 'active' : ''}`}
+                  onClick={() => setQuizMode('random')}
+                >
+                  <span className="mode-icon">🎲</span>
+                  Random
+                </button>
+              </div>
+            </div>
+
+            <div className="action-buttons">
+              <button 
+                className="start-quiz-btn"
+                onClick={handleStartQuiz}
+                disabled={currentQuestions.length === 0}
+              >
+                <span className="btn-icon">▶️</span>
+                Start Quiz
+              </button>
+
+              <button 
+                className={`toggle-questions-btn ${isQuestionsHidden ? 'questions-hidden' : ''}`}
+                onClick={() => setIsQuestionsHidden(!isQuestionsHidden)}
+              >
+                <span className="btn-icon">{isQuestionsHidden ? '👁️' : '👁️‍🗨️'}</span>
+                {isQuestionsHidden ? 'Show Questions' : 'Hide Questions'}
+              </button>
+            </div>
+
+            <div className={`questions-preview ${isQuestionsHidden ? 'blurred' : ''}`}>
+              <h3>Preview Questions ({currentQuestions.length})</h3>
+              {currentQuestions.map((q, index) => (
+                <div key={index} className="question-card">
+                  <div className="question-header">
+                    <span className="question-number">Q{index + 1}</span>
+                    <span className="question-difficulty">{q.difficulty}</span>
+                  </div>
+                  <p className="question-text">{q.question}</p>
+                  <ul className="answers-list">
+                    {q.answers.map((answer, i) => (
+                      <li 
+                        key={i}
+                        className={answer === q.correct_answer ? 'correct-answer' : ''}
+                      >
+                        {answer}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return !showLanguageSelection ? (
+    <QuizMode 
+      video={video} 
+      questions={questions} 
+      mode={quizMode} 
+      language={selectedLanguage}
+      onReset={handleReset}
+    /> 
+  ) : null;
 }
 
 export default TriviaVideoPage;
