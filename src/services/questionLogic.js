@@ -15,31 +15,22 @@ export const parseTimeToSeconds = (timeStr) => {
 export const getAvailableQuestions = (currentTime, questions, answeredQIDs) => {
   if (!questions || !Array.isArray(questions)) return [];
   
-  const TIME_WINDOW_BEFORE = 100; // 5 seconds before current time
-  const TIME_WINDOW_AFTER = 100; // 10 seconds ahead of current time
+  console.log(`[DEBUG] Looking for last unanswered question before ${currentTime}s`);
   
-  console.log(`[DEBUG] Time windows: -${TIME_WINDOW_BEFORE}s to +${TIME_WINDOW_AFTER}s`);
-  console.log(`[DEBUG] Current video time: ${currentTime}`);
-  console.log(`[DEBUG] Valid time range: ${currentTime - TIME_WINDOW_BEFORE} to ${currentTime + TIME_WINDOW_AFTER}`);
+  // Convert all question times to seconds and sort by time
+  const sortedQuestions = questions
+    .filter(q => !answeredQIDs.includes(q.q_id))
+    .map(q => ({
+      ...q,
+      timeInSeconds: parseTimeToSeconds(q.question_origin)
+    }))
+    .sort((a, b) => b.timeInSeconds - a.timeInSeconds); // Sort descending
+    
+  // Find the first question that's before current time
+  const nextQuestion = sortedQuestions.find(q => q.timeInSeconds <= currentTime);
   
-  return questions.filter(q => {
-    // Skip if already answered
-    if (answeredQIDs.includes(q.q_id)) {
-      console.log(`[DEBUG] Question ${q.q_id} already answered, skipping`);
-      return false;
-    }
-    
-    // Convert question time to seconds
-    const questionTime = parseTimeToSeconds(q.question_origin);
-    console.log(`[DEBUG] Question ${q.q_id} time: ${q.question_origin} (${questionTime}s)`);
-    
-    // Only show questions that are within -5/+10 seconds of current time
-    const isInTimeWindow = questionTime >= (currentTime - TIME_WINDOW_BEFORE) && 
-                          questionTime <= (currentTime + TIME_WINDOW_AFTER);
-    
-    console.log(`[DEBUG] Question ${q.q_id} in time window? ${isInTimeWindow}`);
-    return isInTimeWindow;
-  });
+  console.log(`[DEBUG] Found question:`, nextQuestion?.q_id);
+  return nextQuestion ? [nextQuestion] : [];
 };
 
 export const selectNextQuestion = (availableQuestions) => {
