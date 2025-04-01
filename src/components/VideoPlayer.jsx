@@ -200,7 +200,8 @@ function VideoPlayer({ lectureInfo, mode }) {
                 q_id: nextQuestion.q_id,
                 text: nextQuestion.question,
                 answers: shuffleAnswers(nextQuestion),
-                originalTime: parseTimeToSeconds(nextQuestion.question_origin)
+                originalTime: parseTimeToSeconds(nextQuestion.question_origin),
+                endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
               });
             }
           }
@@ -222,10 +223,10 @@ function VideoPlayer({ lectureInfo, mode }) {
 
   const handleDecision = (action) => {
     if (action === 'rewind') {
-      console.log('Rewinding to:', currentQuestion);
-      const rewindTime = Math.max(0, currentQuestion.originalTime - 8);
-      playerRef.current.seekTo(rewindTime);
-
+      const rewindTime = currentQuestion.originalTime;
+      if (typeof rewindTime === 'number' && !isNaN(rewindTime)) {
+        playerRef.current.seekTo(rewindTime, true);
+      }
     }
     if (decisionPending === true) {
       console.log("User answered correctly. Removing question:", currentQuestion);
