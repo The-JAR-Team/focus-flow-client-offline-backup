@@ -1,9 +1,8 @@
 import axios from 'axios';
-
-const BASE_URL = 'https://focus-flow-236589840712.me-west1.run.app'; // Replace with your actual API base URL
+import { config } from '../config/config';
 
 export async function getSubscriberCount(playlistId) {
-  const { data } = await axios.get(`${BASE_URL}/playlists/${playlistId}/subscriber_count`, { withCredentials: true });
+  const { data } = await axios.get(`${config.baseURL}/playlists/${playlistId}/subscriber_count`, { withCredentials: true });
   if (data.status === 'success') return data.count;
   throw new Error('Failed to fetch subscriber count');
 }
@@ -11,7 +10,7 @@ export async function getSubscriberCount(playlistId) {
 export async function subscribeToPlaylist(email, playlistId) {
   try {
     const { data } = await axios.post(
-      `${BASE_URL}/subscriptions/subscribe`,
+      `${config.baseURL}/subscriptions/subscribe`,
       { email, playlist_id: playlistId },
       { withCredentials: true }
     );
@@ -26,7 +25,7 @@ export async function subscribeToPlaylist(email, playlistId) {
 export async function unsubscribeToPlaylist(email, playlistId) {
   try {
     const { data } = await axios.post(
-      `${BASE_URL}/subscriptions/unsubscribe`,
+      `${config.baseURL}/subscriptions/unsubscribe`,
       { email, playlist_id: playlistId },
       { withCredentials: true }
     );
