@@ -30,4 +30,24 @@ export const fetchTranscriptQuestions = async (videoId, language) => {
   }
 };
 
+
+export const fetchTranscriptQuestionsForVideo = async (externalId, lang = 'Hebrew') => {
+    try {
+        const response = await axios.get(`${config.baseURL}/videos/${externalId}/questions?lang=${lang}`);
+        const data = response.data;
+        
+        // Combine all question types into a single array
+        const allQuestions = [
+            ...(data.video_questions?.questions || []),
+            ...(data.generic_questions?.questions || []),
+            ...(data.subject_questions?.questions || [])
+        ];
+        
+        return allQuestions;
+    } catch (error) {
+        console.error('Error fetching questions:', error);
+        return [];
+    }
+};
+
 //// GITHUB fetching data from database

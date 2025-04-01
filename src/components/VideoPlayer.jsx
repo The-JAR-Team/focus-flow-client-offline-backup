@@ -12,7 +12,7 @@ import {
   Legend,
 } from 'chart.js';
 import { estimateGaze } from '../services/videoLogic';
-import { fetchTranscriptQuestions } from '../services/videos';
+import { fetchTranscriptQuestionsForVideo } from '../services/videos';
 import {
   parseTimeToSeconds,
   shuffleAnswers,
@@ -97,7 +97,7 @@ function VideoPlayer({ lectureInfo, mode }) {
     setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
       console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
-      fetchTranscriptQuestions(lectureInfo.videoId)
+      fetchTranscriptQuestionsForVideo(lectureInfo.videoId)
         .then(questions => {
           console.log("[DEBUG] Questions received:", questions.length);
           if (Array.isArray(questions) && questions.length > 0) {
