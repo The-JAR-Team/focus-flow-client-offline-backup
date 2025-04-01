@@ -98,12 +98,18 @@ function VideoPlayer({ lectureInfo, mode }) {
     if (mode === 'question') {
       console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
       fetchTranscriptQuestions(lectureInfo.videoId)
-        .then(data => {
-          console.log("[DEBUG] Raw questions received:", data);
-          if (Array.isArray(data) && data.length > 0) {
-            questionsRef.current = data;
-            setQuestions(data);
-            console.log("[DEBUG] Questions set. State and Ref updated with length:", data.length);
+        .then(questions => {
+          console.log("[DEBUG] Questions received:", questions.length);
+          if (Array.isArray(questions) && questions.length > 0) {
+            // Sort questions by their timestamp
+            const sortedQuestions = questions.sort((a, b) => {
+              const timeA = parseTimeToSeconds(a.question_origin) || 0;
+              const timeB = parseTimeToSeconds(b.question_origin) || 0;
+              return timeA - timeB;
+            });
+            questionsRef.current = sortedQuestions;
+            setQuestions(sortedQuestions);
+            console.log("[DEBUG] Questions set and sorted by time. Total:", sortedQuestions.length);
           }
         })
         .catch(error => console.error("[DEBUG] Error fetching questions:", error));
