@@ -19,6 +19,7 @@ function TriviaVideoPage() {
   const [showLanguageSelection, setShowLanguageSelection] = useState(true);
   const [quizMode, setQuizMode] = useState('chronological'); // or 'random'
   const [isQuestionsHidden, setIsQuestionsHidden] = useState(false);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
 
   const handleReset = () => {
     setShowLanguageSelection(true);
@@ -44,6 +45,7 @@ function TriviaVideoPage() {
         }
 
         setVideo(videoData);
+        setLoadingQuestions(true);
         
         // Use external_id for fetching questions
         const [hebrewData, englishData] = await Promise.all([
@@ -52,20 +54,34 @@ function TriviaVideoPage() {
         ]);
 
         const formatQuestions = (data) => {
-          if (!data.video_questions?.questions) return [];
-          return data.video_questions.questions.map(q => ({
-            question: q.question,
-            answers: [q.answer1, q.answer2, q.answer3, q.answer4],
-            correct_answer: q.answer1,
-            difficulty: q.difficulty
+          // Check if data exists and has any type of questions
+          const questionsData = data?.video_questions?.questions || 
+                              data?.subject_questions?.questions || 
+                              data?.generic_questions?.questions || [];
+          
+          if (!questionsData.length) return [];
+
+          return questionsData.map(q => ({
+            question: q.question || '',
+            answers: [
+              q.answer1 || '', 
+              q.answer2 || '', 
+              q.answer3 || '', 
+              q.answer4 || ''
+            ].filter(Boolean), // Remove empty answers
+            correct_answer: q.answer1 || '',
+            difficulty: q.difficulty || 1,
+            explanation: q.explanation_snippet || ''
           }));
         };
 
         const hebrewFormattedQuestions = formatQuestions(hebrewData);
         const englishFormattedQuestions = formatQuestions(englishData);
 
-        console.log('Hebrew questions:', hebrewFormattedQuestions);
-        console.log('English questions:', englishFormattedQuestions);
+        console.log('Raw Hebrew data:', hebrewData);
+        console.log('Raw English data:', englishData);
+        console.log('Formatted Hebrew questions:', hebrewFormattedQuestions);
+        console.log('Formatted English questions:', englishFormattedQuestions);
 
         setHebrewQuestions(hebrewFormattedQuestions);
         setEnglishQuestions(englishFormattedQuestions);
@@ -74,6 +90,7 @@ function TriviaVideoPage() {
         setError(err.message);
       } finally {
         setLoading(false);
+        setLoadingQuestions(false);
       }
     };
 
@@ -88,6 +105,29 @@ function TriviaVideoPage() {
     
     setQuestions(finalQuestions);
     setShowLanguageSelection(false);
+  };
+
+  const renderStartQuizButton = () => {
+    const currentQuestions = selectedLanguage === 'Hebrew' ? hebrewQuestions : englishQuestions;
+    return (
+      <button 
+        className={`start-quiz-btn ${loadingQuestions ? 'loading' : ''}`}
+        onClick={handleStartQuiz}
+        disabled={currentQuestions.length === 0 || loadingQuestions}
+      >
+        {loadingQuestions ? (
+          <>
+            <span className="spinner"></span>
+            Loading Questions...
+          </>
+        ) : (
+          <>
+            <span className="btn-icon">▶️</span>
+            Start Quiz
+          </>
+        )}
+      </button>
+    );
   };
 
   if (loading) {
@@ -165,15 +205,7 @@ function TriviaVideoPage() {
             </div>
 
             <div className="action-buttons">
-              <button 
-                className="start-quiz-btn"
-                onClick={handleStartQuiz}
-                disabled={currentQuestions.length === 0}
-              >
-                <span className="btn-icon">▶️</span>
-                Start Quiz
-              </button>
-
+              {renderStartQuizButton()}
               <button 
                 className={`toggle-questions-btn ${isQuestionsHidden ? 'questions-hidden' : ''}`}
                 onClick={() => setIsQuestionsHidden(!isQuestionsHidden)}
