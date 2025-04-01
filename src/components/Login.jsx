@@ -17,6 +17,7 @@ function Login() {
     e.preventDefault();
     setLoading(true);
     try {
+
       const response = await loginUser({ email, password });
       if (response.status === "success") {
         navigate('/dashboard');
@@ -54,8 +55,17 @@ function Login() {
           />
         </label>
         {errorMsg && <p className="error">{errorMsg}</p>}
-        <button type="submit" disabled={loading}>
-          {loading ? (<><div className="spinner"></div>Logging in...</>) : 'Log In'}
+        <button 
+          type="submit" 
+          disabled={loading}
+          className={`login-form-button ${loading ? 'loading-button' : ''}`}
+        >
+          {loading ? (
+            <>
+              <div className="spinner"></div>
+              <span className="loading-text">Logging in...</span>
+            </>
+          ) : 'Log In'}
         </button>
       </form>
       <p>

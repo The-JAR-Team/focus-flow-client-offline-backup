@@ -7,6 +7,7 @@ import '../styles/Dashboard.css';
 import { logoutUser } from '../services/api';
 import { initializeDashboardData } from '../services/dashboardService';
 import StackedThumbnails from './StackedThumbnails';
+import Spinner from './Spinner';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -22,9 +23,14 @@ function Dashboard() {
   const [otherPlaylists, setOtherPlaylists] = useState([]);
   const [myGenericVideos, setMyGenericVideos] = useState([]);
   const [otherGenericVideos, setOtherGenericVideos] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
 
   useEffect(() => {
     const loadDashboard = async () => {
+      setIsLoading(true);
+            // wait 2 seconds to simulate a loading state
+            await new Promise(resolve => setTimeout(resolve, 2000));
       try {
         const {
           userData,
@@ -42,6 +48,8 @@ function Dashboard() {
       } catch (error) {
         console.error('Error initializing dashboard:', error);
         setError('Failed to load content');
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -65,10 +73,25 @@ function Dashboard() {
     navigate(`/playlist/${playlist.playlist_id}`);
   };
 
+  const handleVideoSelect = (video) => {
+    setIsVideoLoading(true);
+    setSelectedVideo(video);
+    // Simulate video loading time
+    //setTimeout(() => setIsVideoLoading(false), 1000);
+  };
+
   const groups = ['All Lectures', ...new Set(videos.map(v => v.group))];
   const filteredVideos = selectedGroup === 'All Lectures'
     ? videos
     : videos.filter(v => v.group === selectedGroup);
+
+  if (isLoading) {
+    return (
+      <div className="loading-overlay">
+        <Spinner size="large" message="Loading your dashboard..." />
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-container">
@@ -159,7 +182,7 @@ function Dashboard() {
             <h2>My Videos</h2>
             <div className="content-grid">
               {myGenericVideos.map(video => (
-                <div className="video-card" key={video.video_id} onClick={() => setSelectedVideo(video)}>
+                <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
                   <h4>{video.video_name}</h4>
                   <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
                   <div className="video-info">
@@ -174,7 +197,7 @@ function Dashboard() {
             <h2>Public Videos</h2>
             <div className="content-grid">
               {otherGenericVideos.map(video => (
-                <div className="video-card" key={video.video_id} onClick={() => setSelectedVideo(video)}>
+                <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
                   <h4>{video.video_name}</h4>
                   <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
                   <div className="video-info">
@@ -191,14 +214,18 @@ function Dashboard() {
             <button className="back-button" onClick={() => setSelectedVideo(null)}>
               ← Back to Lectures
             </button>
-            <VideoPlayer 
-              mode={mode}
-              lectureInfo={{
-                videoId: selectedVideo.video_id,
-                subject: selectedVideo.group
-              }}
-              userInfo={{ name: 'Test User', profile: 'default' }}
-            />
+            {isVideoLoading ? (
+              <Spinner size="large" message="Loading video..." />
+            ) : (
+              <VideoPlayer 
+                mode={mode}
+                lectureInfo={{
+                  videoId: selectedVideo.video_id,
+                  subject: selectedVideo.group
+                }}
+                userInfo={{ name: 'Test User', profile: 'default' }}
+              />
+            )}
           </>
         )}
       </div>
