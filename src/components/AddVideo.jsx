@@ -17,6 +17,11 @@ const AddVideo = () => {
   const [duration, setDuration] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [extractedId, setExtractedId] = useState('');
+  
+  // New states for loading and status message
+  const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState(''); // "success" or "error"
 
   const navigate = useNavigate();
 
@@ -82,6 +87,8 @@ const AddVideo = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setStatusMessage('');
     const payload = {
       video_id: extractVideoId(videoId),  // Ensure only the video id is sent
       video_name: videoTitle,
@@ -102,8 +109,18 @@ const AddVideo = () => {
       setUploadby('');
       setSelectedPlaylists([]);
       setDuration('');
+      setStatusMessage('Video uploaded successfully!');
+      setStatusType('success');
+      setTimeout(() => {
+        setStatusMessage('');
+        setStatusType('');
+      }, 3000);
     } catch (error) {
       console.error(error);
+      setStatusMessage('Video upload failed!');
+      setStatusType('error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -260,8 +277,13 @@ const AddVideo = () => {
               </div>
 
               <button type="submit" className="submit-btn">
-                Add Video
+                {loading ? 'Uploading...' : 'Add Video'}
               </button>
+              { (loading || statusMessage) && (
+                <div className={`status-indicator ${statusType}`}>
+                  {loading ? <span>Loading...</span> : <span>{statusMessage}</span>}
+                </div>
+              )}
             </form>
           </div>
 
