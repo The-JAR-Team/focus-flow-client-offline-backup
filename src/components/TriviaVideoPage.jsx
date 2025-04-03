@@ -215,7 +215,7 @@ function TriviaVideoPage() {
               </button>
             </div>
 
-            <div className={`questions-preview ${isQuestionsHidden ? 'blurred' : ''}`}>
+            <div className={`questions-preview ${isQuestionsHidden ? 'blurred' : ''} ${selectedLanguage === 'Hebrew' ? 'rtl' : 'ltr'}`}>
               <h3>Preview Questions ({currentQuestions.length})</h3>
               {currentQuestions.map((q, index) => (
                 <div key={index} className="question-card">
