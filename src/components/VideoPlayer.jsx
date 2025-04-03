@@ -26,7 +26,7 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend)
 
 window.noStop = false;
 
-function VideoPlayer({ lectureInfo, mode }) {
+function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const webcamRef = useRef(null);
   const playerRef = useRef(null);
   const systemPauseRef = useRef(false);
@@ -257,6 +257,8 @@ function VideoPlayer({ lectureInfo, mode }) {
     playerRef.current = event.target;
     console.log("Player ready, starting video");
     playerRef.current.playVideo();
+    // Notify parent the video is loaded.
+    if (onVideoPlayerReady) onVideoPlayerReady();
   };
 
   const onPlayerStateChange = (event) => {

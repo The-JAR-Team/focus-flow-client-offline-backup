@@ -70,6 +70,12 @@ function Dashboard() {
     setTimeout(() => setEyeDebuggerOn(true), 5000);
   }, []);
 
+  useEffect(() => {
+    if (selectedVideo) {
+      console.log("[DEBUG] Attempting to load video:", selectedVideo.external_id, selectedVideo.subject);
+    }
+  }, [selectedVideo]);
+
   const handleLogout = async () => {
     try {
       await logoutUser();
@@ -87,10 +93,7 @@ function Dashboard() {
   };
 
   const handleVideoSelect = (video) => {
-    setIsVideoLoading(true);
     setSelectedVideo(video);
-    // Simulate video loading time
-    //setTimeout(() => setIsVideoLoading(false), 1000);
   };
 
   const groups = ['All Lectures', ...new Set(videos.map(v => v.group))];
@@ -252,18 +255,14 @@ function Dashboard() {
             <button className="back-button" onClick={() => setSelectedVideo(null)}>
               ← Back to Lectures
             </button>
-            {isVideoLoading ? (
-              <Spinner size="large" message="Loading video..." />
-            ) : (
-              <VideoPlayer 
-                mode={mode}
-                lectureInfo={{
-                  videoId: selectedVideo.video_id,
-                  subject: selectedVideo.group
-                }}
-                userInfo={{ name: 'Test User', profile: 'default' }}
-              />
-            )}
+            <VideoPlayer 
+              mode={mode}
+              lectureInfo={{
+                videoId: selectedVideo.external_id,
+                subject: selectedVideo.subject
+              }}
+              userInfo={{ name: `${user.first_name} ${user.last_name}`, profile: user.profile }}
+            />
           </>
         )}
       </div>
