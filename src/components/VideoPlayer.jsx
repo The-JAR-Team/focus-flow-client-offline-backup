@@ -209,6 +209,10 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
                 originalTime: parseTimeToSeconds(nextQuestion.question_origin),
                 endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
               });
+              // Exit fullscreen if active when question is triggered.
+              if (document.fullscreenElement) {
+                document.exitFullscreen().catch(err => console.error("Error exiting fullscreen:", err));
+              }
             }
           }
         }
