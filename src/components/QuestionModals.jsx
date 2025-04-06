@@ -1,11 +1,11 @@
 // components/QuestionModals.jsx
 import { useEffect, useState } from 'react';
 
-export function QuestionModal({ question, onAnswer }) {
+export function QuestionModal({ question, onAnswer, language }) {
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
-      <div className="modal-content">
-        <h3>Question:</h3>
+      <div className="modal-content" style={{ direction: language === 'Hebrew' ? 'rtl' : 'ltr' }}>
+        <h3>{language === 'Hebrew' ? 'שאלה:' : 'Question:'}</h3>
         <p>{question.text}</p>
         <div className="answers">
           {question.answers.map((ans) => (
@@ -19,7 +19,7 @@ export function QuestionModal({ question, onAnswer }) {
   );
 }
 
-export function DecisionModal({ isCorrect, onDecision }) {
+export function DecisionModal({ isCorrect, onDecision, language }) {
   const [timer, setTimer] = useState(2);
 
   useEffect(() => {
@@ -41,16 +41,20 @@ export function DecisionModal({ isCorrect, onDecision }) {
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
-      <div className="modal-content">
-        <h3>{isCorrect ? 'Correct!' : 'Incorrect.'}</h3>
+      <div className="modal-content" style={{ direction: language === 'Hebrew' ? 'rtl' : 'ltr' }}>
+        <h3>{isCorrect ? (language === 'Hebrew' ? 'נכון!' : 'Correct!') : (language === 'Hebrew' ? 'לא נכון.' : 'Incorrect.')}</h3>
         {isCorrect ? (
-          <p>Continuing in {timer}...</p>
+          <p>{language === 'Hebrew' ? `ממשיך בעוד ${timer}...` : `Continuing in ${timer}...`}</p>
         ) : (
           <>
-            <p>What would you like to do?</p>
+            <p>{language === 'Hebrew' ? 'מה תרצה לעשות?' : 'What would you like to do?'}</p>
             <div className="decision-buttons">
-              <button onClick={() => onDecision('continue')}>Continue Watching</button>
-              <button onClick={() => onDecision('rewind')}>Rewind</button>
+              <button onClick={() => onDecision('continue')}>
+                {language === 'Hebrew' ? 'המשך צפייה' : 'Continue Watching'}
+              </button>
+              <button onClick={() => onDecision('rewind')}>
+                {language === 'Hebrew' ? 'חזור אחורה' : 'Rewind'}
+              </button>
             </div>
           </>
         )}

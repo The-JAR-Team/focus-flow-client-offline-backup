@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import YouTube from 'react-youtube';
 import { Bar } from 'react-chartjs-2';
 import '../styles/VideoPlayer.css';
+import '../styles/TriviaVideoPage.css'; // Add this import for button styles
 import {
   Chart as ChartJS,
   BarElement,
@@ -92,29 +93,54 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }, 1000);
   };
 
+  const [selectedLanguage, setSelectedLanguage] = useState('Hebrew');
+  const [hebrewQuestions, setHebrewQuestions] = useState([]);
+  const [englishQuestions, setEnglishQuestions] = useState([]);
+  const [isHebrewLoading, setIsHebrewLoading] = useState(true);
+  const [isEnglishLoading, setIsEnglishLoading] = useState(true);
+
   // Set loaded after a short delay and fetch questions if in question mode.
   useEffect(() => {
     setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
       console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
-      fetchTranscriptQuestionsForVideo(lectureInfo.videoId)
+      // Fetch Hebrew questions
+      setIsHebrewLoading(true);
+      fetchTranscriptQuestionsForVideo(lectureInfo.videoId, 'Hebrew')
         .then(questions => {
-          console.log("[DEBUG] Questions received:", questions.length);
           if (Array.isArray(questions) && questions.length > 0) {
-            // Sort questions by their timestamp
             const sortedQuestions = questions.sort((a, b) => {
-              const timeA = parseTimeToSeconds(a.question_origin) || 0;
-              const timeB = parseTimeToSeconds(b.question_origin) || 0;
-              return timeA - timeB;
+              return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
             });
-            questionsRef.current = sortedQuestions;
-            setQuestions(sortedQuestions);
-            console.log("[DEBUG] Questions set and sorted by time. Total:", sortedQuestions.length);
+            setHebrewQuestions(sortedQuestions);
+            if (selectedLanguage === 'Hebrew') {
+              questionsRef.current = sortedQuestions;
+              setQuestions(sortedQuestions);
+            }
           }
         })
-        .catch(error => console.error("[DEBUG] Error fetching questions:", error));
+        .catch(error => console.error("[DEBUG] Error fetching Hebrew questions:", error))
+        .finally(() => setIsHebrewLoading(false));
+
+      // Fetch English questions
+      setIsEnglishLoading(true);
+      fetchTranscriptQuestionsForVideo(lectureInfo.videoId, 'English')
+        .then(questions => {
+          if (Array.isArray(questions) && questions.length > 0) {
+            const sortedQuestions = questions.sort((a, b) => {
+              return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
+            });
+            setEnglishQuestions(sortedQuestions);
+            if (selectedLanguage === 'English') {
+              questionsRef.current = sortedQuestions;
+              setQuestions(sortedQuestions);
+            }
+          }
+        })
+        .catch(error => console.error("[DEBUG] Error fetching English questions:", error))
+        .finally(() => setIsEnglishLoading(false));
     }
-  }, [lectureInfo.videoId, mode]);
+  }, [lectureInfo.videoId, mode, selectedLanguage]);
 
   // Add effect to monitor questions state
   useEffect(() => {
@@ -290,6 +316,12 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   };
 
+  const handleLanguageChange = (language) => {
+    setSelectedLanguage(language);
+    questionsRef.current = language === 'Hebrew' ? hebrewQuestions : englishQuestions;
+    setQuestions(language === 'Hebrew' ? hebrewQuestions : englishQuestions);
+  };
+
   return (
     <div className="video-player">
       <YouTube
@@ -315,6 +347,24 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           </button>
         )}
       </div>
+      {mode === 'question' && (
+        <div className="language-options" style={{ margin: '20px 0', direction: 'ltr' }}>
+          <button 
+            className={`lang-btn ${selectedLanguage === 'Hebrew' ? 'active' : ''} ${hebrewQuestions.length === 0 ? 'disabled' : ''}`}
+            onClick={() => handleLanguageChange('Hebrew')}
+            disabled={isHebrewLoading || hebrewQuestions.length === 0}
+          >
+            Hebrew {isHebrewLoading ? '⌛' : hebrewQuestions.length === 0 ? '❌' : '✓'}
+          </button>
+          <button 
+            className={`lang-btn ${selectedLanguage === 'English' ? 'active' : ''} ${englishQuestions.length === 0 ? 'disabled' : ''}`}
+            onClick={() => handleLanguageChange('English')}
+            disabled={isEnglishLoading || englishQuestions.length === 0}
+          >
+            English {isEnglishLoading ? '⌛' : englishQuestions.length === 0 ? '❌' : '✓'}
+          </button>
+        </div>
+      )}
       {mode === 'analytics' && (
         <div className="focus-graph">
           <Bar
@@ -336,9 +386,19 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         muted
         autoPlay
       />
-      {currentQuestion && <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />}
+      {currentQuestion && (
+        <QuestionModal 
+          question={currentQuestion} 
+          onAnswer={handleAnswer} 
+          language={selectedLanguage}
+        />
+      )}
       {decisionPending !== null && (
-        <DecisionModal isCorrect={decisionPending} onDecision={handleDecision} />
+        <DecisionModal 
+          isCorrect={decisionPending} 
+          onDecision={handleDecision}
+          language={selectedLanguage}
+        />
       )}
     </div>
   );
