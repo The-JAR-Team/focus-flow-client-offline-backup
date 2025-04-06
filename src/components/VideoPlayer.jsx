@@ -23,6 +23,8 @@ import {
 import { QuestionModal, DecisionModal } from './QuestionModals';
 import useFaceMesh from '../hooks/useFaceMesh';
 
+import EyeDebugger
+ from './EyeDebugger';
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 window.noStop = false;
@@ -400,6 +402,8 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           language={selectedLanguage}
         />
       )}
+            <EyeDebugger enabled={false} />
+
     </div>
   );
 }
