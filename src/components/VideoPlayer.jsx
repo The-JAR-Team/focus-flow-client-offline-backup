@@ -3,6 +3,10 @@ import YouTube from 'react-youtube';
 import { Bar } from 'react-chartjs-2';
 import '../styles/VideoPlayer.css';
 import '../styles/TriviaVideoPage.css'; // Add this import for button styles
+
+import {  updateLatestLandmark ,handleVideoPause, handleVideoResume } from '../services/videos';
+
+
 import {
   Chart as ChartJS,
   BarElement,
@@ -153,16 +157,25 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   }, [questions]);
 
   // FaceMesh results callback.
+
+  
   const handleFaceMeshResults = useCallback((results) => {
     if (mode === 'question' && questionActiveRef.current) return;
-    lastGazeTime.current = Date.now();
+    
+    const currentTime = playerRef.current?.getCurrentTime() || 0;
+  
+    // Always update the latest landmark
+    updateLatestLandmark(results);
+  
+    // Continue with your gaze logic
     let gaze = 'Face not detected';
     if (results.multiFaceLandmarks?.length > 0) {
       gaze = estimateGaze(results.multiFaceLandmarks[0]);
       setFaceMeshStatus('Working');
     }
     handleVideoPlayback(gaze);
-  }, [mode]);
+  }, [mode, lectureInfo]);
+  
 
   // Use the shared FaceMesh hook.
   useFaceMesh(loaded, webcamRef, handleFaceMeshResults, setFaceMeshStatus);
@@ -214,22 +227,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           if (now - lastQuestionAnsweredTime.current < 3000) return;
           const currentVideoTime = playerRef.current.getCurrentTime();
           
-          console.log("[DEBUG] Checking for questions at time:", {
-            currentVideoTime,
-            questionsInRef: questionsRef.current.length,
-            firstQuestionInRef: questionsRef.current[0],
-          });
+          //console.log("[DEBUG] Checking for questions at time:", { currentVideoTime,    questionsInRef: questionsRef.current.length,      firstQuestionInRef: questionsRef.current[0],});
           
           const availableQuestions = getAvailableQuestions(
             currentVideoTime,
             questionsRef.current, // Use ref instead of state
             answeredQIDs
           );
-          console.log("[DEBUG] Available questions (result from getAvailableQuestions):", availableQuestions);
+          //console.log("[DEBUG] Available questions (result from getAvailableQuestions):", availableQuestions);
           if (availableQuestions.length > 0) {
             const nextQuestion = selectNextQuestion(availableQuestions);
             if (nextQuestion) {
-              console.log('[DEBUG] Triggering question:', nextQuestion);
+              //console.log('[DEBUG] Triggering question:', nextQuestion);
               setCurrentQuestion({
                 q_id: nextQuestion.q_id,
                 text: nextQuestion.question,
@@ -295,28 +304,31 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   const onPlayerStateChange = (event) => {
     const playerState = event.data;
-    //console.log("Player state changed:", playerState);
+    const currentTime = playerRef.current?.getCurrentTime() || 0;
+    
     switch (playerState) {
-      case 1:
+      case 1: // Playing
         setIsPlaying(true);
         setPauseStatus('Playing');
         setUserPaused(false);
+        handleVideoResume(lectureInfo.id || lectureInfo.videoId, currentTime);
         break;
-      case 2:
+      case 2: // Paused
         if (systemPauseRef.current) {
           systemPauseRef.current = false;
-          setIsPlaying(false);
           setPauseStatus('Paused (Not Engaged)');
         } else {
-          setIsPlaying(false);
           setPauseStatus('Paused Manually');
           setUserPaused(true);
         }
+        setIsPlaying(false);
+        handleVideoPause();
         break;
       default:
         break;
     }
   };
+  
 
   const handleLanguageChange = (language) => {
     setSelectedLanguage(language);

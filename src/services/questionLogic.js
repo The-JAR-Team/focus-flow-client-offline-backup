@@ -15,7 +15,7 @@ export const parseTimeToSeconds = (timeStr) => {
 export const getAvailableQuestions = (currentTime, questions, answeredQIDs) => {
   if (!questions || !Array.isArray(questions)) return [];
   
-  console.log(`[DEBUG] Looking for last unanswered question before ${currentTime}s`);
+  //console.log(`[DEBUG] Looking for last unanswered question before ${currentTime}s`);
   
   // Convert all question times to seconds and sort by time
   const sortedQuestions = questions
@@ -29,7 +29,7 @@ export const getAvailableQuestions = (currentTime, questions, answeredQIDs) => {
   // Find the first question that's before current time
   const nextQuestion = sortedQuestions.find(q => q.timeInSeconds <= currentTime);
   
-  console.log(`[DEBUG] Found question:`, nextQuestion?.q_id);
+  //console.log(`[DEBUG] Found question:`, nextQuestion?.q_id);
   return nextQuestion ? [nextQuestion] : [];
 };
 

@@ -58,6 +58,7 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
       });
 
       faceMesh.setOptions({
+
         maxNumFaces: 1,
         refineLandmarks: true,
         minDetectionConfidence: 0.5,
@@ -81,6 +82,7 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
         },
         width: 640,
         height: 480,
+
       });
 
       camera.start();

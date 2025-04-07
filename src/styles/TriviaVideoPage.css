@@ -175,3 +175,15 @@
   color: #4CAF50;
   font-weight: bold;
 }
+
+.questions-preview.rtl {
+  direction: rtl;
+}
+
+.questions-preview.ltr {
+  direction: ltr;
+}
+
+.questions-preview.rtl .question-card {
+  text-align: right;
+}
