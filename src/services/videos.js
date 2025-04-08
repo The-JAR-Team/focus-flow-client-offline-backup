@@ -98,7 +98,8 @@ export const handleVideoResume = (youtube_id, currentTime, model = 'basic') => {
           extraction_payload: {
             fps: TRACKING_FPS,             // frames per second
             interval: BUFFER_DURATION_SECONDS, // explicitly 5 sec
-            number_of_landmarks: landmarkBuffer.length,
+            //number_of_landmarks: landmarkBuffer.length,
+            number_of_landmarks: 478, // hardcoded number of landmarks
             landmarks: [landmarkBuffer]    // wrap array in an extra array as in your JSON
           },
           model: model                    // hardcoded or passed model name

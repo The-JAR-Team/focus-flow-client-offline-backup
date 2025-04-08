@@ -103,3 +103,27 @@
     height: auto;
   }
 }
+
+
+.control-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: #444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.control-button:hover {
+  background-color: #555;
+}
+
+.control-button.active {
+  background-color: #f44336;
+}
+
+.control-button.active:hover {
+  background-color: #d32f2f;
+}

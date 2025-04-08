@@ -101,6 +101,16 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     questionActiveRef.current = currentQuestion;
   }, [currentQuestion]);
 
+  // Add this state near other state declarations
+const [noClientPause, setNoClientPause] = useState(false);
+
+// Add this handler function
+const handleNoClientPauseToggle = () => {
+  setNoClientPause(prev => !prev);
+  window.noStop = !noClientPause; // Update the global flag
+  console.log(`🎮 No Client Pause ${!noClientPause ? 'Enabled' : 'Disabled'}`);
+};
+  
   const immediateGaze = useRef('Looking center');
   const immediateGazeChangeTime = useRef(Date.now());
   const stableGaze = useRef('Looking center');
@@ -208,7 +218,10 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   // Unified gaze handler.
   const handleVideoPlayback = (newGaze) => {
     const now = Date.now();
-
+    if (noClientPause) {
+      return;
+    }
+  
     if (newGaze !== immediateGaze.current) {
       immediateGaze.current = newGaze;
       immediateGazeChangeTime.current = now;
@@ -377,19 +390,25 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         onReady={onPlayerReady}
         onStateChange={onPlayerStateChange}
       />
-      <div className="status-info">
-        <p>Mode: {mode}</p>
-        <p>Status: {pauseStatus}</p>
-        <p>FaceMesh: {faceMeshStatus}</p>
-        {showRetryButton && (
+        <div className="status-info">
+          <p>Mode: {mode}</p>
+          <p>Status: {pauseStatus}</p>
+          <p>FaceMesh: {faceMeshStatus}</p>
           <button 
-            className="retry-button"
-            onClick={handleFaceMeshRetry}
+            className={`control-button ${noClientPause ? 'active' : ''}`}
+            onClick={handleNoClientPauseToggle}
           >
-            Retry FaceMesh
+            {noClientPause ? '🚫 Client Pause Disabled' : '✅ Client Pause Enabled'}
           </button>
-        )}
-      </div>
+          {showRetryButton && (
+            <button 
+              className="retry-button"
+              onClick={handleFaceMeshRetry}
+            >
+              Retry FaceMesh
+            </button>
+          )}
+        </div>
       {mode === 'question' && (
         <div className="language-options" style={{ margin: '20px 0', direction: 'ltr' }}>
           <button 
