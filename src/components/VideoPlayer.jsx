@@ -4,7 +4,7 @@ import { Bar } from 'react-chartjs-2';
 import '../styles/VideoPlayer.css';
 import '../styles/TriviaVideoPage.css'; // Add this import for button styles
 
-import {  updateLatestLandmark ,handleVideoPause, handleVideoResume } from '../services/videos';
+import {resetTracking ,  updateLatestLandmark ,handleVideoPause, handleVideoResume } from '../services/videos';
 
 
 import {
@@ -43,6 +43,15 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
   const [userPaused, setUserPaused] = useState(false);
+
+
+  useEffect(() => {
+    // FORRRRRRRRRRR !! unmount!!!
+    return () => {
+      resetTracking();
+    };
+  }, []);
+
   // Use a ref for immediate access to the userPaused flag
   const userPausedRef = useRef(userPaused);
   useEffect(() => {
