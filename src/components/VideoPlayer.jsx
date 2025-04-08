@@ -4,7 +4,7 @@ import { Bar } from 'react-chartjs-2';
 import '../styles/VideoPlayer.css';
 import '../styles/TriviaVideoPage.css'; // Add this import for button styles
 
-import {resetTracking ,  updateLatestLandmark ,handleVideoPause, handleVideoResume } from '../services/videos';
+import {fetchLastWatchTime,resetTracking ,  updateLatestLandmark ,handleVideoPause, handleVideoResume } from '../services/videos';
 
 
 import {
@@ -40,6 +40,8 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const lastGazeTime = useRef(Date.now());
   const lastQuestionAnsweredTime = useRef(0);
 
+  const [initialPlaybackTime, setInitialPlaybackTime] = useState(0);
+
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
   const [userPaused, setUserPaused] = useState(false);
@@ -51,6 +53,20 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       resetTracking();
     };
   }, []);
+
+
+  useEffect(() => {
+    let mounted = true;
+    fetchLastWatchTime(lectureInfo.videoId).then((time) => {
+      if (mounted) {
+        setInitialPlaybackTime(time);
+        console.log('⏩ Last watched time fetched:', time);
+      }
+    });
+  
+    // Cleanup
+    return () => { mounted = false; };
+  }, [lectureInfo.videoId]);
 
   // Use a ref for immediate access to the userPaused flag
   const userPausedRef = useRef(userPaused);
@@ -302,15 +318,19 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     setIsPlaying(true);
     setPauseStatus('Playing');
   };
-
   const onPlayerReady = (event) => {
     playerRef.current = event.target;
     console.log("Player ready, starting video");
+  
+    if (initialPlaybackTime > 0) {
+      console.log(`🔄 Seeking video to ${initialPlaybackTime}s.`);
+      playerRef.current.seekTo(initialPlaybackTime, true);
+    }
+  
     playerRef.current.playVideo();
-    // Notify parent the video is loaded.
     if (onVideoPlayerReady) onVideoPlayerReady();
   };
-
+  
   const onPlayerStateChange = (event) => {
     const playerState = event.data;
     const currentTime = playerRef.current?.getCurrentTime() || 0;

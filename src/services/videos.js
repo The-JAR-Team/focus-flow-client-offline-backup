@@ -131,3 +131,18 @@ export const updateLatestLandmark = (faceMeshResults) => {
     console.warn('⚠️ No landmarks detected.');
   }
 };
+
+
+export const fetchLastWatchTime = async (youtube_id) => {
+  try {
+    const response = await axios.post(
+      `${config.baseURL}/watch/get`,
+      { youtube_id },
+      { withCredentials: true }
+    );
+    return response.data?.watch_item?.current_time || 0;
+  } catch (error) {
+    console.error('❌ Error fetching last watched time:', error);
+    return 0;
+  }
+};
