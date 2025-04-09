@@ -34,10 +34,17 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend)
 window.noStop = false;
 
 function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
-  // Core refs and state
   const webcamRef = useRef(null);
   const playerRef = useRef(null);
   const systemPauseRef = useRef(false);
+  const lastGazeTime = useRef(Date.now());
+  const lastQuestionAnsweredTime = useRef(0);
+
+  const [initialPlaybackTime, setInitialPlaybackTime] = useState(0);
+
+  const [sendIntervalSeconds, setSendIntervalSeconds] = useState(10);
+
+
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
   const [userPaused, setUserPaused] = useState(false);
@@ -68,7 +75,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const handleServerEngagement = useCallback((modelResult) => {
     if (!noClientPause || !isPlaying || currentQuestion) return;
     
-    console.log(`Server model result: ${modelResult}, threshold: ${MODEL_THRESHOLD}`);
     if (modelResult < MODEL_THRESHOLD) {
       playerRef.current?.pauseVideo();
       setIsPlaying(false);
@@ -82,8 +88,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   // Client-mode engagement handler
   const handleClientEngagement = useCallback((gaze) => {
-    if (noClientPause) return; // Early return if in server mode
-    if (!isPlaying) return;
+    if (noClientPause || !isPlaying) return;
     
     const isLookingAway = gaze !== 'Looking center';
     const now = Date.now();
@@ -142,23 +147,11 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [handleClientEngagement]);
 
-  // Mode switch handler - reset states when switching modes
+  // Mode switch handler
   const handleModeSwitch = useCallback(() => {
     setNoClientPause(prev => {
       const newMode = !prev;
       window.noStop = newMode;
-      
-      // Reset tracking when switching modes
-      resetTracking();
-      systemPauseRef.current = false;
-      setUserPaused(false);
-      
-      if (playerRef.current?.getPlayerState() === 2) { // If paused
-        playerRef.current.playVideo(); // Resume playback when switching modes
-        setIsPlaying(true);
-        setPauseStatus('Playing');
-      }
-      
       console.log(`🎮 Switching to ${newMode ? 'Server' : 'Client'} Control`);
       return newMode;
     });
@@ -188,6 +181,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   }, [lectureInfo.videoId]);
 
   // Use a ref for immediate access to the userPaused flag
+  const userPausedRef = useRef(userPaused);
   useEffect(() => {
     userPausedRef.current = userPaused;
   }, [userPaused]);
@@ -195,6 +189,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
   const [loaded, setLoaded] = useState(false);
 
+  const [questions, setQuestions] = useState([]);
   const [answeredQIDs, setAnsweredQIDs] = useState(() => {
     const stored = localStorage.getItem(`answeredQuestions_${lectureInfo.videoId}`);
     return stored ? JSON.parse(stored) : [];
@@ -202,20 +197,35 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   useEffect(() => {
     localStorage.setItem(`answeredQuestions_${lectureInfo.videoId}`, JSON.stringify(answeredQIDs));
   }, [answeredQIDs, lectureInfo.videoId]);
+  const [currentQuestion, setCurrentQuestion] = useState(null);
   const [decisionPending, setDecisionPending] = useState(null);
   const [stats, setStats] = useState({ correct: 0, wrong: 0 });
 
   // Maintain the latest questions in a ref
+  const questionsRef = useRef(questions);
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
 
   // Maintain the active question in a ref
+  const questionActiveRef = useRef(null);
   useEffect(() => {
     questionActiveRef.current = currentQuestion;
   }, [currentQuestion]);
 
+  // Add this state near other state declarations
+const [noClientPause, setNoClientPause] = useState(false);
+
+// Add this handler function
+const handleNoClientPauseToggle = () => {
+  setNoClientPause(prev => !prev);
+  window.noStop = !noClientPause; // Update the global flag
+  console.log(`🎮 No Client Pause ${!noClientPause ? 'Enabled' : 'Disabled'}`);
+};
+  
+  const immediateGaze = useRef('Looking center');
   const immediateGazeChangeTime = useRef(Date.now());
+  const stableGaze = useRef('Looking center');
   const stableGazeChangeTime = useRef(Date.now());
 
   const SMOOTHING_MS = 300;
@@ -244,7 +254,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   // Set loaded after a short delay and fetch questions if in question mode.
   useEffect(() => {
-    //setTimeout(() => setLoaded(true), 1000);
+    setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
       console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
       // Fetch Hebrew questions
@@ -287,7 +297,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   // Add effect to monitor questions state
   useEffect(() => {
-    setLoaded(true)
     if (questions.length > 0) {
       console.log("[DEBUG] Questions state updated. Length:", questions.length);
       console.log("[DEBUG] First question in state:", questions[0]);
@@ -305,7 +314,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         noClientPause // Pass the server mode flag
       );
     }
-  }, [sendIntervalSeconds, lectureInfo.videoId, noClientPause]);
+  }, [sendIntervalSeconds, lectureInfo.videoId]);
 
   // Use the shared FaceMesh hook.
   useFaceMesh(loaded, webcamRef, handleFaceMeshResults, setFaceMeshStatus);
@@ -355,7 +364,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         systemPauseRef.current = true;
         //console.log('Video paused due to non-engagement. Gaze:', stableGaze.current);
         if (mode === 'question' && !questionActiveRef.current) {
-          if (now - gazeTimers.lastQuestion.current < 3000) return;
+          if (now - lastQuestionAnsweredTime.current < 3000) return;
           const currentVideoTime = playerRef.current.getCurrentTime();
           
           //console.log("[DEBUG] Checking for questions at time:", { currentVideoTime,    questionsInRef: questionsRef.current.length,      firstQuestionInRef: questionsRef.current[0],});
@@ -417,24 +426,13 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     } else {
       console.log("User answered incorrectly. Keeping question for future attempts:", currentQuestion);
     }
-
-    // Reset all question and pause-related states
     setCurrentQuestion(null);
     setDecisionPending(null);
-    gazeTimers.lastQuestion.current = Date.now(); // Fix: Use the correct timer reference
-    systemPauseRef.current = false;
-    setUserPaused(false);
-
-    // Ensure video starts playing
-    setTimeout(() => {
-      if (playerRef.current) {
-        playerRef.current.playVideo();
-        setIsPlaying(true);
-        setPauseStatus('Playing');
-      }
-    }, 100);
+    lastQuestionAnsweredTime.current = Date.now();
+    playerRef.current.playVideo();
+    setIsPlaying(true);
+    setPauseStatus('Playing');
   };
-
   const onPlayerReady = (event) => {
     playerRef.current = event.target;
     console.log("Player ready, starting video");
@@ -497,6 +495,51 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     setQuestions(language === 'Hebrew' ? hebrewQuestions : englishQuestions);
   };
 
+  const MODEL_THRESHOLD = 0.6; // Threshold for model results
+  const [lastModelResult, setLastModelResult] = useState(null);
+
+  // Setup model result handling
+  useEffect(() => {
+    setModelResultCallback((result) => {
+      setLastModelResult(result);
+      if (noClientPause && result < MODEL_THRESHOLD) {
+        handleLowEngagement();
+      }
+    });
+
+    return () => setModelResultCallback(null);
+  }, [noClientPause]);
+
+  const handleLowEngagement = useCallback(() => {
+    if (!isPlaying || currentQuestion) return;
+    
+    playerRef.current?.pauseVideo();
+    setIsPlaying(false);
+    systemPauseRef.current = true;
+    
+    if (mode === 'question') {
+      const currentVideoTime = playerRef.current?.getCurrentTime() || 0;
+      const availableQuestions = getAvailableQuestions(
+        currentVideoTime,
+        questionsRef.current,
+        answeredQIDs
+      );
+      
+      if (availableQuestions.length > 0) {
+        const nextQuestion = selectNextQuestion(availableQuestions);
+        if (nextQuestion) {
+          setCurrentQuestion({
+            q_id: nextQuestion.q_id,
+            text: nextQuestion.question,
+            answers: shuffleAnswers(nextQuestion),
+            originalTime: parseTimeToSeconds(nextQuestion.question_origin),
+            endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
+          });
+        }
+      }
+    }
+  }, [mode, isPlaying, currentQuestion]);
+
   const renderStatus = () => (
     <div className="status-info">
       <p>Mode: {mode}</p>
@@ -505,7 +548,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       {noClientPause && <p>Model Result: {lastModelResult?.toFixed(2) || 'N/A'}</p>}
       <button 
         className={`control-button ${noClientPause ? 'active' : ''}`}
-        onClick={handleModeSwitch}
+        onClick={handleNoClientPauseToggle}
       >
         {noClientPause ? '🤖 Server Control' : '👁️ Client Control'}
       </button>
