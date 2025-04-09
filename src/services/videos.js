@@ -92,7 +92,13 @@ export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSecon
     }
   }, FRAME_INTERVAL);
 
-  // Send data at specified intervals
+  // Skip sending data to server if in client mode (window.noStop is false)
+  if (!window.noStop) {
+    console.log('🚫 Client mode active - skipping server logs');
+    return;
+  }
+
+  // Send data at specified intervals (only in server mode)
   sendingInterval = setInterval(async () => {
     if (landmarkBuffer.length < REQUIRED_FRAMES) {
       console.log(`⚠️ Not enough frames yet (${landmarkBuffer.length}/${REQUIRED_FRAMES})`);
