@@ -68,6 +68,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const handleServerEngagement = useCallback((modelResult) => {
     if (!noClientPause || !isPlaying || currentQuestion) return;
     
+    console.log(`Server model result: ${modelResult}, threshold: ${MODEL_THRESHOLD}`);
     if (modelResult < MODEL_THRESHOLD) {
       playerRef.current?.pauseVideo();
       setIsPlaying(false);
@@ -81,7 +82,8 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   // Client-mode engagement handler
   const handleClientEngagement = useCallback((gaze) => {
-    if (noClientPause || !isPlaying) return;
+    if (noClientPause) return; // Early return if in server mode
+    if (!isPlaying) return;
     
     const isLookingAway = gaze !== 'Looking center';
     const now = Date.now();
@@ -140,11 +142,23 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [handleClientEngagement]);
 
-  // Mode switch handler
+  // Mode switch handler - reset states when switching modes
   const handleModeSwitch = useCallback(() => {
     setNoClientPause(prev => {
       const newMode = !prev;
       window.noStop = newMode;
+      
+      // Reset tracking when switching modes
+      resetTracking();
+      systemPauseRef.current = false;
+      setUserPaused(false);
+      
+      if (playerRef.current?.getPlayerState() === 2) { // If paused
+        playerRef.current.playVideo(); // Resume playback when switching modes
+        setIsPlaying(true);
+        setPauseStatus('Playing');
+      }
+      
       console.log(`🎮 Switching to ${newMode ? 'Server' : 'Client'} Control`);
       return newMode;
     });
@@ -287,21 +301,20 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         lectureInfo.videoId, 
         'basic', 
         sendIntervalSeconds,
-        () => playerRef.current?.getCurrentTime() || 0
+        () => playerRef.current?.getCurrentTime() || 0,
+        noClientPause // Pass the server mode flag
       );
     }
-  }, [sendIntervalSeconds, lectureInfo.videoId]);
+  }, [sendIntervalSeconds, lectureInfo.videoId, noClientPause]);
 
   // Use the shared FaceMesh hook.
   useFaceMesh(loaded, webcamRef, handleFaceMeshResults, setFaceMeshStatus);
 
   // Unified gaze handler.
   const handleVideoPlayback = (newGaze) => {
+    if (noClientPause) return; // Early return if in server mode
+    
     const now = Date.now();
-    if (noClientPause) {
-      return;
-    }
-  
     if (newGaze !== immediateGaze.current) {
       immediateGaze.current = newGaze;
       immediateGazeChangeTime.current = now;
@@ -440,14 +453,22 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   
     switch (playerState) {
       case 1: // Playing
+        const wasManuallyPaused = userPausedRef.current;
         setIsPlaying(true);
         setPauseStatus('Playing');
         setUserPaused(false);
+        
+        // Reset tracking if it was manually paused
+        if (wasManuallyPaused) {
+          resetTracking();
+        }
+        
         handleVideoResume(
           lectureInfo.videoId, 
           'basic', 
           sendIntervalSeconds,
-          () => playerRef.current?.getCurrentTime() || 0
+          () => playerRef.current?.getCurrentTime() || 0,
+          noClientPause
         );
         break;
       case 2: // Paused
@@ -492,7 +513,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         <label>Send Interval: {sendIntervalSeconds}s</label>
         <input
           type="range"
-          min="2"
+          min="1"
           max="10"
           value={sendIntervalSeconds}
           onChange={(e) => handleIntervalChange(e.target.value)}
