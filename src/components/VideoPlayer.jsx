@@ -461,7 +461,7 @@ const handleNoClientPauseToggle = () => {
         <label>Send Interval: {sendIntervalSeconds}s</label>
         <input
           type="range"
-          min="2"
+          min="0.5"
           max="10"
           value={sendIntervalSeconds}
           onChange={(e) => handleIntervalChange(e.target.value)}
