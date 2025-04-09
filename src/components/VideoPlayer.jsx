@@ -4,7 +4,7 @@ import { Bar } from 'react-chartjs-2';
 import '../styles/VideoPlayer.css';
 import '../styles/TriviaVideoPage.css'; // Add this import for button styles
 
-import {fetchLastWatchTime,resetTracking ,  updateLatestLandmark ,handleVideoPause, handleVideoResume } from '../services/videos';
+import {fetchLastWatchTime,resetTracking ,  updateLatestLandmark ,handleVideoPause, handleVideoResume, setModelResultCallback } from '../services/videos';
 
 
 import {
@@ -41,6 +41,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const lastQuestionAnsweredTime = useRef(0);
 
   const [initialPlaybackTime, setInitialPlaybackTime] = useState(0);
+
+  const [sendIntervalSeconds, setSendIntervalSeconds] = useState(10);
+
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
@@ -191,25 +194,37 @@ const handleNoClientPauseToggle = () => {
     }
   }, [questions]);
 
+  // Add this effect to monitor interval changes
+  useEffect(() => {
+    if (isPlaying) {
+      handleVideoResume(
+        lectureInfo.videoId, 
+        'basic', 
+        sendIntervalSeconds,
+        () => playerRef.current?.getCurrentTime() || 0
+      );
+    }
+  }, [sendIntervalSeconds, lectureInfo.videoId]);
+
   // FaceMesh results callback.
 
   
   const handleFaceMeshResults = useCallback((results) => {
-    if (mode === 'question' && questionActiveRef.current) return;
+    if (!noClientPause && mode === 'question' && questionActiveRef.current) return;
     
-    const currentTime = playerRef.current?.getCurrentTime() || 0;
-  
-    // Always update the latest landmark
+    // Always update landmarks for server processing
     updateLatestLandmark(results);
-  
-    // Continue with your gaze logic
-    let gaze = 'Face not detected';
-    if (results.multiFaceLandmarks?.length > 0) {
-      gaze = estimateGaze(results.multiFaceLandmarks[0]);
-      setFaceMeshStatus('Working');
+    
+    // Only process gaze for client-side pausing
+    if (!noClientPause) {
+      let gaze = 'Face not detected';
+      if (results.multiFaceLandmarks?.length > 0) {
+        gaze = estimateGaze(results.multiFaceLandmarks[0]);
+        setFaceMeshStatus('Working');
+      }
+      handleVideoPlayback(gaze);
     }
-    handleVideoPlayback(gaze);
-  }, [mode, lectureInfo]);
+  }, [mode, noClientPause]);
   
 
   // Use the shared FaceMesh hook.
@@ -346,18 +361,21 @@ const handleNoClientPauseToggle = () => {
   
   const onPlayerStateChange = (event) => {
     const playerState = event.data;
-    const currentTime = playerRef.current?.getCurrentTime() || 0;
-    
+  
     switch (playerState) {
       case 1: // Playing
         setIsPlaying(true);
         setPauseStatus('Playing');
         setUserPaused(false);
-        handleVideoResume(lectureInfo.id || lectureInfo.videoId, currentTime);
+        handleVideoResume(
+          lectureInfo.videoId, 
+          'basic', 
+          sendIntervalSeconds,
+          () => playerRef.current?.getCurrentTime() || 0
+        );
         break;
       case 2: // Paused
         if (systemPauseRef.current) {
-          systemPauseRef.current = false;
           setPauseStatus('Paused (Not Engaged)');
         } else {
           setPauseStatus('Paused Manually');
@@ -371,12 +389,86 @@ const handleNoClientPauseToggle = () => {
     }
   };
   
+  // Update the interval change handler
+  const handleIntervalChange = (newValue) => {
+    setSendIntervalSeconds(Number(newValue));
+  };
 
   const handleLanguageChange = (language) => {
     setSelectedLanguage(language);
     questionsRef.current = language === 'Hebrew' ? hebrewQuestions : englishQuestions;
     setQuestions(language === 'Hebrew' ? hebrewQuestions : englishQuestions);
   };
+
+  const MODEL_THRESHOLD = 0.6; // Threshold for model results
+  const [lastModelResult, setLastModelResult] = useState(null);
+
+  // Setup model result handling
+  useEffect(() => {
+    setModelResultCallback((result) => {
+      setLastModelResult(result);
+      if (noClientPause && result < MODEL_THRESHOLD) {
+        handleLowEngagement();
+      }
+    });
+
+    return () => setModelResultCallback(null);
+  }, [noClientPause]);
+
+  const handleLowEngagement = useCallback(() => {
+    if (!isPlaying || currentQuestion) return;
+    
+    playerRef.current?.pauseVideo();
+    setIsPlaying(false);
+    systemPauseRef.current = true;
+    
+    if (mode === 'question') {
+      const currentVideoTime = playerRef.current?.getCurrentTime() || 0;
+      const availableQuestions = getAvailableQuestions(
+        currentVideoTime,
+        questionsRef.current,
+        answeredQIDs
+      );
+      
+      if (availableQuestions.length > 0) {
+        const nextQuestion = selectNextQuestion(availableQuestions);
+        if (nextQuestion) {
+          setCurrentQuestion({
+            q_id: nextQuestion.q_id,
+            text: nextQuestion.question,
+            answers: shuffleAnswers(nextQuestion),
+            originalTime: parseTimeToSeconds(nextQuestion.question_origin),
+            endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
+          });
+        }
+      }
+    }
+  }, [mode, isPlaying, currentQuestion]);
+
+  const renderStatus = () => (
+    <div className="status-info">
+      <p>Mode: {mode}</p>
+      <p>Status: {pauseStatus}</p>
+      <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
+      {noClientPause && <p>Model Result: {lastModelResult?.toFixed(2) || 'N/A'}</p>}
+      <button 
+        className={`control-button ${noClientPause ? 'active' : ''}`}
+        onClick={handleNoClientPauseToggle}
+      >
+        {noClientPause ? '🤖 Server Control' : '👁️ Client Control'}
+      </button>
+      <div style={{ margin: '15px 0' }}>
+        <label>Send Interval: {sendIntervalSeconds}s</label>
+        <input
+          type="range"
+          min="2"
+          max="10"
+          value={sendIntervalSeconds}
+          onChange={(e) => handleIntervalChange(e.target.value)}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <div className="video-player">
@@ -390,25 +482,7 @@ const handleNoClientPauseToggle = () => {
         onReady={onPlayerReady}
         onStateChange={onPlayerStateChange}
       />
-        <div className="status-info">
-          <p>Mode: {mode}</p>
-          <p>Status: {pauseStatus}</p>
-          <p>FaceMesh: {faceMeshStatus}</p>
-          <button 
-            className={`control-button ${noClientPause ? 'active' : ''}`}
-            onClick={handleNoClientPauseToggle}
-          >
-            {noClientPause ? '🚫 Client Pause Disabled' : '✅ Client Pause Enabled'}
-          </button>
-          {showRetryButton && (
-            <button 
-              className="retry-button"
-              onClick={handleFaceMeshRetry}
-            >
-              Retry FaceMesh
-            </button>
-          )}
-        </div>
+      {renderStatus()}
       {mode === 'question' && (
         <div className="language-options" style={{ margin: '20px 0', direction: 'ltr' }}>
           <button 

@@ -36,98 +36,106 @@ export const fetchTranscriptQuestionsForVideo = async (externalId, lang = 'Hebre
 };
 
 // Tracking constants
-export const TRACKING_FPS = 10; // Change this value as needed: 10, 24, etc.
-export const FRAME_INTERVAL = 1000 / TRACKING_FPS;
-export const BUFFER_DURATION_SECONDS = 10; // always 10 seconds of data
-export const BUFFER_SIZE = TRACKING_FPS * BUFFER_DURATION_SECONDS;
+export const TRACKING_FPS = 10;
+export const FRAME_INTERVAL = 100;   // Collect frame every 100ms to complete 100 frames in 10 seconds
+export const MAX_BUFFER_DURATION_SECONDS = 10; // always keep last 10 seconds
+export const MAX_BUFFER_SIZE = TRACKING_FPS * MAX_BUFFER_DURATION_SECONDS;
+export const REQUIRED_FRAMES = 100;  // We always want 100 frames
 
-// State variables
 let landmarkBuffer = [];
 let latestLandmark = null;
 let trackingInterval = null;
+let sendingInterval = null;
 let isVideoPaused = false;
+
+let lastModelResult = null;
+let onModelResultCallback = null;
+
+export const setModelResultCallback = (callback) => {
+  onModelResultCallback = callback;
+};
 
 export const resetTracking = () => {
   isVideoPaused = true;
   landmarkBuffer = [];
   clearInterval(trackingInterval);
-  console.log('🔄 Tracking reset, buffer cleared, and interval stopped.');
+  clearInterval(sendingInterval);
+  console.log('🔄 Tracking reset, buffer cleared, and intervals stopped.');
 };
-
 
 export const handleVideoPause = () => {
-  isVideoPaused = true;
-  landmarkBuffer = [];
-  clearInterval(trackingInterval);
-  console.log('🛑 Video paused, buffer cleared, tracking interval stopped.');
+  resetTracking();
+  console.log('🛑 Video paused.');
 };
 
-export const handleVideoResume = (youtube_id, currentTime, model = 'basic') => {
-  if (trackingInterval) clearInterval(trackingInterval);
+export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSeconds = 10, getCurrentTime = () => 0) => {
+  clearInterval(trackingInterval);
+  clearInterval(sendingInterval);
 
   isVideoPaused = false;
   landmarkBuffer = [];
-  console.log(`▶️ Video resumed at ${TRACKING_FPS} FPS. Buffer size: ${BUFFER_SIZE} frames.`);
 
-  trackingInterval = setInterval(async () => {
-    if (isVideoPaused || !latestLandmark) {
-      console.log('⚠️ Frame skipped: paused or no landmark data.');
+  console.log(`▶️ Video tracking started: collecting frame every ${FRAME_INTERVAL}ms, sending every ${sendIntervalSeconds}s.`);
+
+  // Collect frames at fixed intervals
+  trackingInterval = setInterval(() => {
+    if (isVideoPaused || !latestLandmark) return;
+
+    landmarkBuffer.push({
+      timestamp: Date.now(),
+      landmarks: latestLandmark
+    });
+
+    // Keep only the most recent 100 frames
+    if (landmarkBuffer.length > REQUIRED_FRAMES) {
+      landmarkBuffer.shift();
+    }
+  }, FRAME_INTERVAL);
+
+  // Send data at specified intervals
+  sendingInterval = setInterval(async () => {
+    if (landmarkBuffer.length < REQUIRED_FRAMES) {
+      console.log(`⚠️ Not enough frames yet (${landmarkBuffer.length}/${REQUIRED_FRAMES})`);
       return;
     }
 
-    landmarkBuffer.push(latestLandmark);
+    // Always send exactly 100 frames
+    const relevantLandmarks = landmarkBuffer
+      .slice(-REQUIRED_FRAMES)
+      .map(item => item.landmarks);
 
-    const logInterval = TRACKING_FPS; // log each second
-    if (landmarkBuffer.length % logInterval === 0) {
-      console.log('📊 Buffer Progress:', {
-        framesCaptured: landmarkBuffer.length,
-        bufferTarget: BUFFER_SIZE,
-        percentage: `${((landmarkBuffer.length / BUFFER_SIZE) * 100).toFixed(1)}%`,
-        elapsedSeconds: (landmarkBuffer.length / TRACKING_FPS).toFixed(1),
-      });
-    }
+    const payload = {
+      youtube_id: youtube_id,
+      current_time: getCurrentTime(), // Use the video's current time
+      extraction: "mediapipe",
+      extraction_payload: {
+        fps: 10,
+        interval: 10,
+        number_of_landmarks: 478,
+        landmarks: [relevantLandmarks]
+      },
+      model: model
+    };
 
-    if (landmarkBuffer.length === BUFFER_SIZE) {
-      console.log('📤 Buffer full, preparing payload...');
-
-      try {
-        const payload = {
-          youtube_id: youtube_id,          // videoId from Youtube
-          current_time: currentTime,       // current playback position
-          extraction: "mediapipe",         // hardcoded extraction method
-          extraction_payload: {
-            fps: TRACKING_FPS,             // frames per second
-            interval: BUFFER_DURATION_SECONDS, // explicitly 5 sec
-            //number_of_landmarks: landmarkBuffer.length,
-            number_of_landmarks: 478, // hardcoded number of landmarks
-            landmarks: [landmarkBuffer]    // wrap array in an extra array as in your JSON
-          },
-          model: model                    // hardcoded or passed model name
-        };
-
-        const sendStartTime = Date.now();
-
-        await axios.post(`${config.baseURL}/watch/log_watch`, payload, { withCredentials: true });
-
-        console.log('✅ Payload sent successfully:', {
-          frames: BUFFER_SIZE,
-          actualSendTimeSec: ((Date.now() - sendStartTime) / 1000).toFixed(2),
-          timestamp: new Date().toISOString()
-        });
-
-        landmarkBuffer = [];
-      } catch (error) {
-        console.error('❌ Error sending payload:', error);
-        landmarkBuffer = [];
+    try {
+      const response = await axios.post(`${config.baseURL}/watch/log_watch`, payload, { withCredentials: true });
+      const modelResult = response.data?.model_result;
+      lastModelResult = modelResult;
+      
+      if (onModelResultCallback) {
+        onModelResultCallback(modelResult);
       }
+      
+      console.log(`✅ Sent ${REQUIRED_FRAMES} frames successfully. Model result:`, modelResult);
+    } catch (error) {
+      console.error('❌ Error sending landmarks:', error);
     }
-  }, FRAME_INTERVAL);
+  }, sendIntervalSeconds * 1000);
 };
 
 export const updateLatestLandmark = (faceMeshResults) => {
   if (faceMeshResults?.multiFaceLandmarks?.[0]) {
     latestLandmark = faceMeshResults.multiFaceLandmarks[0];
-    // optional log: console.log('🔄 Latest landmark updated:', latestLandmark.length);
   } else {
     console.warn('⚠️ No landmarks detected.');
   }
