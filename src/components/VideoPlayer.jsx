@@ -34,21 +34,123 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend)
 window.noStop = false;
 
 function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
+  // Core refs and state
   const webcamRef = useRef(null);
   const playerRef = useRef(null);
   const systemPauseRef = useRef(false);
-  const lastGazeTime = useRef(Date.now());
-  const lastQuestionAnsweredTime = useRef(0);
-
-  const [initialPlaybackTime, setInitialPlaybackTime] = useState(0);
-
-  const [sendIntervalSeconds, setSendIntervalSeconds] = useState(10);
-
-
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
   const [userPaused, setUserPaused] = useState(false);
+  const userPausedRef = useRef(userPaused);
+  
+  // Mode controls
+  const [noClientPause, setNoClientPause] = useState(false);
+  const [sendIntervalSeconds, setSendIntervalSeconds] = useState(10);
+  const MODEL_THRESHOLD = 0.6;
+  const [lastModelResult, setLastModelResult] = useState(null);
 
+  // Gaze tracking state
+  const immediateGaze = useRef('Looking center');
+  const stableGaze = useRef('Looking center');
+  const gazeTimers = {
+    immediate: useRef(Date.now()),
+    stable: useRef(Date.now()),
+    lastQuestion: useRef(0)
+  };
+
+  // Question handling state
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const questionActiveRef = useRef(null);
+  const [questions, setQuestions] = useState([]);
+  const questionsRef = useRef(questions);
+  
+  // Server-mode engagement handler
+  const handleServerEngagement = useCallback((modelResult) => {
+    if (!noClientPause || !isPlaying || currentQuestion) return;
+    
+    if (modelResult < MODEL_THRESHOLD) {
+      playerRef.current?.pauseVideo();
+      setIsPlaying(false);
+      systemPauseRef.current = true;
+      
+      if (mode === 'question') {
+        triggerQuestion();
+      }
+    }
+  }, [noClientPause, isPlaying, currentQuestion, mode]);
+
+  // Client-mode engagement handler
+  const handleClientEngagement = useCallback((gaze) => {
+    if (noClientPause || !isPlaying) return;
+    
+    const isLookingAway = gaze !== 'Looking center';
+    const now = Date.now();
+    
+    if (isLookingAway && (now - gazeTimers.stable.current) >= AWAY_THRESHOLD_MS) {
+      playerRef.current?.pauseVideo();
+      setIsPlaying(false);
+      
+      if (mode === 'question') {
+        triggerQuestion();
+      }
+    }
+  }, [noClientPause, isPlaying, mode]);
+
+  // Shared question triggering logic
+  const triggerQuestion = useCallback(() => {
+    if (!mode === 'question' || currentQuestion) return;
+    
+    const currentTime = playerRef.current?.getCurrentTime() || 0;
+    const availableQuestions = getAvailableQuestions(
+      currentTime,
+      questionsRef.current,
+      answeredQIDs
+    );
+    
+    if (availableQuestions.length > 0) {
+      const nextQuestion = selectNextQuestion(availableQuestions);
+      if (nextQuestion) {
+        setCurrentQuestion({
+          q_id: nextQuestion.q_id,
+          text: nextQuestion.question,
+          answers: shuffleAnswers(nextQuestion),
+          originalTime: parseTimeToSeconds(nextQuestion.question_origin),
+          endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
+        });
+      }
+    }
+  }, [mode, currentQuestion]);
+
+  // Setup model result handling
+  useEffect(() => {
+    setModelResultCallback((result) => {
+      setLastModelResult(result);
+      handleServerEngagement(result);
+    });
+    return () => setModelResultCallback(null);
+  }, [handleServerEngagement]);
+
+  // FaceMesh results handler
+  const handleFaceMeshResults = useCallback((results) => {
+    updateLatestLandmark(results);
+    
+    if (results.multiFaceLandmarks?.length > 0) {
+      const gaze = estimateGaze(results.multiFaceLandmarks[0]);
+      handleClientEngagement(gaze);
+    }
+  }, [handleClientEngagement]);
+
+  // Mode switch handler
+  const handleModeSwitch = useCallback(() => {
+    setNoClientPause(prev => {
+      const newMode = !prev;
+      window.noStop = newMode;
+      console.log(`🎮 Switching to ${newMode ? 'Server' : 'Client'} Control`);
+      return newMode;
+    });
+  }, []);
+
+  const [initialPlaybackTime, setInitialPlaybackTime] = useState(0);
 
   useEffect(() => {
     // FORRRRRRRRRRR !! unmount!!!
@@ -72,7 +174,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   }, [lectureInfo.videoId]);
 
   // Use a ref for immediate access to the userPaused flag
-  const userPausedRef = useRef(userPaused);
   useEffect(() => {
     userPausedRef.current = userPaused;
   }, [userPaused]);
@@ -80,7 +181,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
   const [loaded, setLoaded] = useState(false);
 
-  const [questions, setQuestions] = useState([]);
   const [answeredQIDs, setAnsweredQIDs] = useState(() => {
     const stored = localStorage.getItem(`answeredQuestions_${lectureInfo.videoId}`);
     return stored ? JSON.parse(stored) : [];
@@ -88,35 +188,20 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   useEffect(() => {
     localStorage.setItem(`answeredQuestions_${lectureInfo.videoId}`, JSON.stringify(answeredQIDs));
   }, [answeredQIDs, lectureInfo.videoId]);
-  const [currentQuestion, setCurrentQuestion] = useState(null);
   const [decisionPending, setDecisionPending] = useState(null);
   const [stats, setStats] = useState({ correct: 0, wrong: 0 });
 
   // Maintain the latest questions in a ref
-  const questionsRef = useRef(questions);
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
 
   // Maintain the active question in a ref
-  const questionActiveRef = useRef(null);
   useEffect(() => {
     questionActiveRef.current = currentQuestion;
   }, [currentQuestion]);
 
-  // Add this state near other state declarations
-const [noClientPause, setNoClientPause] = useState(false);
-
-// Add this handler function
-const handleNoClientPauseToggle = () => {
-  setNoClientPause(prev => !prev);
-  window.noStop = !noClientPause; // Update the global flag
-  console.log(`🎮 No Client Pause ${!noClientPause ? 'Enabled' : 'Disabled'}`);
-};
-  
-  const immediateGaze = useRef('Looking center');
   const immediateGazeChangeTime = useRef(Date.now());
-  const stableGaze = useRef('Looking center');
   const stableGazeChangeTime = useRef(Date.now());
 
   const SMOOTHING_MS = 300;
@@ -145,7 +230,7 @@ const handleNoClientPauseToggle = () => {
 
   // Set loaded after a short delay and fetch questions if in question mode.
   useEffect(() => {
-    setTimeout(() => setLoaded(true), 1000);
+    //setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
       console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
       // Fetch Hebrew questions
@@ -188,6 +273,7 @@ const handleNoClientPauseToggle = () => {
 
   // Add effect to monitor questions state
   useEffect(() => {
+    setLoaded(true)
     if (questions.length > 0) {
       console.log("[DEBUG] Questions state updated. Length:", questions.length);
       console.log("[DEBUG] First question in state:", questions[0]);
@@ -205,27 +291,6 @@ const handleNoClientPauseToggle = () => {
       );
     }
   }, [sendIntervalSeconds, lectureInfo.videoId]);
-
-  // FaceMesh results callback.
-
-  
-  const handleFaceMeshResults = useCallback((results) => {
-    if (!noClientPause && mode === 'question' && questionActiveRef.current) return;
-    
-    // Always update landmarks for server processing
-    updateLatestLandmark(results);
-    
-    // Only process gaze for client-side pausing
-    if (!noClientPause) {
-      let gaze = 'Face not detected';
-      if (results.multiFaceLandmarks?.length > 0) {
-        gaze = estimateGaze(results.multiFaceLandmarks[0]);
-        setFaceMeshStatus('Working');
-      }
-      handleVideoPlayback(gaze);
-    }
-  }, [mode, noClientPause]);
-  
 
   // Use the shared FaceMesh hook.
   useFaceMesh(loaded, webcamRef, handleFaceMeshResults, setFaceMeshStatus);
@@ -277,7 +342,7 @@ const handleNoClientPauseToggle = () => {
         systemPauseRef.current = true;
         //console.log('Video paused due to non-engagement. Gaze:', stableGaze.current);
         if (mode === 'question' && !questionActiveRef.current) {
-          if (now - lastQuestionAnsweredTime.current < 3000) return;
+          if (now - gazeTimers.lastQuestion.current < 3000) return;
           const currentVideoTime = playerRef.current.getCurrentTime();
           
           //console.log("[DEBUG] Checking for questions at time:", { currentVideoTime,    questionsInRef: questionsRef.current.length,      firstQuestionInRef: questionsRef.current[0],});
@@ -339,13 +404,24 @@ const handleNoClientPauseToggle = () => {
     } else {
       console.log("User answered incorrectly. Keeping question for future attempts:", currentQuestion);
     }
+
+    // Reset all question and pause-related states
     setCurrentQuestion(null);
     setDecisionPending(null);
-    lastQuestionAnsweredTime.current = Date.now();
-    playerRef.current.playVideo();
-    setIsPlaying(true);
-    setPauseStatus('Playing');
+    gazeTimers.lastQuestion.current = Date.now(); // Fix: Use the correct timer reference
+    systemPauseRef.current = false;
+    setUserPaused(false);
+
+    // Ensure video starts playing
+    setTimeout(() => {
+      if (playerRef.current) {
+        playerRef.current.playVideo();
+        setIsPlaying(true);
+        setPauseStatus('Playing');
+      }
+    }, 100);
   };
+
   const onPlayerReady = (event) => {
     playerRef.current = event.target;
     console.log("Player ready, starting video");
@@ -400,51 +476,6 @@ const handleNoClientPauseToggle = () => {
     setQuestions(language === 'Hebrew' ? hebrewQuestions : englishQuestions);
   };
 
-  const MODEL_THRESHOLD = 0.6; // Threshold for model results
-  const [lastModelResult, setLastModelResult] = useState(null);
-
-  // Setup model result handling
-  useEffect(() => {
-    setModelResultCallback((result) => {
-      setLastModelResult(result);
-      if (noClientPause && result < MODEL_THRESHOLD) {
-        handleLowEngagement();
-      }
-    });
-
-    return () => setModelResultCallback(null);
-  }, [noClientPause]);
-
-  const handleLowEngagement = useCallback(() => {
-    if (!isPlaying || currentQuestion) return;
-    
-    playerRef.current?.pauseVideo();
-    setIsPlaying(false);
-    systemPauseRef.current = true;
-    
-    if (mode === 'question') {
-      const currentVideoTime = playerRef.current?.getCurrentTime() || 0;
-      const availableQuestions = getAvailableQuestions(
-        currentVideoTime,
-        questionsRef.current,
-        answeredQIDs
-      );
-      
-      if (availableQuestions.length > 0) {
-        const nextQuestion = selectNextQuestion(availableQuestions);
-        if (nextQuestion) {
-          setCurrentQuestion({
-            q_id: nextQuestion.q_id,
-            text: nextQuestion.question,
-            answers: shuffleAnswers(nextQuestion),
-            originalTime: parseTimeToSeconds(nextQuestion.question_origin),
-            endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
-          });
-        }
-      }
-    }
-  }, [mode, isPlaying, currentQuestion]);
-
   const renderStatus = () => (
     <div className="status-info">
       <p>Mode: {mode}</p>
@@ -453,7 +484,7 @@ const handleNoClientPauseToggle = () => {
       {noClientPause && <p>Model Result: {lastModelResult?.toFixed(2) || 'N/A'}</p>}
       <button 
         className={`control-button ${noClientPause ? 'active' : ''}`}
-        onClick={handleNoClientPauseToggle}
+        onClick={handleModeSwitch}
       >
         {noClientPause ? '🤖 Server Control' : '👁️ Client Control'}
       </button>
