@@ -123,19 +123,25 @@ export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSecon
 };
 
 export const updateLatestLandmark = (faceMeshResults) => {
+  const timestamp = Date.now();
+  let landmarks;
+  
   if (faceMeshResults?.multiFaceLandmarks?.[0]) {
-    const frame = {
-      landmarks: faceMeshResults.multiFaceLandmarks[0],
-      timestamp: Date.now()
-    };
-    
-    frameBuffer.push(frame);
-    // Keep only the most recent 10 frames
-    if (frameBuffer.length > FRAMES_PER_BATCH) {
-      frameBuffer.shift();
-    }
+    landmarks = faceMeshResults.multiFaceLandmarks[0];
   } else {
-    console.warn('⚠️ No landmarks detected.');
+    // Create array of 478 landmarks with -1 values
+    landmarks = Array(478).fill().map(() => ({ x: -1, y: -1, z: -1 }));
+    console.warn('⚠️ No landmarks detected, using default values (-1)');
+  }
+  
+  frameBuffer.push({
+    landmarks,
+    timestamp
+  });
+  
+  // Keep only the most recent 10 frames
+  if (frameBuffer.length > FRAMES_PER_BATCH) {
+    frameBuffer.shift();
   }
 };
 
