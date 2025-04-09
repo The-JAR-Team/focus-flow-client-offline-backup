@@ -42,6 +42,9 @@ export const MAX_BUFFER_DURATION_SECONDS = 10; // always keep last 10 seconds
 export const MAX_BUFFER_SIZE = TRACKING_FPS * MAX_BUFFER_DURATION_SECONDS;
 export const REQUIRED_FRAMES = 100;  // We always want 100 frames
 
+export const FRAMES_PER_BATCH = 10; // Always send 10 frames
+let frameBuffer = [];
+
 let landmarkBuffer = [];
 let latestLandmark = null;
 let latestLandmarkTimestamp = null;
@@ -60,6 +63,7 @@ export const setModelResultCallback = (callback) => {
 export const resetTracking = () => {
   isVideoPaused = true;
   needsBufferDeletion = true;
+  frameBuffer = [];
   clearInterval(trackingInterval);
   clearInterval(sendingInterval);
   console.log('🔄 Tracking reset, buffer cleared, and intervals stopped.');
@@ -70,18 +74,18 @@ export const handleVideoPause = () => {
   console.log('🛑 Video paused.');
 };
 
-export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSeconds = 10, getCurrentTime = () => 0) => {
+export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSeconds = 1, getCurrentTime = () => 0) => {
   clearInterval(trackingInterval);
   clearInterval(sendingInterval);
-
+  frameBuffer = [];
   isVideoPaused = false;
 
-  console.log(`▶️ Video tracking started: sending every ${sendIntervalSeconds}s.`);
+  console.log(`▶️ Video tracking started: collecting and sending ${FRAMES_PER_BATCH} frames every ${sendIntervalSeconds}s.`);
 
   // Send data at specified intervals
   sendingInterval = setInterval(async () => {
-    if (!latestLandmark) {
-      console.log('⚠️ No landmarks available to send');
+    if (frameBuffer.length < FRAMES_PER_BATCH) {
+      console.log(`⚠️ Not enough frames yet (${frameBuffer.length}/${FRAMES_PER_BATCH})`);
       return;
     }
 
@@ -90,11 +94,11 @@ export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSecon
       current_time: getCurrentTime(),
       extraction: "mediapipe",
       extraction_payload: {
-        timestamp: latestLandmarkTimestamp,
-        fps: 10,
+        timestamp: frameBuffer[frameBuffer.length - 1].timestamp, // Only send last timestamp
+        fps: FRAMES_PER_BATCH,
         interval: sendIntervalSeconds,
         number_of_landmarks: 478,
-        landmarks: [[latestLandmark]] // Single frame in double array
+        landmarks: [frameBuffer.map(f => f.landmarks)] // All 10 frames in nested array
       },
       model: model,
       del_buffer: needsBufferDeletion
@@ -109,8 +113,9 @@ export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSecon
         onModelResultCallback(modelResult);
       }
       
-      console.log(`✅ Sent landmark frame successfully. Model result:`, modelResult);
-      needsBufferDeletion = false; // Reset after successful send
+      console.log(`✅ Sent ${FRAMES_PER_BATCH} frames successfully. Model result:`, modelResult);
+      needsBufferDeletion = false;
+      frameBuffer = []; // Clear buffer after successful send
     } catch (error) {
       console.error('❌ Error sending landmarks:', error);
     }
@@ -119,13 +124,20 @@ export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSecon
 
 export const updateLatestLandmark = (faceMeshResults) => {
   if (faceMeshResults?.multiFaceLandmarks?.[0]) {
-    latestLandmark = faceMeshResults.multiFaceLandmarks[0];
-    latestLandmarkTimestamp = Date.now();
+    const frame = {
+      landmarks: faceMeshResults.multiFaceLandmarks[0],
+      timestamp: Date.now()
+    };
+    
+    frameBuffer.push(frame);
+    // Keep only the most recent 10 frames
+    if (frameBuffer.length > FRAMES_PER_BATCH) {
+      frameBuffer.shift();
+    }
   } else {
     console.warn('⚠️ No landmarks detected.');
   }
 };
-
 
 export const fetchLastWatchTime = async (youtube_id) => {
   try {
