@@ -48,116 +48,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
   const [userPaused, setUserPaused] = useState(false);
-  const userPausedRef = useRef(userPaused);
-  
-  // Mode controls
-  const [noClientPause, setNoClientPause] = useState(false);
-  const [sendIntervalSeconds, setSendIntervalSeconds] = useState(10);
-  const MODEL_THRESHOLD = 0.6;
-  const [lastModelResult, setLastModelResult] = useState(null);
 
-  // Gaze tracking state
-  const immediateGaze = useRef('Looking center');
-  const stableGaze = useRef('Looking center');
-  const gazeTimers = {
-    immediate: useRef(Date.now()),
-    stable: useRef(Date.now()),
-    lastQuestion: useRef(0)
-  };
-
-  // Question handling state
-  const [currentQuestion, setCurrentQuestion] = useState(null);
-  const questionActiveRef = useRef(null);
-  const [questions, setQuestions] = useState([]);
-  const questionsRef = useRef(questions);
-  
-  // Server-mode engagement handler
-  const handleServerEngagement = useCallback((modelResult) => {
-    if (!noClientPause || !isPlaying || currentQuestion) return;
-    
-    if (modelResult < MODEL_THRESHOLD) {
-      playerRef.current?.pauseVideo();
-      setIsPlaying(false);
-      systemPauseRef.current = true;
-      
-      if (mode === 'question') {
-        triggerQuestion();
-      }
-    }
-  }, [noClientPause, isPlaying, currentQuestion, mode]);
-
-  // Client-mode engagement handler
-  const handleClientEngagement = useCallback((gaze) => {
-    if (noClientPause || !isPlaying) return;
-    
-    const isLookingAway = gaze !== 'Looking center';
-    const now = Date.now();
-    
-    if (isLookingAway && (now - gazeTimers.stable.current) >= AWAY_THRESHOLD_MS) {
-      playerRef.current?.pauseVideo();
-      setIsPlaying(false);
-      
-      if (mode === 'question') {
-        triggerQuestion();
-      }
-    }
-  }, [noClientPause, isPlaying, mode]);
-
-  // Shared question triggering logic
-  const triggerQuestion = useCallback(() => {
-    if (!mode === 'question' || currentQuestion) return;
-    
-    const currentTime = playerRef.current?.getCurrentTime() || 0;
-    const availableQuestions = getAvailableQuestions(
-      currentTime,
-      questionsRef.current,
-      answeredQIDs
-    );
-    
-    if (availableQuestions.length > 0) {
-      const nextQuestion = selectNextQuestion(availableQuestions);
-      if (nextQuestion) {
-        setCurrentQuestion({
-          q_id: nextQuestion.q_id,
-          text: nextQuestion.question,
-          answers: shuffleAnswers(nextQuestion),
-          originalTime: parseTimeToSeconds(nextQuestion.question_origin),
-          endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
-        });
-      }
-    }
-  }, [mode, currentQuestion]);
-
-  // Setup model result handling
-  useEffect(() => {
-    setModelResultCallback((result) => {
-      setLastModelResult(result);
-      handleServerEngagement(result);
-    });
-    return () => setModelResultCallback(null);
-  }, [handleServerEngagement]);
-
-  // FaceMesh results handler
-  const handleFaceMeshResults = useCallback((results) => {
-    updateLatestLandmark(results);
-    
-    if (results.multiFaceLandmarks?.length > 0) {
-      const gaze = estimateGaze(results.multiFaceLandmarks[0]);
-      handleClientEngagement(gaze);
-    }
-  }, [handleClientEngagement]);
-
-  // Mode switch handler
-  const handleModeSwitch = useCallback(() => {
-    setNoClientPause(prev => {
-      const newMode = !prev;
-      window.noStop = newMode;
-      console.log(`🎮 Switching to ${newMode ? 'Server' : 'Client'} Control`);
-      return newMode;
-    });
-  }, []);
-
-  const [initialPlaybackTime, setInitialPlaybackTime] = useState(0);
 
   useEffect(() => {
     // FORRRRRRRRRRR !! unmount!!!
@@ -310,20 +201,42 @@ const handleNoClientPauseToggle = () => {
         lectureInfo.videoId, 
         'basic', 
         sendIntervalSeconds,
-        () => playerRef.current?.getCurrentTime() || 0,
-        noClientPause // Pass the server mode flag
+        () => playerRef.current?.getCurrentTime() || 0
       );
     }
   }, [sendIntervalSeconds, lectureInfo.videoId]);
+
+  // FaceMesh results callback.
+
+  
+  const handleFaceMeshResults = useCallback((results) => {
+    if (!noClientPause && mode === 'question' && questionActiveRef.current) return;
+    
+    // Always update landmarks for server processing
+    updateLatestLandmark(results);
+    
+    // Only process gaze for client-side pausing
+    if (!noClientPause) {
+      let gaze = 'Face not detected';
+      if (results.multiFaceLandmarks?.length > 0) {
+        gaze = estimateGaze(results.multiFaceLandmarks[0]);
+        setFaceMeshStatus('Working');
+      }
+      handleVideoPlayback(gaze);
+    }
+  }, [mode, noClientPause]);
+  
 
   // Use the shared FaceMesh hook.
   useFaceMesh(loaded, webcamRef, handleFaceMeshResults, setFaceMeshStatus);
 
   // Unified gaze handler.
   const handleVideoPlayback = (newGaze) => {
-    if (noClientPause) return; // Early return if in server mode
-    
     const now = Date.now();
+    if (noClientPause) {
+      return;
+    }
+  
     if (newGaze !== immediateGaze.current) {
       immediateGaze.current = newGaze;
       immediateGazeChangeTime.current = now;
@@ -451,22 +364,14 @@ const handleNoClientPauseToggle = () => {
   
     switch (playerState) {
       case 1: // Playing
-        const wasManuallyPaused = userPausedRef.current;
         setIsPlaying(true);
         setPauseStatus('Playing');
         setUserPaused(false);
-        
-        // Reset tracking if it was manually paused
-        if (wasManuallyPaused) {
-          resetTracking();
-        }
-        
         handleVideoResume(
           lectureInfo.videoId, 
           'basic', 
           sendIntervalSeconds,
-          () => playerRef.current?.getCurrentTime() || 0,
-          noClientPause
+          () => playerRef.current?.getCurrentTime() || 0
         );
         break;
       case 2: // Paused

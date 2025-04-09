@@ -44,14 +44,14 @@ export const REQUIRED_FRAMES = 100;  // We always want 100 frames
 
 let landmarkBuffer = [];
 let latestLandmark = null;
+let latestLandmarkTimestamp = null;
 let trackingInterval = null;
 let sendingInterval = null;
 let isVideoPaused = false;
+let needsBufferDeletion = true; // Track if we need to delete buffer
 
 let lastModelResult = null;
 let onModelResultCallback = null;
-
-let isFirstRequest = true;  // Add this at the top with other state variables
 
 export const setModelResultCallback = (callback) => {
   onModelResultCallback = callback;
@@ -59,10 +59,9 @@ export const setModelResultCallback = (callback) => {
 
 export const resetTracking = () => {
   isVideoPaused = true;
-  landmarkBuffer = [];
+  needsBufferDeletion = true;
   clearInterval(trackingInterval);
   clearInterval(sendingInterval);
-  isFirstRequest = true;  // Reset on tracking reset
   console.log('🔄 Tracking reset, buffer cleared, and intervals stopped.');
 };
 
@@ -71,68 +70,57 @@ export const handleVideoPause = () => {
   console.log('🛑 Video paused.');
 };
 
-export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSeconds = 10, getCurrentTime = () => 0, isServerMode = false) => {
+export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSeconds = 10, getCurrentTime = () => 0) => {
   clearInterval(trackingInterval);
   clearInterval(sendingInterval);
 
   isVideoPaused = false;
-  landmarkBuffer = [];
 
-  console.log(`▶️ Video tracking started: ${isServerMode ? 'server mode' : 'client mode'}`);
+  console.log(`▶️ Video tracking started: sending every ${sendIntervalSeconds}s.`);
 
-  // Collect frames at fixed intervals (needed for both modes)
-  trackingInterval = setInterval(() => {
-    if (isVideoPaused || !latestLandmark) return;
+  // Send data at specified intervals
+  sendingInterval = setInterval(async () => {
+    if (!latestLandmark) {
+      console.log('⚠️ No landmarks available to send');
+      return;
+    }
 
-    landmarkBuffer.push({
-      timestamp: Date.now(),
-      landmarks: latestLandmark
-    });
+    const payload = {
+      youtube_id: youtube_id,
+      current_time: getCurrentTime(),
+      extraction: "mediapipe",
+      extraction_payload: {
+        timestamp: latestLandmarkTimestamp,
+        fps: 10,
+        interval: sendIntervalSeconds,
+        number_of_landmarks: 478,
+        landmarks: [[latestLandmark]] // Single frame in double array
+      },
+      model: model,
+      del_buffer: needsBufferDeletion
+    };
 
-    // Keep buffer appropriate for the mode
-    if (landmarkBuffer.length > 1) landmarkBuffer.shift();
-  }, FRAME_INTERVAL);
-
-  // Only setup sending interval if in server mode
-  if (isServerMode) {
-    sendingInterval = setInterval(async () => {
-      if (landmarkBuffer.length === 0) return;
-
-      const frame = landmarkBuffer[0];
-      const payload = {
-        youtube_id: youtube_id,
-        current_time: getCurrentTime(),
-        extraction: "mediapipe",
-        extraction_payload: {
-          timestamp: frame.timestamp,
-          interval: sendIntervalSeconds,
-          fps: TRACKING_FPS,
-          number_of_landmarks: 478,
-          landmarks: [frame.landmarks]
-        },
-        model: model,
-        del_buffer: isFirstRequest
-      };
-
-      try {
-        const response = await axios.post(`${config.baseURL}/watch/log_watch2`, payload, { withCredentials: true });
-        isFirstRequest = false;
-        const modelResult = response.data?.model_result;
-        lastModelResult = modelResult;
-        
-        if (onModelResultCallback) {
-          onModelResultCallback(modelResult);
-        }
-      } catch (error) {
-        console.error('❌ Error sending landmarks:', error);
+    try {
+      const response = await axios.post(`${config.baseURL}/watch/log_watch2`, payload, { withCredentials: true });
+      const modelResult = response.data?.model_result;
+      lastModelResult = modelResult;
+      
+      if (onModelResultCallback) {
+        onModelResultCallback(modelResult);
       }
-    }, sendIntervalSeconds * 1000);
-  }
+      
+      console.log(`✅ Sent landmark frame successfully. Model result:`, modelResult);
+      needsBufferDeletion = false; // Reset after successful send
+    } catch (error) {
+      console.error('❌ Error sending landmarks:', error);
+    }
+  }, sendIntervalSeconds * 1000);
 };
 
 export const updateLatestLandmark = (faceMeshResults) => {
   if (faceMeshResults?.multiFaceLandmarks?.[0]) {
     latestLandmark = faceMeshResults.multiFaceLandmarks[0];
+    latestLandmarkTimestamp = Date.now();
   } else {
     console.warn('⚠️ No landmarks detected.');
   }
