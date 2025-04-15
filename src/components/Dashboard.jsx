@@ -4,12 +4,11 @@ import Navbar from './Navbar';
 import VideoPlayer from './VideoPlayer';
 import EyeDebugger from './EyeDebugger';
 import '../styles/Dashboard.css';
-import { logoutUser } from '../services/api';
 import { initializeDashboardData } from '../services/dashboardService';
 import StackedThumbnails from './StackedThumbnails';
 import Spinner from './Spinner';
 import { useDispatch } from 'react-redux';
-import { setUserData, clearUserData } from '../redux/userSlice';
+import { setUserData } from '../redux/userSlice';
 import { setSelectedPlaylist } from '../redux/playlistSlice';
 
 function Dashboard() {
@@ -80,18 +79,6 @@ function Dashboard() {
       console.log("[DEBUG] Attempting to load video:", selectedVideo.external_id, selectedVideo.subject);
     }
   }, [selectedVideo]);
-
-  const handleLogout = async () => {
-    try {
-      await logoutUser();
-      setUser(null);
-      dispatch(clearUserData());
-      localStorage.removeItem('persist:user');
-      navigate('/'); // redirect to base page
-    } catch (err) {
-      console.error('Logout failed:', err);
-    }
-  };
 
   const handlePlaylistClick = (playlist) => {
     // Store playlist data temporarily in localStorage

@@ -2,15 +2,24 @@ import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/Navbar.css';
 import { logoutUser } from '../services/api';
+import { useDispatch } from 'react-redux';
+import { clearUserData } from '../redux/userSlice';
+import { clearPlaylist } from '../redux/playlistSlice';
+import { persistor } from '../redux/store';
 
 function Navbar() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleLogout = async () => {
     try {
       await logoutUser();
-      setUser(null);
-      navigate('/'); // redirect to base page
+      // Clear data from Redux store
+      dispatch(clearUserData());
+      dispatch(clearPlaylist());
+      // Clear localStorage
+      await persistor.purge();
+
     } catch (err) {
       console.error('Logout failed:', err);
     }

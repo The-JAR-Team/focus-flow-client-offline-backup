@@ -1,6 +1,6 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
-import storage from 'redux-persist/lib/storage'; // Uses localStorage
+import storage from 'redux-persist/lib/storage/session';
 
 import userReducer from './userSlice';
 import playlistReducer from './playlistSlice';

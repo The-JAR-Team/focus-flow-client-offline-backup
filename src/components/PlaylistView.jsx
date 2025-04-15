@@ -7,7 +7,6 @@ import VideoPlayer from './VideoPlayer';
 import { getSubscriberCount } from '../services/subscriptionService';
 import SubscribeModal from './SubscribeModal';
 import UnsubscribeModal from './UnsubscribeModal'; // added import
-import { setSelectedPlaylist } from '../redux/playlistSlice';
 
 function PlaylistView() {
   const navigate = useNavigate();
