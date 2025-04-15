@@ -7,7 +7,7 @@ import VideoPlayer from './VideoPlayer';
 import { getSubscriberCount } from '../services/subscriptionService';
 import SubscribeModal from './SubscribeModal';
 import UnsubscribeModal from './UnsubscribeModal'; // added import
-
+import { setSelectedPlaylist } from '../redux/playlistSlice';
 
 function PlaylistView() {
   const navigate = useNavigate();
@@ -21,7 +21,8 @@ function PlaylistView() {
   const { currentUser } = useSelector((state) => state.user);
 
   const isOwner = playlist?.playlist_owner_id === currentUser?.user_id;
-  console.log('Redux user state:', useSelector((state) => state.user));
+  console.log('Redux playlist state:', useSelector((state) => state.playlist)); // just log for debug
+  console.log('Redux playlist id:', useSelector((state) => state.playlist.playlist.playlist_id)); // just log for debug
 
   React.useEffect(() => {
     // Get playlist data from localStorage (temporarily)
@@ -74,8 +75,14 @@ function PlaylistView() {
           )}
           {isOwner && (
             <>
-              <p>Edit Playlist</p>
-              <button className="edit-button" onClick={() => navigate('/edit-playlist/' + playlist.playlist_id)}>
+              {/* <button className="edit-button" onClick={() => navigate('/edit-playlist/' + playlist.playlist_id, { 
+                state: { playlistData: playlist } 
+              })}>
+                Edit Playlist
+              </button> */}
+              <button className="edit-button" onClick={() =>{
+                navigate('/edit-playlist/' + playlist.playlist_id);
+              }}>
                 Edit Playlist
               </button>
             </>

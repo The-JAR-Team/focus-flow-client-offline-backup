@@ -10,6 +10,7 @@ import StackedThumbnails from './StackedThumbnails';
 import Spinner from './Spinner';
 import { useDispatch } from 'react-redux';
 import { setUserData, clearUserData } from '../redux/userSlice';
+import { setSelectedPlaylist } from '../redux/playlistSlice';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -95,6 +96,7 @@ function Dashboard() {
   const handlePlaylistClick = (playlist) => {
     // Store playlist data temporarily in localStorage
     localStorage.setItem('selectedPlaylist', JSON.stringify(playlist));
+    dispatch(setSelectedPlaylist(playlist));
     navigate(`/playlist/${playlist.playlist_id}`);
   };
 
