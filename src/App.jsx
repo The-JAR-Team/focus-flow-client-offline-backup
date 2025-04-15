@@ -7,6 +7,7 @@ import AddVideo from './components/AddVideo';
 import PlaylistView from './components/PlaylistView';
 import Trivia from './components/Trivia';
 import TriviaVideoPage from './components/TriviaVideoPage';
+import PlaylistManagegment from './components/PlaylistManagegment';
 import './styles/App.css';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
         <Route path="/playlist/:playlistId" element={<PlaylistView />} />
         <Route path="/trivia" element={<Trivia />} />
         <Route path="/trivia/:videoId" element={<TriviaVideoPage />} />
+        <Route path="/edit-playlist/:playlistId" element={<PlaylistManagegment />} />
       </Routes>
     </HashRouter>
   );

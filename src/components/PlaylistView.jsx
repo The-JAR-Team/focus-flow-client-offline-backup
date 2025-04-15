@@ -7,7 +7,6 @@ import { getSubscriberCount } from '../services/subscriptionService';
 import SubscribeModal from './SubscribeModal';
 import UnsubscribeModal from './UnsubscribeModal'; // added import
 
-const BASE_URL = 'https://focus-flow-236589840712.me-west1.run.app';
 
 function PlaylistView() {
   const navigate = useNavigate();
@@ -68,6 +67,10 @@ function PlaylistView() {
               </button>
             </>
           )}
+          <p>Edit Playlist</p>
+          <button className="edit-button" onClick={() => navigate('/edit-playlist/' + playlist.playlist_id)}>
+            Edit Playlist
+          </button>
         </div>
         {!selectedVideo ? (
           <div className="content-grid">
