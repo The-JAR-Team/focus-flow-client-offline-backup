@@ -23,6 +23,10 @@ const AddVideo = () => {
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState(''); // "success" or "error"
 
+  // New states for playlist status message
+  const [playlistStatusMessage, setPlaylistStatusMessage] = useState('');
+  const [playlistStatusType, setPlaylistStatusType] = useState('');
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -145,6 +149,13 @@ const AddVideo = () => {
       setAllPlaylists(prev => [...prev, newPlaylist]);
       setNewPlaylistName('');
       setNewPlaylistPermission('');
+      // Set success message for playlist creation
+      setPlaylistStatusMessage('Playlist created successfully!');
+      setPlaylistStatusType('success');
+      setTimeout(() => {
+        setPlaylistStatusMessage('');
+        setPlaylistStatusType('');
+      }, 3000);
     } catch (error) {
       console.error(error);
     }
@@ -316,6 +327,11 @@ const AddVideo = () => {
                 </p>
               </div>
               <button type="submit" className="submit-btn">Create Playlist</button>
+              {playlistStatusMessage && (
+                <div className={`status-indicator ${playlistStatusType}`}>
+                  {playlistStatusMessage}
+                </div>
+              )}
             </form>
           </div>
         </div>
