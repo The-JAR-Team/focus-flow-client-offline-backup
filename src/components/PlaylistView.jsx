@@ -20,8 +20,6 @@ function PlaylistView() {
   const { currentUser } = useSelector((state) => state.user);
 
   const isOwner = playlist?.playlist_owner_id === currentUser?.user_id;
-  console.log('Redux playlist state:', useSelector((state) => state.playlist)); // just log for debug
-  console.log('Redux playlist id:', useSelector((state) => state.playlist.playlist.playlist_id)); // just log for debug
 
   React.useEffect(() => {
     // Get playlist data from localStorage (temporarily)

@@ -3,8 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const playlistSlice = createSlice({
     name: 'playlist',
     initialState: {
-        playlist: null,
-        allPlaylists: []
+        playlist: null
     },
     reducers: {
         setSelectedPlaylist: (state, action) => {
@@ -12,12 +11,9 @@ const playlistSlice = createSlice({
         },
         clearPlaylist: (state) => {
             state.playlist = null;
-        },
-        setAllPlaylists: (state, action) => {
-            state.allPlaylists = action.payload;
         }
     }
 });
 
-export const { setSelectedPlaylist, clearPlaylist, setAllPlaylists } = playlistSlice.actions;
+export const { setSelectedPlaylist, clearPlaylist } = playlistSlice.actions;
 export default playlistSlice.reducer;
