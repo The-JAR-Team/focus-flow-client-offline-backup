@@ -8,9 +8,12 @@ import { logoutUser } from '../services/api';
 import { initializeDashboardData } from '../services/dashboardService';
 import StackedThumbnails from './StackedThumbnails';
 import Spinner from './Spinner';
+import { useDispatch } from 'react-redux';
+import { setUserData, clearUserData } from '../redux/userSlice';
 
 function Dashboard() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [eyeDebuggerOn, setEyeDebuggerOn] = useState(false);
   const [videos, setVideos] = useState([]);
   const [playlists, setPlaylists] = useState([]);
@@ -54,6 +57,7 @@ function Dashboard() {
         } = await initializeDashboardData();
 
         setUser(userData);
+        dispatch(setUserData(userData));
         setMyGenericVideos(myGenericVideos);
         setOtherGenericVideos(otherGenericVideos);
         setMyPlaylists(myPlaylists);
@@ -80,6 +84,8 @@ function Dashboard() {
     try {
       await logoutUser();
       setUser(null);
+      dispatch(clearUserData());
+      localStorage.removeItem('persist:user');
       navigate('/'); // redirect to base page
     } catch (err) {
       console.error('Logout failed:', err);

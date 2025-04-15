@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { useSelector } from 'react-redux';
 import Navbar from './Navbar';
 import VideoPlayer from './VideoPlayer';
 import { getSubscriberCount } from '../services/subscriptionService';
@@ -17,6 +18,10 @@ function PlaylistView() {
   const [subscriberCount, setSubscriberCount] = React.useState(null); // null indicates not fetched or not authorized
   const [showSubscribeModal, setShowSubscribeModal] = React.useState(false);
   const [showUnsubscribeModal, setShowUnsubscribeModal] = React.useState(false); // added state
+  const { currentUser } = useSelector((state) => state.user);
+
+  const isOwner = playlist?.playlist_owner_id === currentUser?.user_id;
+  console.log('Redux user state:', useSelector((state) => state.user));
 
   React.useEffect(() => {
     // Get playlist data from localStorage (temporarily)
@@ -67,10 +72,14 @@ function PlaylistView() {
               </button>
             </>
           )}
-          <p>Edit Playlist</p>
-          <button className="edit-button" onClick={() => navigate('/edit-playlist/' + playlist.playlist_id)}>
-            Edit Playlist
-          </button>
+          {isOwner && (
+            <>
+              <p>Edit Playlist</p>
+              <button className="edit-button" onClick={() => navigate('/edit-playlist/' + playlist.playlist_id)}>
+                Edit Playlist
+              </button>
+            </>
+          )}
         </div>
         {!selectedVideo ? (
           <div className="content-grid">
