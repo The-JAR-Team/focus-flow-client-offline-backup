@@ -131,6 +131,13 @@
     }
   }
 
+  .form-card {
+    background: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+  }
+
   /* Form grid for side-by-side inputs */
   .form-grid {
     display: grid;
@@ -192,7 +199,7 @@
 
   /* Playlist checkbox container styling */
   .playlist-checkbox-container {
-    max-height: 200px;
+    max-height: 150px;
     overflow-y: auto;
     border: 1px solid #ccc;
     border-radius: 4px;

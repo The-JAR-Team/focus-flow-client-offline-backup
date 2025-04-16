@@ -107,22 +107,17 @@ const AddVideo = () => {
       await uploadVideo(payload);
       // Clear fields after successful upload
       setVideoId('');
+      setExtractedId('');
       setVideoTitle('');
       setSubject('');
       setDescription('');
       setUploadby('');
       setSelectedPlaylists([]);
       setDuration('');
-      setStatusMessage('Video uploaded successfully!');
-      setStatusType('success');
-      setTimeout(() => {
-        setStatusMessage('');
-        setStatusType('');
-      }, 3000);
+      toast.success('Video added successfully!');
     } catch (error) {
       console.error(error);
-      setStatusMessage('Video upload failed!');
-      setStatusType('error');
+      toast.error('Failed to add video. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -183,7 +178,7 @@ const AddVideo = () => {
         
         <div className="form-container">
           {/* Main video form */}
-          <div className="video-card">
+          <div className="form-card">
             <h2 className="section-title">Add a New Video</h2>
             <form onSubmit={handleSubmit} className="add-video-form">
               <label htmlFor="videoId" className="form-label">Video ID</label>
@@ -299,7 +294,7 @@ const AddVideo = () => {
           </div>
 
           {/* Playlist creation sidebar */}
-          <div className="video-card new-playlist-card">
+          <div className="form-card">
             <h3 className="section-title">Create New Playlist</h3>
             <form onSubmit={handleCreatePlaylist}>
               <label htmlFor="newPlaylistName" className="form-label">Playlist Name:</label>

@@ -59,7 +59,7 @@ function PlaylistView() {
         const updatedPlaylist = await getPlaylistById(playlist.playlist_id);
         dispatch(setSelectedPlaylist(updatedPlaylist))
 
-        toast.success('Video removed successfully');
+        toast.success('Video removed successfully!');
       } catch (error) {
         console.error('Failed to remove video:', error);
 
