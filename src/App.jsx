@@ -9,6 +9,8 @@ import Trivia from './components/Trivia';
 import TriviaVideoPage from './components/TriviaVideoPage';
 import EditPlaylist from './components/EditPlaylist';
 import './styles/App.css';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
@@ -23,6 +25,7 @@ function App() {
         <Route path="/trivia/:videoId" element={<TriviaVideoPage />} />
         <Route path="/edit-playlist/:playlistId" element={<EditPlaylist />} />
       </Routes>
+      <ToastContainer position="bottom-right" autoClose={3000} />
     </HashRouter>
   );
 }

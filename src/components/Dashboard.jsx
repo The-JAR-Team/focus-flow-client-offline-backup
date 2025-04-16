@@ -81,8 +81,6 @@ function Dashboard() {
   }, [selectedVideo]);
 
   const handlePlaylistClick = (playlist) => {
-    // Store playlist data temporarily in localStorage
-    localStorage.setItem('selectedPlaylist', JSON.stringify(playlist));
     dispatch(setSelectedPlaylist(playlist));
     navigate(`/playlist/${playlist.playlist_id}`);
   };

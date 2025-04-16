@@ -22,6 +22,7 @@ export default function EditPlaylist() {
         </button> 
           <p>playlist number:</p> {playlistId}
           <p>playlist name:</p> {playlist.playlist_name}
+        <p>playlist:</p> {playlist.playlist}
         </div>
     </div>
   );
