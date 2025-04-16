@@ -106,19 +106,10 @@
     background: linear-gradient(0deg, #28a745 0%, #218838 100%);
     color: white;
   }
-  
-  /* New playlist form styling */
-  .new-playlist-form {
-    margin-top: 20px;
-    padding: 20px;
-    background-color: #e9ecef;
-    border-radius: 8px;
-  }
 
   /* Enhanced form container layout */
   .form-container {
     display: grid;
-    grid-template-columns: 2fr 1fr;
     gap: 2rem;
     max-width: 1400px;
     margin: 0 auto;
@@ -186,17 +177,6 @@
     margin-bottom: 2rem;
   }
 
-  .section-title:after {
-    content: '';
-    position: absolute;
-    bottom: -0.5rem;
-    left: 0;
-    width: 60px;
-    height: 4px;
-    background: #28a745;
-    border-radius: 2px;
-  }
-
   /* Playlist checkbox container styling */
   .playlist-checkbox-container {
     max-height: 150px;
@@ -254,46 +234,6 @@
     width: 16px;
     height: 16px;
     accent-color: #28a745;
-  }
-
-  /* Permission toggle styling */
-  .permission-toggle-container {
-    margin: 20px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .permission-toggle {
-    padding: 10px 20px;
-    border-radius: 20px;
-    border: 2px solid #28a745;
-    background-color: white;
-    color: #28a745;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    min-width: 120px;
-  }
-
-  .permission-toggle.active {
-    background-color: #28a745;
-    color: white;
-  }
-
-  .permission-toggle:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
-  }
-
-  .permission-description {
-    font-size: 0.9rem;
-    color: #666;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 4px;
   }
 
   .extracted-id {

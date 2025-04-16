@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import YouTube from 'react-youtube';
 import Navbar from './Navbar';
 import '../styles/AddVideo.css';
-import { uploadVideo, createPlaylist, getPlaylists, extractVideoId } from '../services/addVideo';
+import { uploadVideo, getPlaylists, extractVideoId } from '../services/addVideo';
 import { toast } from 'react-toastify';
 
 const AddVideo = () => {
@@ -13,8 +13,6 @@ const AddVideo = () => {
   const [uploadby, setUploadby] = useState('');
   const [allPlaylists, setAllPlaylists] = useState([]);
   const [selectedPlaylists, setSelectedPlaylists] = useState([]);
-  const [newPlaylistName, setNewPlaylistName] = useState('');
-  const [newPlaylistPermission, setNewPlaylistPermission] = useState('unlisted');
   const [duration, setDuration] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [extractedId, setExtractedId] = useState('');
@@ -23,11 +21,6 @@ const AddVideo = () => {
   // New states for loading and status message
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [statusType, setStatusType] = useState(''); // "success" or "error"
-
-  // New states for playlist status message
-  const [playlistStatusMessage, setPlaylistStatusMessage] = useState('');
-  const [playlistStatusType, setPlaylistStatusType] = useState('');
 
   const navigate = useNavigate();
 
@@ -125,35 +118,6 @@ const AddVideo = () => {
     }
   };
 
-  const handleCreatePlaylist = async (e) => {
-    e.preventDefault();
-    const payload = {
-      playlist_name: newPlaylistName,
-      ...(newPlaylistPermission && { playlist_permission: newPlaylistPermission })
-    };
-
-    try {
-      const res = await createPlaylist(payload);
-      const newPlaylistData = res.newPlaylist || res; // handle different response formats
-      // Ensure newPlaylist has both playlist_id and playlist_name properties,
-      // forcing playlist_name to use newPlaylistData.playlist_name || newPlaylistData.name || newPlaylistName
-      const newPlaylist = {
-        ...newPlaylistData,
-        playlist_id: newPlaylistData.playlist_id || newPlaylistData.id || newPlaylistData.playlist_name || newPlaylistName,
-        playlist_name: newPlaylistData.playlist_name || newPlaylistData.name || newPlaylistName
-      };
-      // Refresh playlists list
-      setAllPlaylists(prev => [...prev, newPlaylist]);
-      setNewPlaylistName('');
-      setNewPlaylistPermission('');
-      // Set success message for playlist creation
-      toast.success('Playlist created successfully!');
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to create playlist. Please try again.');
-    }
-  };
-
   const handlePlaylistSelect = (e) => {
     const playlistName = e.target.value;
     if (e.target.checked) {
@@ -177,7 +141,7 @@ const AddVideo = () => {
         <div className="form-container">
           {/* Main video form */}
           <div className="form-card">
-            <h2 className="section-title">Add a New Video</h2>
+            <h2>Add a New Video</h2>
             <form onSubmit={handleSubmit} className="add-video-form">
               <label htmlFor="videoId" className="form-label">Video ID</label>
               <input
@@ -303,43 +267,6 @@ const AddVideo = () => {
               { (loading || statusMessage) && (
                 <div className={`status-indicator ${statusType}`}>
                   {loading ? <span>Loading...</span> : <span>{statusMessage}</span>}
-                </div>
-              )}
-            </form>
-          </div>
-
-          {/* Playlist creation sidebar */}
-          <div className="form-card">
-            <h3 className="section-title">Create New Playlist</h3>
-            <form onSubmit={handleCreatePlaylist}>
-              <label htmlFor="newPlaylistName" className="form-label">Playlist Name:</label>
-              <input
-                type="text"
-                id="newPlaylistName"
-                className="form-input"
-                value={newPlaylistName}
-                onChange={(e) => setNewPlaylistName(e.target.value)}
-                placeholder="My Favorite Songs"
-                required
-              />
-              <div className="permission-toggle-container">
-                <button
-                  type="button"
-                  className={`permission-toggle ${newPlaylistPermission === 'public' ? 'active' : ''}`}
-                  onClick={() => setNewPlaylistPermission(prev => prev === 'public' ? 'unlisted' : 'public')}
-                >
-                  {newPlaylistPermission === 'public' ? 'Public' : 'Unlisted'}
-                </button>
-                <p className="permission-description">
-                  {newPlaylistPermission === 'public' 
-                    ? '👥 Everyone can see this playlist' 
-                    : '🔒 Only people with the link can see this playlist'}
-                </p>
-              </div>
-              <button type="submit" className="submit-btn">Create Playlist</button>
-              {playlistStatusMessage && (
-                <div className={`status-indicator ${playlistStatusType}`}>
-                  {playlistStatusMessage}
                 </div>
               )}
             </form>

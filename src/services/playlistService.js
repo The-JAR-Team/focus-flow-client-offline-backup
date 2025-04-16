@@ -2,6 +2,23 @@ import axios from 'axios';
 import { config } from '../config/config';
 import { fetchVideoMetadata } from './videos';
 
+// Expected create playlist body:
+// {
+//   "playlist_name": "My Favorite Songs",
+//   "playlist_permission": "unlisted" // optional
+// }
+export async function createPlaylist(playlistData) {
+    try {
+        const response = await axios.post(`${config.baseURL}/playlists`, playlistData, {
+            headers: { 'Content-Type': 'application/json' },
+            withCredentials: true
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
+
 // Remove video from playlist
 export async function removeVideoFromPlaylist(videoData) {
     try {

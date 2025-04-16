@@ -8,6 +8,7 @@ import PlaylistView from './components/PlaylistView';
 import Trivia from './components/Trivia';
 import TriviaVideoPage from './components/TriviaVideoPage';
 import EditPlaylist from './components/EditPlaylist';
+import CreatePlaylist from './components/CreatePlaylist';
 import './styles/App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -20,6 +21,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/add-video" element={<AddVideo />} />
+        <Route path="/create-playlist" element={<CreatePlaylist />} />
         <Route path="/playlist/:playlistId" element={<PlaylistView />} />
         <Route path="/trivia" element={<Trivia />} />
         <Route path="/trivia/:videoId" element={<TriviaVideoPage />} />

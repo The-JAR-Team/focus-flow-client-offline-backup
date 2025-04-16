@@ -23,23 +23,6 @@ export async function uploadVideo(videoData) {
   }
 }
 
-// Expected create playlist body:
-// {
-//   "playlist_name": "My Favorite Songs",
-//   "playlist_permission": "unlisted" // optional
-// }
-export async function createPlaylist(playlistData) {
-  try {
-    const response = await axios.post(`${config.baseURL}/playlists`, playlistData, {
-      headers: { 'Content-Type': 'application/json' },
-      withCredentials: true
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-}
-
 export async function getPlaylists() {
   try {
     const response = await axios.get(`${config.baseURL}/playlists`, {
