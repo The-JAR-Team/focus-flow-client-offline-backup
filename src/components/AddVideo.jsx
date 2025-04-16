@@ -18,6 +18,7 @@ const AddVideo = () => {
   const [duration, setDuration] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [extractedId, setExtractedId] = useState('');
+  const [playlistSearchTerm, setPlaylistSearchTerm] = useState('');
   
   // New states for loading and status message
   const [loading, setLoading] = useState(false);
@@ -261,9 +262,19 @@ const AddVideo = () => {
               />
 
               <label htmlFor="playlists" className="form-label">Add to Playlists</label>
+              <input
+                type="text"
+                className="form-input playlist-search"
+                placeholder="Search playlists..."
+                value={playlistSearchTerm}
+                onChange={(e) => setPlaylistSearchTerm(e.target.value)}
+              />
               <div className="playlist-checkbox-container">
                 {allPlaylists
-                  .filter(playlist => playlist.playlist_name.toLowerCase() !== 'generic')
+                  .filter(playlist => 
+                    playlist.playlist_name.toLowerCase() !== 'generic' &&
+                    playlist.playlist_name.toLowerCase().includes(playlistSearchTerm.toLowerCase())
+                  )
                   .map((playlist) => (
                     <label key={playlist.playlist_id} className="playlist-checkbox-label">
                       <input
@@ -277,6 +288,13 @@ const AddVideo = () => {
                     </label>
                   ))
                 }
+                {/* Show message when no playlists match */}
+                {allPlaylists.filter(p =>
+                  p.playlist_name.toLowerCase() !== 'generic' &&
+                  p.playlist_name.toLowerCase().includes(playlistSearchTerm.toLowerCase())
+                ).length === 0 && playlistSearchTerm && (
+                    <div className="no-playlists-found">No playlists match your search</div>
+                  )}
               </div>
 
               <button type="submit" className="submit-btn">

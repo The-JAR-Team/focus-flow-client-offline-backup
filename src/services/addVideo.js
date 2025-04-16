@@ -1,8 +1,6 @@
 import axios from 'axios';
 import { config } from '../config/config';
 
-const baseUrl = 'https://focus-flow-236589840712.me-west1.run.app';
-
 // Expected video upload body:
 // {
 //   "video_id": "OJu7kIFXzxg",

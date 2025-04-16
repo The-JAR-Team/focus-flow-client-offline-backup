@@ -203,10 +203,19 @@
     overflow-y: auto;
     border: 1px solid #ccc;
     border-radius: 4px;
-    padding: 8px;
-    margin-bottom: 20px;
+    padding: 5px;
+    margin-bottom: 15px;
     background-color: #fff;
   }
+
+    .playlist-search {
+      margin-bottom: 10px;
+    }
+  
+    .no-playlists-found {
+      color: #666;
+      padding: 8px;
+    }
 
   .playlist-checkbox-container::-webkit-scrollbar {
     width: 8px;
