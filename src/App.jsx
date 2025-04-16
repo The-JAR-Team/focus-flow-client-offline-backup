@@ -25,7 +25,7 @@ function App() {
         <Route path="/trivia/:videoId" element={<TriviaVideoPage />} />
         <Route path="/edit-playlist/:playlistId" element={<EditPlaylist />} />
       </Routes>
-      <ToastContainer position="bottom-right" autoClose={3000} />
+      <ToastContainer position="bottom-right" autoClose={2000} />
     </HashRouter>
   );
 }

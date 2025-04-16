@@ -8,7 +8,7 @@ import SubscribeModal from './SubscribeModal';
 import UnsubscribeModal from './UnsubscribeModal'; // added import
 import { removeVideoFromPlaylist, getPlaylistById } from '../services/playlistService';
 import { useDispatch } from 'react-redux';
-import { setSelectedPlaylist } from '../redux/playlistSlice';
+import { setSelectedPlaylist, clearPlaylist } from '../redux/playlistSlice';
 import { toast } from 'react-toastify';
 
 function PlaylistView() {
@@ -16,7 +16,6 @@ function PlaylistView() {
   const dispatch = useDispatch();
   const { playlistId } = useParams();
   const [selectedVideo, setSelectedVideo] = React.useState(null);
-  // const [playlist, setPlaylist] = React.useState(null);
   const [mode, setMode] = React.useState(() => localStorage.getItem('mode') || 'pause');
   const [subscriberCount, setSubscriberCount] = React.useState(null); // null indicates not fetched or not authorized
   const [showSubscribeModal, setShowSubscribeModal] = React.useState(false);
@@ -25,12 +24,6 @@ function PlaylistView() {
   const { currentUser } = useSelector((state) => state.user);
   const { playlist } = useSelector(state => state.playlist);
   const isOwner = playlist?.playlist_owner_id === currentUser?.user_id;
-
-  // React.useEffect(() => {
-  //   // Get playlist data from localStorage (temporarily)
-  //   const playlistData = JSON.parse(localStorage.getItem('selectedPlaylist'));
-  //   setPlaylist(playlistData);
-  // }, [playlistId]);
 
   React.useEffect(() => {
     // Write mode to localStorage under key 'mode'
@@ -56,13 +49,15 @@ function PlaylistView() {
     if (window.confirm(`Are you sure you want to remove "${video.video_name}" from this playlist?`)) {
       try {
         await removeVideoFromPlaylist(video);
-        const updatedPlaylist = await getPlaylistById(playlist.playlist_id);
-        toast.success('Video removed successfully!');
-        if (updatedPlaylist.playlist_items.length === 0) {
+        if (playlist.playlist_items.length === 1) {
+          dispatch(clearPlaylist());
           navigate('/dashboard'); // Redirect to dashboard if no videos left
         }
-        dispatch(setSelectedPlaylist(updatedPlaylist))
-
+        else {
+          const updatedPlaylist = await getPlaylistById(playlist.playlist_id);
+          dispatch(setSelectedPlaylist(updatedPlaylist))
+        }
+        toast.success('Video removed successfully!');
       } catch (error) {
         console.error('Failed to remove video:', error);
 
