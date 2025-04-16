@@ -145,14 +145,10 @@ const AddVideo = () => {
       setNewPlaylistName('');
       setNewPlaylistPermission('');
       // Set success message for playlist creation
-      setPlaylistStatusMessage('Playlist created successfully!');
-      setPlaylistStatusType('success');
-      setTimeout(() => {
-        setPlaylistStatusMessage('');
-        setPlaylistStatusType('');
-      }, 3000);
+      toast.success('Playlist created successfully!');
     } catch (error) {
       console.error(error);
+      toast.error('Failed to create playlist. Please try again.');
     }
   };
 
