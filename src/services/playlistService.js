@@ -5,7 +5,6 @@ import { fetchVideoMetadata } from './videos';
 // Remove video from playlist
 export async function removeVideoFromPlaylist(videoData) {
     try {
-        // Make API call to remove video
         const response = await axios.post(`${config.baseURL}/videos/remove_from_playlist`, videoData, {
             headers: { 'Content-Type': 'application/json' },
             withCredentials: true
@@ -29,3 +28,17 @@ export async function getPlaylistById(playlistId) {
         throw error;
     }
 };
+
+// Update Playlist Permission
+export async function updatePlaylistPermission(playlistId, permission) {
+    try {
+        const response = await axios.put(`${config.baseURL}/playlists/${playlistId}/permission`, permission , {
+            headers: { 'Content-Type': 'application/json' },
+            withCredentials: true
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Failed to update playlist permission:', error);
+        throw error;
+    }
+}

@@ -57,9 +57,12 @@ function PlaylistView() {
       try {
         await removeVideoFromPlaylist(video);
         const updatedPlaylist = await getPlaylistById(playlist.playlist_id);
+        toast.success('Video removed successfully!');
+        if (updatedPlaylist.playlist_items.length === 0) {
+          navigate('/dashboard'); // Redirect to dashboard if no videos left
+        }
         dispatch(setSelectedPlaylist(updatedPlaylist))
 
-        toast.success('Video removed successfully!');
       } catch (error) {
         console.error('Failed to remove video:', error);
 
