@@ -33,7 +33,7 @@ export default function CreatePlaylist() {
   return (
     <div className="dashboard-container">
       <Navbar />
-      <div className="form-container">
+      <div className="new-playlist-container">
         {/* Playlist creation sidebar */}
         <div className="form-card new-playlist-form">
           <h2 className="section-title">Create New Playlist</h2>

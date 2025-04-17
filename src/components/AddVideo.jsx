@@ -58,7 +58,8 @@ const AddVideo = () => {
     
     // Get channel title (uploader)
     setUploadby(videoData.author);
-    console.log(videoData)
+    console.log(videoData);
+    
 
     // Get video description
     const player = event.target;
@@ -131,146 +132,147 @@ const AddVideo = () => {
     <div className="dashboard-container">
       <Navbar />
       <div className="dashboard-content">
-        <button 
-          className="back-button"
-          onClick={() => navigate('/dashboard')}
-        >
-          ← Back to Lectures
-        </button>
-        
-        <div className="form-container">
-          {/* Main video form */}
-          <div className="form-card">
-            <h2>Add a New Video</h2>
-            <form onSubmit={handleSubmit} className="add-video-form">
-              <label htmlFor="videoId" className="form-label">Video ID</label>
-              <input
-                type="text"
-                id="videoId"
-                className="form-input"
-                value={videoId}
-                onChange={handleVideoInput}
-                placeholder="Enter YouTube video ID or URL"
-                required
-              />
-              
-              {videoId && (
-                <div className="extracted-id">
-                  {extractedId ? (
-                    <span className="valid-id">Valid Video ID: {extractedId}</span>
-                  ) : (
-                    <span className="invalid-id">Invalid YouTube video ID/URL</span>
-                  )}
-                </div>
-              )}
+        <div className="form-card">
+          <h2 className="main-title">Add a New Video</h2>
+          
+          <form onSubmit={handleSubmit} className="add-video-form">
+            <div className="form-container">
+              {/* Left side - Video details */}
+              <div className="form-section">
+                <label htmlFor="videoId" className="form-label">Video ID</label>
+                <input
+                  type="text"
+                  id="videoId"
+                  className="form-input"
+                  value={videoId}
+                  onChange={handleVideoInput}
+                  placeholder="Enter YouTube video ID or URL"
+                  required
+                />
+                
+                {videoId && (
+                  <div className="extracted-id">
+                    {extractedId ? (
+                      <span className="valid-id">Valid Video ID: {extractedId}</span>
+                    ) : (
+                      <span className="invalid-id">Invalid YouTube video ID/URL</span>
+                    )}
+                  </div>
+                )}
 
-              {extractedId && (
-                <div className="video-preview">
-                  <YouTube 
-                    videoId={extractedId} 
-                    opts={{
-                      width: '100%',
-                      height: '400',
-                      playerVars: {
-                        controls: 1,
-                      },
-                    }}
-                    onReady={handleReady}
-                  />
-                  {duration && (
-                    <div>
-                      <div className="video-duration">Duration: {duration}</div>
-                      <div className="video-title">Title: {videoTitle}</div>
-                    </div>
-                  )}
-                </div>
-              )}
+                {extractedId && (
+                  <div className="video-preview">
+                    <YouTube 
+                      videoId={extractedId} 
+                      opts={{
+                        width: '100%',
+                        height: '300',
+                        playerVars: {
+                          controls: 1,
+                        },
+                      }}
+                      onReady={handleReady}
+                    />
+                    {duration && (
+                      <div>
+                        <div className="video-duration">Duration: {duration}</div>
+                        <div className="video-title">Title: {videoTitle}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              <div className="form-grid">
-                <div>
-                  <label htmlFor="subject" className="form-label">Subject</label>
-                  <input 
-                    type="text" 
-                    id="subject" 
-                    className="form-input" 
-                    value={subject} 
-                    onChange={(e) => setSubject(e.target.value)}
-                    placeholder="e.g., Mathematics" 
-                    required
-                  />
+                <div className="form-grid">
+                  <div>
+                    <label htmlFor="subject" className="form-label">Subject</label>
+                    <input 
+                      type="text" 
+                      id="subject" 
+                      className="form-input" 
+                      value={subject} 
+                      onChange={(e) => setSubject(e.target.value)}
+                      placeholder="e.g., Mathematics" 
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="uploadby" className="form-label">Upload-by</label>
+                    <input
+                      type="text"
+                      id="uploadby"
+                      className="form-input"
+                      value={uploadby}
+                      onChange={(e) => setUploadby(e.target.value)}
+                      placeholder="e.g., Prof. Smith"
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label htmlFor="uploadby" className="form-label">Upload-by</label>
-                  <input
-                    type="text"
-                    id="uploadby"
-                    className="form-input"
-                    value={uploadby}
-                    onChange={(e) => setUploadby(e.target.value)}
-                    placeholder="e.g., Prof. Smith"
-                    required
-                  />
-                </div>
+                <label htmlFor="description" className="form-label">Video Description</label>
+                <textarea
+                  id="description"
+                  className="form-input"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter video description..."
+                  rows="4"
+                  required
+                />
               </div>
-
-              <label htmlFor="description" className="form-label">Description</label>
-              <textarea
-                id="description"
-                className="form-input"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter video description..."
-                rows="4"
-                required
-              />
-
-              <label htmlFor="playlists" className="form-label">Add to Playlists</label>
-              <input
-                type="text"
-                className="form-input playlist-search"
-                placeholder="Search playlists..."
-                value={playlistSearchTerm}
-                onChange={(e) => setPlaylistSearchTerm(e.target.value)}
-              />
-              <div className="playlist-checkbox-container">
-                {allPlaylists
-                  .filter(playlist => 
-                    playlist.playlist_name.toLowerCase() !== 'generic' &&
-                    playlist.playlist_name.toLowerCase().includes(playlistSearchTerm.toLowerCase())
-                  )
-                  .map((playlist) => (
-                    <label key={playlist.playlist_id} className="playlist-checkbox-label">
-                      <input
-                        type="checkbox"
-                        value={playlist.playlist_name}
-                        checked={selectedPlaylists.includes(playlist.playlist_name)}
-                        onChange={handlePlaylistSelect}
-                        className="playlist-checkbox"
-                      />
-                      {playlist.playlist_name}
-                    </label>
-                  ))
-                }
-                {/* Show message when no playlists match */}
-                {allPlaylists.filter(p =>
-                  p.playlist_name.toLowerCase() !== 'generic' &&
-                  p.playlist_name.toLowerCase().includes(playlistSearchTerm.toLowerCase())
-                ).length === 0 && playlistSearchTerm && (
+              
+              {/* Right side - Playlist selection */}
+              <div className="form-section">
+                <label htmlFor="playlists" className="form-label">Add to Playlists</label>
+                <input
+                  type="text"
+                  className="form-input playlist-search"
+                  placeholder="Search playlists..."
+                  value={playlistSearchTerm}
+                  onChange={(e) => setPlaylistSearchTerm(e.target.value)}
+                />
+                <div className="playlist-checkbox-container">
+                  {allPlaylists
+                    .filter(playlist =>
+                      playlist.playlist_name.toLowerCase() !== 'generic' &&
+                      playlist.playlist_name.toLowerCase().includes(playlistSearchTerm.toLowerCase())
+                    )
+                    .map((playlist) => (
+                      <label key={playlist.playlist_id} className="playlist-checkbox-label">
+                        <input
+                          type="checkbox"
+                          value={playlist.playlist_name}
+                          checked={selectedPlaylists.includes(playlist.playlist_name)}
+                          onChange={handlePlaylistSelect}
+                          className="playlist-checkbox"
+                        />
+                        {playlist.playlist_name}
+                      </label>
+                    ))
+                  }
+                  {allPlaylists.filter(p =>
+                    p.playlist_name.toLowerCase() !== 'generic' &&
+                    p.playlist_name.toLowerCase().includes(playlistSearchTerm.toLowerCase())
+                  ).length === 0 && playlistSearchTerm && (
                     <div className="no-playlists-found">No playlists match your search</div>
                   )}
+                </div>
               </div>
-
+            </div>
+            
+            {/* Centered submit button */}
+            <div className="submit-container">
               <button type="submit" className="submit-btn">
                 {loading ? 'Uploading...' : 'Add Video'}
               </button>
-              { (loading || statusMessage) && (
+              {(loading || statusMessage) && (
                 <div className={`status-indicator ${statusType}`}>
                   {loading ? <span>Loading...</span> : <span>{statusMessage}</span>}
                 </div>
               )}
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
       </div>
     </div>

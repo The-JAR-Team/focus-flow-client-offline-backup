@@ -7,7 +7,7 @@
   
   /* Form styling */
   .add-video-form {
-    max-width: 400px;    /* Smaller width for the form */
+    /* max-width: 400px;     *//* Smaller width for the form */
     margin: 0 auto;      /* Centers the form within the container */
     background-color: #f4f4f4;
     padding: 20px;
@@ -41,6 +41,7 @@
   }
 
   textarea.form-input {
+    font-family: inherit;
     min-height: 120px;
     resize: vertical;
   }
@@ -110,7 +111,8 @@
   /* Enhanced form container layout */
   .form-container {
     display: grid;
-    gap: 2rem;
+    grid-template-columns: 3fr 2fr;
+    gap: 3rem;
     max-width: 1400px;
     margin: 0 auto;
     padding: 0 1rem;
@@ -176,10 +178,16 @@
     position: relative;
     margin-bottom: 2rem;
   }
+  
+  .form-section {
+  padding: 1.5rem;
+  background-color: #fafafa;
+  border-radius: 8px;
+}
 
   /* Playlist checkbox container styling */
   .playlist-checkbox-container {
-    max-height: 150px;
+    height: 300px;
     overflow-y: auto;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -189,7 +197,7 @@
   }
 
     .playlist-search {
-      margin-bottom: 10px;
+      margin-bottom: 05px;
     }
   
     .no-playlists-found {
