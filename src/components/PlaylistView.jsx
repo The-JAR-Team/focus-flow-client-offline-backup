@@ -6,7 +6,7 @@ import VideoPlayer from './VideoPlayer';
 import { getSubscriberCount } from '../services/subscriptionService';
 import SubscribeModal from './SubscribeModal';
 import UnsubscribeModal from './UnsubscribeModal'; // added import
-import { removeVideoFromPlaylist, getPlaylistById } from '../services/playlistService';
+import { removeVideoFromPlaylist, getPlaylistById, updatePlaylist } from '../services/playlistService';
 import { useDispatch } from 'react-redux';
 import { setSelectedPlaylist, clearPlaylist } from '../redux/playlistSlice';
 import { toast } from 'react-toastify';
@@ -24,6 +24,10 @@ function PlaylistView() {
   const { currentUser } = useSelector((state) => state.user);
   const { playlist } = useSelector(state => state.playlist);
   const isOwner = playlist?.playlist_owner_id === currentUser?.user_id;
+  const [isEditingName, setIsEditingName] = React.useState(false);
+  const [isEditingPermission, setIsEditingPermission] = React.useState(false);
+  const [editedName, setEditedName] = React.useState(playlist.playlist_name);
+  const [editedPermission, setEditedPermission] = React.useState(playlist.playlist_permission);
 
   React.useEffect(() => {
     // Write mode to localStorage under key 'mode'
@@ -66,6 +70,28 @@ function PlaylistView() {
     }
   };
 
+  const savePlaylistChanges = async () => {
+    try {
+      await updatePlaylist(playlist.playlist_id, {
+        playlist_name: editedName,
+        playlist_permission: editedPermission
+      });
+
+      // Update local state
+      const updatedPlaylist = await getPlaylistById(playlist.playlist_id);
+      dispatch(setSelectedPlaylist(updatedPlaylist));
+
+      // Exit edit mode
+      setIsEditingName(false);
+      setIsEditingPermission(false);
+
+      toast.success('Playlist updated successfully!');
+    } catch (error) {
+      toast.error('Failed to update playlist.');
+      console.error(error);
+    }
+  };
+
   return (
     <div className="dashboard-container">
       <Navbar />
@@ -73,7 +99,36 @@ function PlaylistView() {
         <button className="back-button" onClick={() => navigate('/dashboard')}>
           ← Back to Dashboard
         </button>
-        <h2>{playlist.playlist_name}</h2>
+        
+        {/* Playlist name with inline editing */}
+        <div className="playlist-title-container">
+          {isEditingName ? (
+            <>
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                autoFocus
+              />
+              <button onClick={savePlaylistChanges}>Save</button>
+              <button onClick={() => setIsEditingName(false)}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <h2>{playlist.playlist_name}</h2>
+              {isOwner && (
+                <button
+                  className="edit-icon"
+                  onClick={() => setIsEditingName(true)}
+                  title="Edit playlist name"
+                >
+                  ✏️
+                </button>
+              )}
+            </>
+          )}
+        </div>
+
         <div className="playlist-header">
           <p>Owner: {playlist.playlist_owner_name}</p>
           <p>Permission: {playlist.playlist_permission}</p>
