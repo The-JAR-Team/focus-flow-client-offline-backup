@@ -1,8 +1,6 @@
 import { fetchVideoMetadata } from './videos';
-import { fetchUserInfo } from './api';
 
-export const initializeDashboardData = async () => {
-  const userData = await fetchUserInfo();
+export const initializeDashboardData = async (userData) => {
   const data = await fetchVideoMetadata();
   
   if (!data?.playlists) {
@@ -45,7 +43,6 @@ export const initializeDashboardData = async () => {
   const otherRegularPlaylists = otherPlaylists.filter(p => p.playlist_owner_id !== userData.user_id);
 
   return {
-    userData,
     myGenericVideos: myVideos,
     otherGenericVideos: otherVideos,
     myPlaylists,

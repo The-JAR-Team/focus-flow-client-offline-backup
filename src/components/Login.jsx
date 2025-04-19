@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { loginUser } from '../services/api';
+import { loginUser, fetchUserInfo } from '../services/api';
 import '../styles/Login.css';
 import { useDispatch } from 'react-redux';
 import { initializeDashboardData } from '../services/dashboardService';
@@ -26,10 +26,11 @@ function Login() {
       if (response.status === "success") {
         
         // After successful login, load dashboard data
-        const dashboardData = await initializeDashboardData();
+        const userData = await fetchUserInfo();
+        const dashboardData = await initializeDashboardData(userData);
 
         // Update Redux store
-        dispatch(setUserData(dashboardData.userData));
+        dispatch(setUserData(userData));
         dispatch(setDashboardData({
           myGenericVideos: dashboardData.myGenericVideos,
           otherGenericVideos: dashboardData.otherGenericVideos,

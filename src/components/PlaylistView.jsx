@@ -7,6 +7,7 @@ import { getSubscriberCount } from '../services/subscriptionService';
 import SubscribeModal from './SubscribeModal';
 import UnsubscribeModal from './UnsubscribeModal'; // added import
 import { removeVideoFromPlaylist, getPlaylistById, updatePlaylist } from '../services/playlistService';
+import { removeVideo, updatePlaylistData } from '../redux/dashboardSlice';
 import { useDispatch } from 'react-redux';
 import { setSelectedPlaylist, clearPlaylist } from '../redux/playlistSlice';
 import { toast } from 'react-toastify';
@@ -29,6 +30,8 @@ function PlaylistView() {
   const [editedName, setEditedName] = React.useState(playlist.playlist_name);
   const [editedPermission, setEditedPermission] = React.useState(playlist.playlist_permission);
 
+  const { myPlaylists } = useSelector((state) => state.dashboard);
+
   React.useEffect(() => {
     // Write mode to localStorage under key 'mode'
     localStorage.setItem('mode', mode);
@@ -45,26 +48,44 @@ function PlaylistView() {
           setSubscriberCount(null);
         });
     }
-  }, [playlist]);
+  }, [playlist?.playlist_id]); // fetch only if we didn't delete all videos from playlist
 
   if (!playlist) return <div>Loading...</div>;
 
+  // delete video from My Playlist (owner's) 
   const handleDeleteVideo = async (video) => {
     if (window.confirm(`Are you sure you want to remove "${video.video_name}" from this playlist?`)) {
       try {
+        console.log('video',video);
         await removeVideoFromPlaylist(video);
+        console.log('playlist',playlist);
+        dispatch(removeVideo(playlist.playlist_name, video.playlist_item_id)); // Update Redux store
+
+        
+        console.log('myPlaylists:', myPlaylists);
+        const playlistIndex = myPlaylists.findIndex(p => p.playlist_name === playlist.playlist_name);
+        const intermid = myPlaylists[playlistIndex].playlist_items.filter(item => item.playlist_item_id !== video.playlist_item_id)
+        console.log('intermid:',intermid);
+
+        console.log(playlist);
         if (playlist.playlist_items.length === 1) {
-          dispatch(clearPlaylist());
+          console.log('playlist is empty');
+          // TODO: bug "TypeError: playlist is null"
           navigate('/dashboard'); // Redirect to dashboard if no videos left
+          dispatch(clearPlaylist());
         }
         else {
-          const updatedPlaylist = await getPlaylistById(playlist.playlist_id);
+          // const updatedPlaylist = await getPlaylistById(playlist.playlist_id);
+          const updatedPlaylist = myPlaylists[playlistIndex];
           dispatch(setSelectedPlaylist(updatedPlaylist))
+          console.log('playlist updated');
         }
         toast.success('Video removed successfully!');
       } catch (error) {
-        console.error('Failed to remove video:', error.response.data.reason);
-        toast.error(`Failed to remove video. ${error.response.data.reason}.`);
+        console.error('Failed to remove video:', error);
+        toast.error(`Failed to remove video. ${error}.`); 
+        // console.error('Failed to remove video:', error.response.data.reason);
+        // toast.error(`Failed to remove video. ${error.response.data.reason}.`);
       }
     }
   };

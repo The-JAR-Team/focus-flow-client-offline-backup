@@ -20,9 +20,7 @@ export default function CreatePlaylist() {
 
       try {
           const res = await createPlaylist(payload);
-          const newPlaylistData = res.newPlaylist || res; // handle different response formats
           setNewPlaylistName(''); // Clear the input field after successful creation
-          // TODO: add to dispatch
           toast.success('Playlist created successfully!');
       } catch (error) {
         console.error(error.response.data.reason);

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import YouTube from 'react-youtube';
 import Navbar from './Navbar';
 import '../styles/AddVideo.css';
 import { uploadVideo, getPlaylists, extractVideoId } from '../services/addVideo';
 import { toast } from 'react-toastify';
+import { useDispatch, useSelector } from 'react-redux';
+import { initializeDashboardData } from '../services/dashboardService';
+import { setDashboardData } from '../redux/dashboardSlice';
 
 const AddVideo = () => {
+  const dispatch = useDispatch();
   const [videoId, setVideoId] = useState('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
@@ -17,6 +20,7 @@ const AddVideo = () => {
   const [videoTitle, setVideoTitle] = useState('');
   const [extractedId, setExtractedId] = useState('');
   const [playlistSearchTerm, setPlaylistSearchTerm] = useState('');
+  const { currentUser } = useSelector((state) => state.user);
   
   // New states for loading and status message
   const [loading, setLoading] = useState(false);
@@ -55,7 +59,7 @@ const AddVideo = () => {
     
     // Get channel title (uploader)
     setUploadby(videoData.author);
-    // console.log(videoData);
+    console.log(videoData);
     
 
     // Get video description
@@ -82,7 +86,7 @@ const AddVideo = () => {
     window.addEventListener('message', handleMessage);
   };
 
-  const handleSubmit = async (e) => {
+  const handleAddVideo = async (e) => {
     e.preventDefault();
     setLoading(true);
     const payload = {
@@ -97,15 +101,11 @@ const AddVideo = () => {
 
     try {
       await uploadVideo(payload);
-      // Clear fields after successful upload
-      setVideoId('');
-      setExtractedId('');
-      setVideoTitle('');
-      setSubject('');
-      setDescription('');
-      setUploadby('');
-      setSelectedPlaylists([]);
-      setDuration('');
+      clearFields();
+      
+      const refreshedData = await initializeDashboardData(currentUser);
+      dispatch(setDashboardData(refreshedData));
+
       toast.success('Video added successfully!');
     } catch (error) {
       console.error(error);
@@ -113,6 +113,18 @@ const AddVideo = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Clear fields after successful upload
+  const clearFields = () => {
+    setVideoId('');
+    setExtractedId('');
+    setVideoTitle('');
+    setSubject('');
+    setDescription('');
+    setUploadby('');
+    setSelectedPlaylists([]);
+    setDuration('');
   };
 
   const handlePlaylistSelect = (e) => {
@@ -131,7 +143,7 @@ const AddVideo = () => {
         <div className="form-card">
           <h2 className="main-title">Add a New Video</h2>
           
-          <form onSubmit={handleSubmit} className="add-video-form">
+          <form onSubmit={handleAddVideo} className="add-video-form">
             <div className="form-container">
               {/* Left side - Video details */}
               <div className="form-section">

@@ -19,20 +19,23 @@ const dashboardSlice = createSlice({
                 isLoaded: true
             };
         },
-        addVideo: (state, action) => {
-            state.myGenericVideos.push(action.payload);
+        removeVideo: (state, action) => {
+            const { playlist_name, playlist_item_id } = action.payload;
+            const playlistIndex = state.myPlaylists.findIndex(p => p.playlist_name === playlist_name);
+            state.myPlaylists[playlistIndex].playlist_items = state.myPlaylists[playlistIndex].playlist_items.filter(item => item.playlist_item_id !== playlist_item_id)
         },
-        addPlaylist: (state, action) => {
-            state.myPlaylists.push(action.payload);
-        },
-        updatePlaylist: (state, action) => {
-            const index = state.myPlaylists.findIndex(p => p.playlist_id === action.payload.playlist_id);
-            if (index !== -1) {
-                state.myPlaylists[index] = action.payload;
+        updatePlaylistData: (state, action) => {
+            const { playlist_name, name, permission } = action.payload;
+            const playlistIndex = state.myPlaylists.findIndex(p => p.playlist_name === playlist_name);
+            if (name) {
+                state.myPlaylists[playlistIndex].playlist_name = name;
+            }
+            if (permission) {
+                state.myPlaylists[playlistIndex].playlist_permission = permission;
             }
         }
     }
 });
 
-export const { setDashboardData, addVideo, addPlaylist, updatePlaylist } = dashboardSlice.actions;
+export const { setDashboardData, removeVideo, updatePlaylistData} = dashboardSlice.actions;
 export default dashboardSlice.reducer;
