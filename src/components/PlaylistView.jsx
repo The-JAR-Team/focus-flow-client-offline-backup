@@ -63,9 +63,8 @@ function PlaylistView() {
         }
         toast.success('Video removed successfully!');
       } catch (error) {
-        console.error('Failed to remove video:', error);
-
-        toast.error('Failed to remove video. Please try again.');
+        console.error('Failed to remove video:', error.response.data.reason);
+        toast.error(`Failed to remove video. ${error.response.data.reason}.`);
       }
     }
   };
@@ -87,8 +86,8 @@ function PlaylistView() {
 
       toast.success('Playlist updated successfully!');
     } catch (error) {
-      toast.error('Failed to update playlist.');
-      console.error(error);
+      toast.error(`Failed to update playlist. ${error.response.data.reason}`);
+      console.error(error.response.data.reason);
     }
   };
 

@@ -24,8 +24,8 @@ export default function CreatePlaylist() {
           // TODO: add to dispatch
           toast.success('Playlist created successfully!');
       } catch (error) {
-          console.error(error);
-          toast.error('Failed to create playlist. Please try again.');
+        console.error(error.response.data.reason);
+        toast.error(`Failed to create playlist. ${error.response.data.reason}`);
       }
   };
 

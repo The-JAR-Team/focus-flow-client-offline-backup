@@ -20,9 +20,6 @@ const AddVideo = () => {
   
   // New states for loading and status message
   const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Fetch existing playlists using getPlaylists service
@@ -44,7 +41,7 @@ const AddVideo = () => {
 
   const handleReady = (event) => {
     // Get video duration
-    console.log(event)
+    // console.log(event)
     const durationInSeconds = event.target.getDuration();
     const hours = Math.floor(durationInSeconds / 3600);
     const minutes = Math.floor((durationInSeconds % 3600) / 60);
@@ -58,7 +55,7 @@ const AddVideo = () => {
     
     // Get channel title (uploader)
     setUploadby(videoData.author);
-    console.log(videoData);
+    // console.log(videoData);
     
 
     // Get video description
@@ -88,7 +85,6 @@ const AddVideo = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setStatusMessage('');
     const payload = {
       video_id: extractVideoId(videoId),  // Ensure only the video id is sent
       video_name: videoTitle,
@@ -266,11 +262,6 @@ const AddVideo = () => {
               <button type="submit" className="submit-btn">
                 {loading ? 'Uploading...' : 'Add Video'}
               </button>
-              {(loading || statusMessage) && (
-                <div className={`status-indicator ${statusType}`}>
-                  {loading ? <span>Loading...</span> : <span>{statusMessage}</span>}
-                </div>
-              )}
             </div>
           </form>
         </div>
