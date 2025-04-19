@@ -1,4 +1,22 @@
-/* Permission toggle styling */
+.new-playlist-form {
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 8px;
+    width: 60%;
+    display: block;
+    margin: 0.5rem auto 1.5rem;
+}
+
+.create-playlist-form {
+    width: 60%;
+    display: block;
+    margin: 0.5rem auto 1.5rem;
+    background-color: #f4f4f4;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .permission-toggle-container {
     margin: 20px 0;
     display: flex;
@@ -7,21 +25,48 @@
     gap: 8px;
 }
 
+.permission-section {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    margin-bottom: 1rem;
+}
+
+.form-input {
+    padding: 12px;
+}
+
+.permission-toggle-group {
+    display: flex;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    width: 100%;
+    margin: 0.5rem auto 1rem;
+}
+
 .permission-toggle {
-    padding: 10px 20px;
-    border-radius: 20px;
-    border: 2px solid #28a745;
-    background-color: white;
-    color: #28a745;
+    flex: 1;
+    padding: 10px 15px;
+    border: none;
+    background-color: #f5f5f5;
     cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    min-width: 120px;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.permission-toggle:not(:last-child) {
+    border-right: 1px solid #ddd;
 }
 
 .permission-toggle.active {
-    background-color: #28a745;
+    background-color: #4a90e2;
     color: white;
+    font-weight: 500;
 }
 
 .permission-toggle:hover {
@@ -29,18 +74,14 @@
     box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
 }
 
-.permission-description {
-    font-size: 0.9rem;
-    color: #666;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+.permission-icon {
+    font-size: 1.2rem;
 }
 
-/* New playlist form styling */
-.new-playlist-form {
-    margin-top: 20px;
-    padding: 20px;
-    border-radius: 8px;
+.permission-description {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+    padding: 1rem;
+    text-align: center;
 }

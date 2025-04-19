@@ -51,18 +51,20 @@
     background-color: #28a745;
     color: #fff;
     border: none;
-    padding: 10px;
-    width: 100%;
+    padding: 10px 2rem;
     border-radius: 4px;
     font-size: 1rem;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    margin-top: 1.5rem;
+    /* margin-top: 1.5rem; */
     height: 48px;
     font-weight: 600;
     letter-spacing: 0.5px;
     position: relative;
     overflow: hidden;
+    display: block;
+    margin: 0.5rem auto;
+    width: 20rem;
   }
   
   .submit-btn:hover {
