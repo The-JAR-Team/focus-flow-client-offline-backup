@@ -22,7 +22,10 @@ const dashboardSlice = createSlice({
         removeVideo: (state, action) => {
             const { playlist_name, playlist_item_id } = action.payload;
             const playlistIndex = state.myPlaylists.findIndex(p => p.playlist_name === playlist_name);
-            state.myPlaylists[playlistIndex].playlist_items = state.myPlaylists[playlistIndex].playlist_items.filter(item => item.playlist_item_id !== playlist_item_id)
+            state.myPlaylists[playlistIndex].playlist_items = state.myPlaylists[playlistIndex].playlist_items.filter(item => item.playlist_item_id !== playlist_item_id);
+            if (state.myPlaylists[playlistIndex].playlist_items.length === 0) {
+                state.myPlaylists.splice(playlistIndex, 1);
+            }
         },
         updatePlaylistData: (state, action) => {
             const { playlist_name, name, permission } = action.payload;
