@@ -2,12 +2,17 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../services/api';
 import '../styles/Login.css';
+import { useDispatch } from 'react-redux';
+import { initializeDashboardData } from '../services/dashboardService';
+import { setUserData } from '../redux/userSlice';
+import { setDashboardData } from '../redux/dashboardSlice';
 
 // DEBUG_MODE is now false so that login checks work.
 const DEBUG_MODE = false;
 
 function Login() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState(null);
@@ -17,9 +22,21 @@ function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-
       const response = await loginUser({ email, password });
       if (response.status === "success") {
+        
+        // After successful login, load dashboard data
+        const dashboardData = await initializeDashboardData();
+
+        // Update Redux store
+        dispatch(setUserData(dashboardData.userData));
+        dispatch(setDashboardData({
+          myGenericVideos: dashboardData.myGenericVideos,
+          otherGenericVideos: dashboardData.otherGenericVideos,
+          myPlaylists: dashboardData.myPlaylists,
+          otherPlaylists: dashboardData.otherPlaylists
+        }));
+
         navigate('/dashboard');
       } else {
         setErrorMsg(response.reason);

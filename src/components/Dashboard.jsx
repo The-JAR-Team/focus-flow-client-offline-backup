@@ -4,11 +4,9 @@ import Navbar from './Navbar';
 import VideoPlayer from './VideoPlayer';
 import EyeDebugger from './EyeDebugger';
 import '../styles/Dashboard.css';
-import { initializeDashboardData } from '../services/dashboardService';
 import StackedThumbnails from './StackedThumbnails';
 import Spinner from './Spinner';
-import { useDispatch } from 'react-redux';
-import { setUserData } from '../redux/userSlice';
+import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedPlaylist } from '../redux/playlistSlice';
 
 function Dashboard() {
@@ -16,17 +14,10 @@ function Dashboard() {
   const dispatch = useDispatch();
   const [eyeDebuggerOn, setEyeDebuggerOn] = useState(false);
   const [videos, setVideos] = useState([]);
-  const [playlists, setPlaylists] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('All');
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
-  const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
-  const [myPlaylists, setMyPlaylists] = useState([]);
-  const [otherPlaylists, setOtherPlaylists] = useState([]);
-  const [myGenericVideos, setMyGenericVideos] = useState([]);
-  const [otherGenericVideos, setOtherGenericVideos] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     myPlaylists: true,
@@ -42,35 +33,17 @@ function Dashboard() {
     }));
   };
 
+  // Get data from Redux store instead of local state
+  const { currentUser } = useSelector(state => state.user);
+  const {
+    myGenericVideos,
+    otherGenericVideos,
+    myPlaylists,
+    otherPlaylists,
+    isLoaded
+  } = useSelector(state => state.dashboard);
+
   useEffect(() => {
-    const loadDashboard = async () => {
-      setIsLoading(true);
-            // wait 2 seconds to simulate a loading state
-            //await new Promise(resolve => setTimeout(resolve, 2000));
-      try {
-        const {
-          userData,
-          myGenericVideos,
-          otherGenericVideos,
-          myPlaylists,
-          otherPlaylists
-        } = await initializeDashboardData();
-
-        setUser(userData);
-        dispatch(setUserData(userData));
-        setMyGenericVideos(myGenericVideos);
-        setOtherGenericVideos(otherGenericVideos);
-        setMyPlaylists(myPlaylists);
-        setOtherPlaylists(otherPlaylists);
-      } catch (error) {
-        console.error('Error initializing dashboard:', error);
-        setError('Failed to load content');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadDashboard();
     setTimeout(() => setEyeDebuggerOn(true), 5000);
   }, []);
 
@@ -94,7 +67,7 @@ function Dashboard() {
     ? videos
     : videos.filter(v => v.group === selectedGroup);
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <div className="loading-overlay">
         <Spinner size="large" message="Loading your dashboard..." />
@@ -106,10 +79,10 @@ function Dashboard() {
     <div className="dashboard-container">
       <Navbar />
       <div className="dashboard-content">
-        {user ? (
+        {currentUser ? (
           <>
             <div className="user-greeting">
-              <h1>Hello {user.first_name} {user.last_name}</h1>
+              <h1>Hello {currentUser.first_name} {currentUser.last_name}</h1>
             </div>
           </>
         ) : (
@@ -254,7 +227,7 @@ function Dashboard() {
                 videoId: selectedVideo.external_id,
                 subject: selectedVideo.subject
               }}
-              userInfo={{ name: `${user.first_name} ${user.last_name}`, profile: user.profile }}
+                userInfo={{ name: `${currentUser.first_name} ${currentUser.last_name}`, profile: currentUser.profile }}
             />
           </>
         )}

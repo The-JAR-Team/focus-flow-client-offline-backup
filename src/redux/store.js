@@ -4,6 +4,7 @@ import storage from 'redux-persist/lib/storage/session';
 
 import userReducer from './userSlice';
 import playlistReducer from './playlistSlice';
+import dashboardReducer from './dashboardSlice';
 
 const userPersistConfig = {
   key: 'user',
@@ -17,13 +18,21 @@ const playlistPersistConfig = {
   whitelist: ['playlist'] // only persist current playlist
 };
 
+const dashboardPersistConfig = {
+  key: 'dashboard',
+  storage,
+  whitelist: ['myGenericVideos', 'otherGenericVideos', 'myPlaylists', 'otherPlaylists', 'isLoaded']
+};
+
 const persistedUserReducer = persistReducer(userPersistConfig, userReducer);
 const persistedPlaylistReducer = persistReducer(playlistPersistConfig, playlistReducer);
+const persistedDashboardReducer = persistReducer(dashboardPersistConfig, dashboardReducer);
 
 // Create root reducer with all slices
 const rootReducer = combineReducers({
   user: persistedUserReducer,
-  playlist: persistedPlaylistReducer
+  playlist: persistedPlaylistReducer,
+  dashboard: persistedDashboardReducer
 });
 
 export const store = configureStore({
