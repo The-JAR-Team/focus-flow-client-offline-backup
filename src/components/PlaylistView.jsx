@@ -43,6 +43,8 @@ function PlaylistView() {
     }
   }, [playlist]);
 
+  if (!playlist) return <div>Loading...</div>;
+
   // Fetch subscriber count; if fails, do not show subscriber section
   React.useEffect(() => {
     if (playlist && playlist.playlist_id) {
@@ -55,8 +57,6 @@ function PlaylistView() {
         });
     }
   }, [playlist?.playlist_id]); // fetch only if we didn't delete all videos from playlist
-
-  if (!playlist) return <div>Loading...</div>;
 
   // delete video from My Playlist (owner's) 
   const handleDeleteVideo = async (video) => {

@@ -14,10 +14,7 @@ function Navbar() {
   const handleLogout = async () => {
     try {
       await logoutUser();
-      // Clear data from Redux store
-      dispatch(clearUserData());
-      dispatch(clearPlaylist());
-      // Clear localStorage
+      // Clear session data from Redux store
       await persistor.purge();
 
     } catch (err) {
