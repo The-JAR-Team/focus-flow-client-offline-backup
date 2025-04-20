@@ -15,7 +15,7 @@ const playlistSlice = createSlice({
         },
         removeVideoFromSelectedPlaylist: (state, action) => {
             const { playlist_item_id } = action.payload;
-            state.playlist[playlistIndex].playlist_items = state.playlist[playlistIndex].playlist_items.filter(item => item.playlist_item_id !== playlist_item_id);
+            state.playlist.playlist_items = state.playlist.playlist_items.filter(item => item.playlist_item_id !== playlist_item_id);
         }
     }
 });

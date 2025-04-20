@@ -69,13 +69,11 @@ function PlaylistView() {
         }));
 
         if (playlist.playlist_items.length === 1) {
-          console.log('playlist is empty');
           navigate('/dashboard'); // Redirect to dashboard if no videos left
           dispatch(clearPlaylist());
         }
         else {
-          dispatch(removeVideoFromSelectedPlaylist(video.playlist_item_id));
-          console.log('playlist updated', playlist);
+          dispatch(removeVideoFromSelectedPlaylist({ playlist_item_id: video.playlist_item_id }));
         }
         toast.success('Video removed successfully!');
       } catch (error) {
