@@ -400,7 +400,7 @@ const handleNoClientPauseToggle = () => {
     setQuestions(language === 'Hebrew' ? hebrewQuestions : englishQuestions);
   };
 
-  const MODEL_THRESHOLD = 0.6; // Threshold for model results
+  const MODEL_THRESHOLD = -1.0; // Threshold for model results
   const [lastModelResult, setLastModelResult] = useState(null);
 
   // Setup model result handling

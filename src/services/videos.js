@@ -68,7 +68,7 @@ export const handleVideoPause = () => {
   console.log('🛑 Video paused.');
 };
 
-export const handleVideoResume = (youtube_id, model = 'basic', sendIntervalSeconds = 10, getCurrentTime = () => 0) => {
+export const handleVideoResume = (youtube_id, model = 'v1', sendIntervalSeconds = 10, getCurrentTime = () => 0) => {
   clearInterval(trackingInterval);
   clearInterval(sendingInterval);
 
