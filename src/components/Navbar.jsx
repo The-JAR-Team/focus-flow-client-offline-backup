@@ -2,26 +2,18 @@ import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/Navbar.css';
 import { logoutUser } from '../services/api';
-import { useDispatch, useSelector } from 'react-redux'; 
+import { useDispatch } from 'react-redux'; 
 import { persistor } from '../redux/store';
-import { clearUserData } from '../redux/userSlice';
 
 function Navbar() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { currentUser } = useSelector(state => state.user);
-
-  React.useEffect(() => {
-    if (!currentUser) {
-      navigate('/');
-    }
-  }, []);
 
   const handleLogout = async () => {
     try {
       await logoutUser();
       // Clear session data from Redux store
-      dispatch(clearUserData());
+      dispatch({ type: 'user/logoutUser' });
       await persistor.purge();
 
     } catch (err) {

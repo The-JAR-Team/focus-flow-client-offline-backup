@@ -28,13 +28,23 @@ const persistedUserReducer = persistReducer(userPersistConfig, userReducer);
 const persistedPlaylistReducer = persistReducer(playlistPersistConfig, playlistReducer);
 const persistedDashboardReducer = persistReducer(dashboardPersistConfig, dashboardReducer);
 
-// Create root reducer with all slices
-const rootReducer = combineReducers({
+// Create app reducer with all slices
+const appReducer = combineReducers({
   user: persistedUserReducer,
   playlist: persistedPlaylistReducer,
   dashboard: persistedDashboardReducer
 });
 
+// Add wrapper reducer
+const rootReducer = (state, action) => {
+  if (action.type === 'user/logoutUser') {
+    // Setting state to undefined makes reducers return their initial state
+    state = undefined;
+  }
+  return appReducer(state, action);
+};
+
+// Use rootReducer instead of the original
 export const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>

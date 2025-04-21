@@ -12,6 +12,7 @@ import CreatePlaylist from './components/CreatePlaylist';
 import './styles/App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import PrivateRoute from './components/PrivateRoute';
 
 function App() {
   return (
@@ -19,12 +20,12 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/add-video" element={<AddVideo />} />
-        <Route path="/create-playlist" element={<CreatePlaylist />} />
-        <Route path="/playlist/:playlistId" element={<PlaylistView />} />
-        <Route path="/trivia" element={<Trivia />} />
-        <Route path="/trivia/:videoId" element={<TriviaVideoPage />} />
+        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/add-video" element={<PrivateRoute><AddVideo /></PrivateRoute>} />
+        <Route path="/create-playlist" element={<PrivateRoute><CreatePlaylist /></PrivateRoute>} />
+        <Route path="/playlist/:playlistId" element={<PrivateRoute><PlaylistView /></PrivateRoute>} />
+        <Route path="/trivia" element={<PrivateRoute><Trivia /></PrivateRoute>} />
+        <Route path="/trivia/:videoId" element={<PrivateRoute><TriviaVideoPage /></PrivateRoute>} />
         <Route path="/edit-playlist/:playlistId" element={<EditPlaylist />} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={2000} />
