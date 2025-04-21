@@ -7,7 +7,6 @@ import AddVideo from './components/AddVideo';
 import PlaylistView from './components/PlaylistView';
 import Trivia from './components/Trivia';
 import TriviaVideoPage from './components/TriviaVideoPage';
-import EditPlaylist from './components/EditPlaylist';
 import CreatePlaylist from './components/CreatePlaylist';
 import './styles/App.css';
 import { ToastContainer } from 'react-toastify';
@@ -26,7 +25,6 @@ function App() {
         <Route path="/playlist/:playlistId" element={<PrivateRoute><PlaylistView /></PrivateRoute>} />
         <Route path="/trivia" element={<PrivateRoute><Trivia /></PrivateRoute>} />
         <Route path="/trivia/:videoId" element={<PrivateRoute><TriviaVideoPage /></PrivateRoute>} />
-        <Route path="/edit-playlist/:playlistId" element={<EditPlaylist />} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={2000} />
     </HashRouter>

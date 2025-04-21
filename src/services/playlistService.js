@@ -55,25 +55,30 @@ export async function updatePlaylistPermission(playlistId, permission) {
         });
         return response.data;
     } catch (error) {
-        console.error('Failed to update playlist permission:', error);
+        console.error('Failed to update playlist\'s permission:', error);
+        throw error;
+    }
+}
+
+export async function updatePlaylistName(playlistId, name) {
+    try {
+        const response = await axios.put(`${config.baseURL}/playlists/${playlistId}`, name, {
+            headers: { 'Content-Type': 'application/json' },
+            withCredentials: true
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Failed to update playlist\'s name:', error);
         throw error;
     }
 }
 
 export async function updatePlaylist(playlistId, playlistData) {
     const { name, permission } = playlistData;
-    try {
-        if (name) {
-            await axios.put(`${config.baseURL}/playlists/${playlistId}`,  name , {
-                headers: { 'Content-Type': 'application/json' },
-                withCredentials: true
-            });
-        }
-        if (permission) {
-            updatePlaylistPermission(playlistId, permission );
-        }
-    } catch (error) {
-        console.error('Failed to update playlist:', error);
-        throw error;
+    if (name) {
+        updatePlaylistName(playlistId, name);
+    }
+    if (permission) {
+        updatePlaylistPermission(playlistId, permission );
     }
 }

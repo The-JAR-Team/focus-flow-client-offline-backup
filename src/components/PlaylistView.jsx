@@ -11,6 +11,7 @@ import { removeVideo, updatePlaylistData } from '../redux/dashboardSlice';
 import { useDispatch } from 'react-redux';
 import { setSelectedPlaylist, clearPlaylist, removeVideoFromSelectedPlaylist } from '../redux/playlistSlice';
 import { toast } from 'react-toastify';
+import '../styles/PlaylistView.css';
 
 function PlaylistView() {
   const navigate = useNavigate();
@@ -116,18 +117,36 @@ function PlaylistView() {
         {/* Playlist name with inline editing */}
         <div className="playlist-title-container">
           {isEditingName ? (
-            <>
+            <div className="inline-edit-form">
               <input
                 type="text"
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
                 autoFocus
+                className="playlist-name-input"
+                maxLength={50}
               />
-              <button onClick={savePlaylistChanges}>Save</button>
-              <button onClick={() => setIsEditingName(false)}>Cancel</button>
-            </>
+              <div className="edit-actions">
+                <button 
+                  onClick={savePlaylistChanges}
+                  disabled={!editedName.trim() || editedName === playlist.playlist_name}
+                  className="save-btn"
+                >
+                  Save
+                </button>
+                <button 
+                  onClick={() => {
+                    setEditedName(playlist.playlist_name); // Reset to original
+                    setIsEditingName(false);
+                  }}
+                  className="cancel-btn"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           ) : (
-            <>
+            <div className="playlist-title-display">
               <h2>{playlist.playlist_name}</h2>
               {isOwner && (
                 <button
@@ -138,7 +157,7 @@ function PlaylistView() {
                   ✏️
                 </button>
               )}
-            </>
+            </div>
           )}
         </div>
 
@@ -154,15 +173,6 @@ function PlaylistView() {
               |
               <button className="unsubscribe-button" onClick={() => setShowUnsubscribeModal(true)}>
                 Remove Subscription
-              </button>
-            </>
-          )}
-          {isOwner && (
-            <>
-              <button className="edit-button" onClick={() =>{
-                navigate('/edit-playlist/' + playlist.playlist_id);
-              }}>
-                Edit Playlist
               </button>
             </>
           )}
