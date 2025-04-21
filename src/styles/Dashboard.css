@@ -16,6 +16,9 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 25%));
   justify-content: center;
   gap: 30px;
+  padding: 20px;
+  width: 100%;
+  min-height: 100px;
 }
 
 .video-card {
@@ -68,14 +71,17 @@
   border-radius: 8px;
   box-shadow: 0 3px 6px rgba(0,0,0,0.1);
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  position: relative;
-  overflow: hidden;
+  transition: all 0.2s ease;
   min-height: 200px;
   display: flex;
   flex-direction: column;
-  align-items: center;  /* added to center items in the playlist cards */
-  perspective: 2000px;
+  align-items: center;
+  width: 100%;
+}
+
+.playlist-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
 .stacked-thumbnails {
@@ -329,13 +335,14 @@ h2:hover {
 
 .collapsible-content {
   max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.5s ease-in-out;
   opacity: 0;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
 }
 
 .collapsible-content.expanded {
-  max-height: 2000px; /* Adjust this value based on your content */
+  max-height: 3000px; /* Increased to handle more content */
   opacity: 1;
+  overflow: visible;
   margin-bottom: 40px;
 }
