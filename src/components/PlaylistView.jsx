@@ -170,7 +170,6 @@ function PlaylistView() {
           <div className="permission-container"> 
             {isEditingPermission?(
               <div className="permission-toggles-container"> 
-                <p>Permission: {playlist.playlist_permission}</p>
                 <div className="permission-toggles-group">
                   <button
                     className={`permission-toggles ${editedPermission === 'unlisted' ? 'active' : ''}`}
