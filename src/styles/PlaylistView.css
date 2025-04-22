@@ -47,6 +47,10 @@
     width: auto;
 }
 
+.playlist-name-input:focus {
+    border-bottom: 2px solid #4285f4;
+}
+
 /* Position buttons absolutely so they don't affect input position */
 .edit-actions {
     position: absolute;

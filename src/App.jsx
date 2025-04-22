@@ -26,7 +26,7 @@ function App() {
         <Route path="/trivia" element={<PrivateRoute><Trivia /></PrivateRoute>} />
         <Route path="/trivia/:videoId" element={<PrivateRoute><TriviaVideoPage /></PrivateRoute>} />
       </Routes>
-      <ToastContainer position="bottom-right" autoClose={2000} />
+      <ToastContainer position="bottom-right" autoClose={3000} />
     </HashRouter>
   );
 }

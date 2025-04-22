@@ -49,36 +49,45 @@ export async function getPlaylistById(playlistId) {
 // Update Playlist Permission
 export async function updatePlaylistPermission(playlistId, permission) {
     try {
-        const response = await axios.put(`${config.baseURL}/playlists/${playlistId}/permission`, permission , {
+        const response = await axios.put(`${config.baseURL}/playlists/${playlistId}/permission`, {
+            "new_permission": permission
+        } , {
             headers: { 'Content-Type': 'application/json' },
             withCredentials: true
         });
         return response.data;
     } catch (error) {
-        console.error('Failed to update playlist\'s permission:', error);
+        console.error('Failed to update playlist\'s permission:', error.response.data.reason);
         throw error;
     }
 }
 
-export async function updatePlaylistName(playlistId, name) {
+export async function updatePlaylistName(old_name, new_name) {
     try {
-        const response = await axios.put(`${config.baseURL}/playlists/${playlistId}`, name, {
+        const response = await axios.put(`${config.baseURL}/playlists/update_name`, ({
+            "old_name": old_name,
+            "new_name": new_name
+        }), {
             headers: { 'Content-Type': 'application/json' },
             withCredentials: true
         });
         return response.data;
     } catch (error) {
-        console.error('Failed to update playlist\'s name:', error);
-        throw error;
+        // const errorMessage = 'Failed to update playlist\'s name: ' + error.response.data.reason;
+        const errorMessage =  error.response.data.reason;
+        throw new Error(errorMessage);
     }
 }
 
-export async function updatePlaylist(playlistId, playlistData) {
-    const { name, permission } = playlistData;
-    if (name) {
-        updatePlaylistName(playlistId, name);
-    }
-    if (permission) {
-        updatePlaylistPermission(playlistId, permission );
-    }
+export async function updatePlaylist(playlistId, old_name, name, permission) {
+    // try{
+        if (name) {
+            await updatePlaylistName(old_name, name);
+        }
+        if (permission) {
+            await updatePlaylistPermission(playlistId, permission );
+        }
+    // } catch (error) {
+    //     throw error;
+    // }
 }

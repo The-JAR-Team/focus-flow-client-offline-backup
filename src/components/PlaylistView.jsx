@@ -9,7 +9,7 @@ import UnsubscribeModal from './UnsubscribeModal'; // added import
 import { removeVideoFromPlaylist, getPlaylistById, updatePlaylist } from '../services/playlistService';
 import { removeVideo, updatePlaylistData } from '../redux/dashboardSlice';
 import { useDispatch } from 'react-redux';
-import { setSelectedPlaylist, clearPlaylist, removeVideoFromSelectedPlaylist } from '../redux/playlistSlice';
+import { setSelectedPlaylist, clearPlaylist, removeVideoFromSelectedPlaylist, editSelectedPlaylist } from '../redux/playlistSlice';
 import { toast } from 'react-toastify';
 import '../styles/PlaylistView.css';
 
@@ -86,14 +86,18 @@ function PlaylistView() {
 
   const savePlaylistChanges = async () => {
     try {
-      await updatePlaylist(playlist.playlist_id, {
-        playlist_name: editedName,
-        playlist_permission: editedPermission
-      });
+      await updatePlaylist(playlist.playlist_id, playlist.playlist_name, editedName, editedPermission);
 
-      // Update local state
-      const updatedPlaylist = await getPlaylistById(playlist.playlist_id);
-      dispatch(setSelectedPlaylist(updatedPlaylist));
+      dispatch(editSelectedPlaylist({
+        name: editedName, 
+        permission: editedPermission
+      }));
+
+      dispatch(updatePlaylistData({
+        playlist_name: playlist.playlist_name,
+        name: editedName, 
+        permission: editedPermission
+      }));
 
       // Exit edit mode
       setIsEditingName(false);
@@ -101,8 +105,9 @@ function PlaylistView() {
 
       toast.success('Playlist updated successfully!');
     } catch (error) {
-      toast.error(`Failed to update playlist. ${error.response.data.reason}`);
-      console.error(error.response.data.reason);
+      const errorMessage = error.message;
+      toast.error(errorMessage);
+      console.error(errorMessage);
     }
   };
 
