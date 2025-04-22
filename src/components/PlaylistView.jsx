@@ -167,8 +167,71 @@ function PlaylistView() {
         </div>
 
         <div className="playlist-header">
+          <div className="permission-container"> 
+            {isEditingPermission?(
+              <div className="permission-toggles-container"> 
+                <p>Permission: {playlist.playlist_permission}</p>
+                <div className="permission-toggles-group">
+                  <button
+                    className={`permission-toggles ${editedPermission === 'unlisted' ? 'active' : ''}`}
+                    onClick={() => setEditedPermission('unlisted')}
+                  >
+                    <span className="permission-icon">🔗</span>
+                    <span>Unlisted</span>
+                  </button>
+
+                  <button
+                    className={`permission-toggles ${editedPermission === 'public' ? 'active' : ''}`}
+                    onClick={() => setEditedPermission('public')}
+                  >
+                    <span className="permission-icon">👥</span>
+                    <span>Public</span>
+                  </button>
+
+                  <button
+                    className={`permission-toggles ${editedPermission === 'private' ? 'active' : ''}`}
+                    onClick={() => setEditedPermission('private')}
+                  >
+                    <span className="permission-icon">🔒</span>
+                    <span>Private</span>
+                  </button>
+                </div>
+                <div className="permission-edit-actions">
+                  <button
+                    onClick={savePlaylistChanges}
+                    disabled={editedPermission === playlist.playlist_permission}
+                    className="save-btn"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditedPermission(playlist.playlist_permission);
+                      setIsEditingPermission(false);
+                    }}
+                    className="cancel-btn"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ):(
+                <div className="inline-edit-form"> 
+                <p>Permission: {playlist.playlist_permission}</p>
+                {isOwner && (
+                  <button
+                    className="edit-icon"
+                    onClick={() => setIsEditingPermission(true)}
+                    title="Edit playlist permission"
+                  >
+                    ✏️
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           <p>Owner: {playlist.playlist_owner_name}</p>
-          <p>Permission: {playlist.playlist_permission}</p>
           {subscriberCount !== null && (
             <>
               <p>Subscribers: {subscriberCount}</p>

@@ -6,8 +6,6 @@ import { createPlaylist} from '../services/playlistService';
 import { toast } from 'react-toastify';
 
 export default function CreatePlaylist() {
-  //TODO: add dispatch to update playlist list in redux store
-  const navigate = useNavigate();
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistPermission, setNewPlaylistPermission] = useState('unlisted');
 
@@ -33,7 +31,6 @@ export default function CreatePlaylist() {
     <div className="dashboard-container">
       <Navbar />
       <div className="new-playlist-container">
-        {/* Playlist creation sidebar */}
         <div className="form-card new-playlist-form">
           <h2 className="section-title">Create New Playlist</h2>
           <form onSubmit={handleCreatePlaylist} className="create-playlist-form ">
