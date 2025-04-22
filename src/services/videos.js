@@ -120,7 +120,7 @@ export const handleVideoResume = (youtube_id, model = 'v1', sendIntervalSeconds 
         number_of_landmarks: 478,
         landmarks: [relevantLandmarks]
       },
-      model: model
+      model: "v1"
     };
 
     try {
