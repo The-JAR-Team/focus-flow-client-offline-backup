@@ -48,6 +48,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
   const [userPaused, setUserPaused] = useState(false);
+  const [isVideoPaused, setIsVideoPaused] = useState(false);
 
 
   useEffect(() => {
@@ -227,8 +228,31 @@ const handleNoClientPauseToggle = () => {
   }, [mode, noClientPause]);
   
 
-  // Use the shared FaceMesh hook.
-  useFaceMesh(loaded, webcamRef, handleFaceMeshResults, setFaceMeshStatus);
+  // Add this near other state declarations
+  const [faceMeshReady, setFaceMeshReady] = useState(false);
+
+  // Update the FaceMesh status handler
+  const handleFaceMeshStatus = useCallback((status) => {
+    setFaceMeshStatus(status);
+    if (status === 'FaceMesh Ready') {
+      setFaceMeshReady(true);
+    }
+  }, []);
+
+  // Use the shared FaceMesh hook with the new status handler
+  useFaceMesh(loaded, webcamRef, handleFaceMeshResults, handleFaceMeshStatus);
+
+  // Add effect to start tracking when both player and FaceMesh are ready
+  useEffect(() => {
+    if (playerRef.current && faceMeshReady && !isVideoPaused) {
+      handleVideoResume(
+        lectureInfo.videoId,
+        'basic',
+        sendIntervalSeconds,
+        () => playerRef.current?.getCurrentTime() || 0
+      );
+    }
+  }, [faceMeshReady, lectureInfo.videoId, sendIntervalSeconds]);
 
   // Unified gaze handler.
   const handleVideoPlayback = (newGaze) => {
@@ -356,6 +380,13 @@ const handleNoClientPauseToggle = () => {
     }
   
     playerRef.current.playVideo();
+    // Initialize tracking as soon as the player is ready
+    handleVideoResume(
+      lectureInfo.videoId, 
+      'v1', 
+      sendIntervalSeconds,
+      () => playerRef.current?.getCurrentTime() || 0
+    );
     if (onVideoPlayerReady) onVideoPlayerReady();
   };
   
@@ -367,6 +398,7 @@ const handleNoClientPauseToggle = () => {
         setIsPlaying(true);
         setPauseStatus('Playing');
         setUserPaused(false);
+        setIsVideoPaused(false);
         handleVideoResume(
           lectureInfo.videoId, 
           'basic', 
@@ -382,6 +414,7 @@ const handleNoClientPauseToggle = () => {
           setUserPaused(true);
         }
         setIsPlaying(false);
+        setIsVideoPaused(true);
         handleVideoPause();
         break;
       default:
