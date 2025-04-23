@@ -9,7 +9,11 @@ export function QuestionModal({ question, onAnswer, language }) {
         <p>{question.text}</p>
         <div className="answers">
           {question.answers.map((ans) => (
-            <button key={ans.key} onClick={() => onAnswer(ans.key)}>
+            <button 
+              key={ans.key} 
+              onClick={() => onAnswer(ans.key)}
+              className={ans.key === 'dontknow' ? 'dont-know' : ''}
+            >
               {ans.text}
             </button>
           ))}

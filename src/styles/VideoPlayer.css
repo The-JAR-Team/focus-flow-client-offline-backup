@@ -56,6 +56,7 @@
   flex-direction: column;
   gap: 12px;
   align-items: center;
+  width: 100%;
 }
 
 .answers button {
@@ -73,6 +74,16 @@
 
 .answers button:hover {
   background-color: #555;
+}
+
+.answers button.dont-know {
+  background-color: #666;
+  border: 2px solid #888;
+  margin-top: 8px;
+}
+
+.answers button.dont-know:hover {
+  background-color: #777;
 }
 
 .answers button,

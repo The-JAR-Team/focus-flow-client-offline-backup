@@ -38,17 +38,23 @@ export const selectNextQuestion = (availableQuestions) => {
   return availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
 };
 
-export const shuffleAnswers = (question) => {
+export const shuffleAnswers = (question, language = 'Hebrew') => {
   const answers = [
     { key: 'answer1', text: question.answer1 },
     { key: 'answer2', text: question.answer2 },
     { key: 'answer3', text: question.answer3 },
-    { key: 'answer4', text: question.answer4 }
+    { key: 'answer4', text: question.answer4 },
+    { key: 'dontknow', text: language === 'Hebrew' ? 'לא יודע/ת' : "I don't know" }
   ];
   
-  for (let i = answers.length - 1; i > 0; i--) {
+  // Keep "I don't know" as the last option, shuffle only the first 4
+  const regularAnswers = answers.slice(0, 4);
+  const dontKnowAnswer = answers[4];
+  
+  for (let i = regularAnswers.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [answers[i], answers[j]] = [answers[j], answers[i]];
+    [regularAnswers[i], regularAnswers[j]] = [regularAnswers[j], regularAnswers[i]];
   }
-  return answers;
+
+  return [...regularAnswers, dontKnowAnswer];
 };

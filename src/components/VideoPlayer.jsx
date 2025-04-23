@@ -358,7 +358,7 @@ const handleNoClientPauseToggle = () => {
               setCurrentQuestion({
                 q_id: nextQuestion.q_id,
                 text: nextQuestion.question,
-                answers: shuffleAnswers(nextQuestion),
+                answers: shuffleAnswers(nextQuestion, selectedLanguage),
                 originalTime: parseTimeToSeconds(nextQuestion.question_origin),
                 endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
               });
@@ -374,9 +374,17 @@ const handleNoClientPauseToggle = () => {
   };
 
   const handleAnswer = (selectedKey) => {
+    if (selectedKey === 'dontknow') {
+      setStats(prev => ({
+        ...prev,
+        wrong: prev.wrong + 1
+      }));
+      setDecisionPending(false);
+      return;
+    }
+
     const correctKey = 'answer1';
     const isCorrect = selectedKey === correctKey;
-    console.log("User selected:", selectedKey, "Correct key:", correctKey, "Is correct?", isCorrect);
     setStats(prev => ({
       ...prev,
       [isCorrect ? 'correct' : 'wrong']: prev[isCorrect ? 'correct' : 'wrong'] + 1
@@ -516,7 +524,7 @@ const handleNoClientPauseToggle = () => {
           setCurrentQuestion({
             q_id: nextQuestion.q_id,
             text: nextQuestion.question,
-            answers: shuffleAnswers(nextQuestion),
+            answers: shuffleAnswers(nextQuestion, selectedLanguage),
             originalTime: parseTimeToSeconds(nextQuestion.question_origin),
             endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
           });
