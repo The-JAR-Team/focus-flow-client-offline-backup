@@ -5,13 +5,14 @@ import { Camera } from '@mediapipe/camera_utils';
 export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange) {
   const errorCount = useRef(0);
   const streamRef = useRef(null);
+  const faceMeshRef = useRef(null);
+  const cameraRef = useRef(null);
   const MAX_ERRORS = 10;
 
   useEffect(() => {
     if (!enabled) return;
     
-    let camera = null;
-    let faceMesh = null;
+    let isInitialized = false;
     
     const initializeWebcam = async () => {
       try {
@@ -52,13 +53,15 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
       const webcamReady = await initializeWebcam();
       if (!webcamReady) return;
 
-      faceMesh = new FaceMesh({
+      // Create new FaceMesh instance
+      const faceMesh = new FaceMesh({
         locateFile: (file) =>
           `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
       });
 
-      faceMesh.setOptions({
+      faceMeshRef.current = faceMesh;
 
+      faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
         minDetectionConfidence: 0.5,
@@ -66,25 +69,35 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
       });
 
       faceMesh.onResults((results) => {
+        if (!isInitialized) {
+          isInitialized = true;
+          onStatusChange('FaceMesh Ready');
+        }
         onResults(results);
         errorCount.current = 0;
       });
 
       await faceMesh.initialize();
-      onStatusChange('FaceMesh Ready');
 
-      camera = new Camera(videoRef.current, {
+      // Create camera after FaceMesh is initialized
+      const camera = new Camera(videoRef.current, {
         onFrame: async () => {
-          if (!videoRef.current?.srcObject) {
-            throw new Error('Video source not ready');
+          if (!videoRef.current?.srcObject || !faceMeshRef.current) return;
+          try {
+            await faceMeshRef.current.send({ image: videoRef.current });
+          } catch (error) {
+            console.error('FaceMesh send error:', error);
+            errorCount.current++;
+            if (errorCount.current > MAX_ERRORS) {
+              onStatusChange('Too many errors - Click Retry');
+            }
           }
-          await faceMesh.send({ image: videoRef.current });
         },
         width: 640,
         height: 480,
-
       });
 
+      cameraRef.current = camera;
       camera.start();
     };
 
@@ -96,11 +109,11 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
 
     // Cleanup function
     return () => {
-      if (camera) {
-        camera.stop();
+      if (cameraRef.current) {
+        cameraRef.current.stop();
       }
-      if (faceMesh) {
-        faceMesh.close();
+      if (faceMeshRef.current) {
+        faceMeshRef.current.close();
       }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -109,6 +122,7 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
+      isInitialized = false;
     };
   }, [enabled, videoRef, onResults, onStatusChange]);
 }

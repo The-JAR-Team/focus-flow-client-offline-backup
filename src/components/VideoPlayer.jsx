@@ -110,9 +110,14 @@ const [noClientPause, setNoClientPause] = useState(false);
 
 // Add this handler function
 const handleNoClientPauseToggle = () => {
+  // First update the window flag
+  window.noStop = !noClientPause;
+  // Then update the state
   setNoClientPause(prev => !prev);
-  window.noStop = !noClientPause; // Update the global flag
   console.log(`🎮 No Client Pause ${!noClientPause ? 'Enabled' : 'Disabled'}`);
+
+  // Reset tracking state whenever we switch modes
+  resetTracking();
 };
   
   const immediateGaze = useRef('Looking center');
@@ -197,7 +202,7 @@ const handleNoClientPauseToggle = () => {
 
   // Add this effect to monitor interval changes
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && faceMeshReady && playerRef.current) {
       handleVideoResume(
         lectureInfo.videoId, 
         'basic', 
@@ -205,7 +210,23 @@ const handleNoClientPauseToggle = () => {
         () => playerRef.current?.getCurrentTime() || 0
       );
     }
-  }, [sendIntervalSeconds, lectureInfo.videoId]);
+  }, [sendIntervalSeconds]);
+
+  // Add this useEffect to properly handle mode changes
+  useEffect(() => {
+    // When switching modes, ensure we properly set up tracking
+    if (playerRef.current && faceMeshReady) {
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        handleVideoResume(
+          lectureInfo.videoId,
+          'basic',
+          sendIntervalSeconds,
+          () => playerRef.current?.getCurrentTime() || 0
+        );
+      }, 500);
+    }
+  }, [noClientPause]);
 
   // FaceMesh results callback.
 
@@ -236,23 +257,41 @@ const handleNoClientPauseToggle = () => {
     setFaceMeshStatus(status);
     if (status === 'FaceMesh Ready') {
       setFaceMeshReady(true);
+      // Initialize tracking immediately when FaceMesh is ready
+      if (playerRef.current) {
+        setTimeout(() => {
+          handleVideoResume(
+            lectureInfo.videoId,
+            'basic',
+            sendIntervalSeconds,
+            () => playerRef.current?.getCurrentTime() || 0
+          );
+        }, 500);
+      }
     }
-  }, []);
+  }, [lectureInfo.videoId, sendIntervalSeconds]);
 
   // Use the shared FaceMesh hook with the new status handler
   useFaceMesh(loaded, webcamRef, handleFaceMeshResults, handleFaceMeshStatus);
 
-  // Add effect to start tracking when both player and FaceMesh are ready
+  // Add effect to handle initialization
   useEffect(() => {
-    if (playerRef.current && faceMeshReady && !isVideoPaused) {
-      handleVideoResume(
-        lectureInfo.videoId,
-        'basic',
-        sendIntervalSeconds,
-        () => playerRef.current?.getCurrentTime() || 0
-      );
-    }
-  }, [faceMeshReady, lectureInfo.videoId, sendIntervalSeconds]);
+    if (!playerRef.current || !faceMeshReady) return;
+
+    // Initialize tracking with a short delay to ensure everything is ready
+    const initTimeout = setTimeout(() => {
+      if (playerRef.current && faceMeshReady && !isVideoPaused) {
+        handleVideoResume(
+          lectureInfo.videoId,
+          'basic',
+          sendIntervalSeconds,
+          () => playerRef.current?.getCurrentTime() || 0
+        );
+      }
+    }, 2000); // Give extra time for FaceMesh to fully initialize
+
+    return () => clearTimeout(initTimeout);
+  }, [faceMeshReady, playerRef.current, sendIntervalSeconds, lectureInfo.videoId, isVideoPaused]);
 
   // Unified gaze handler.
   const handleVideoPlayback = (newGaze) => {
@@ -370,6 +409,7 @@ const handleNoClientPauseToggle = () => {
     setIsPlaying(true);
     setPauseStatus('Playing');
   };
+
   const onPlayerReady = (event) => {
     playerRef.current = event.target;
     console.log("Player ready, starting video");
@@ -379,14 +419,21 @@ const handleNoClientPauseToggle = () => {
       playerRef.current.seekTo(initialPlaybackTime, true);
     }
   
+    // Start playing and initialize tracking
     playerRef.current.playVideo();
-    // Initialize tracking as soon as the player is ready
-    handleVideoResume(
-      lectureInfo.videoId, 
-      'v1', 
-      sendIntervalSeconds,
-      () => playerRef.current?.getCurrentTime() || 0
-    );
+    
+    // Small delay to ensure player state is updated
+    setTimeout(() => {
+      handleVideoResume(
+        lectureInfo.videoId,
+        'basic',
+        sendIntervalSeconds,
+        () => playerRef.current?.getCurrentTime() || 0
+      );
+      setIsPlaying(true);
+      setPauseStatus('Playing');
+    }, 1000);
+
     if (onVideoPlayerReady) onVideoPlayerReady();
   };
   
