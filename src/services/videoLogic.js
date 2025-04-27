@@ -13,6 +13,10 @@ let manualTriggerActive = false;
 let manualTriggerStartTime = 0;
 const MANUAL_TRIGGER_DURATION = 500; // Duration to simulate looking away (ms)
 
+// Gaze sensitivity state
+let gazeSensitivity = 5;
+export const setGazeSensitivity = (v) => { gazeSensitivity = v; };
+
 export const setEngagementDetectionEnabled = (enabled) => {
   isEngagementDetectionEnabled = enabled;
 };
@@ -144,9 +148,9 @@ export const getAvailableQuestions = (currentTime, allQuestions, answeredQIDs) =
 };
 
 export const estimateGaze = (landmarks) => {
-  // Don't process gaze if engagement detection is disabled
-  if (!isEngagementDetectionEnabled) {
-    return 'Looking center'; // Always return center when disabled
+  // Treat 0 sensitivity as “always center”
+  if (!isEngagementDetectionEnabled || gazeSensitivity === 0) {
+    return 'Looking center';
   }
 
   const leftEye = {
@@ -164,7 +168,13 @@ export const estimateGaze = (landmarks) => {
   const rightGazeRatio = (rightEye.center.x - rightEye.outer.x) / (rightEye.inner.x - rightEye.outer.x);
 
   const avgGazeRatio = (leftGazeRatio + rightGazeRatio) / 2;
-  if (avgGazeRatio < 0.42) return 'Looking left';
-  if (avgGazeRatio > 0.58) return 'Looking right';
+
+  // Dynamic dead‑zone: higher sensitivity → narrower center band
+  const range = ((10 - gazeSensitivity) / 10) * 0.5;
+  const low = 0.5 - range;
+  const high = 0.5 + range;
+
+  if (avgGazeRatio < low) return 'Looking left';
+  if (avgGazeRatio > high) return 'Looking right';
   return 'Looking center';
 };

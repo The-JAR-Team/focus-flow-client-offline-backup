@@ -11,8 +11,26 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
   const MAX_ERRORS = 10;
 
   useEffect(() => {
+    if (!enabled) return;
+
     let isInitialized = false;
-    
+    const MAX_INIT_RETRIES = 3;
+    const INIT_RETRY_DELAY_MS = 1000;
+    const retryInitialization = async (fn) => {
+      let lastError;
+      for (let i = 1; i <= MAX_INIT_RETRIES; i++) {
+        try {
+          return await fn();
+        } catch (err) {
+          lastError = err;
+          onStatusChange(`Initializing FaceMesh… retry ${i}/${MAX_INIT_RETRIES}`);
+          console.warn(`FaceMesh init error (attempt ${i}):`, err);
+          await new Promise(r => setTimeout(r, INIT_RETRY_DELAY_MS));
+        }
+      }
+      throw lastError;
+    };
+
     const initializeWebcam = async () => {
       try {
         // Close any existing stream
@@ -49,81 +67,76 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
       }
     };
 
+    const retryWithDelay = async (fn, maxRetries = 3, delay = 1000) => {
+      let retries = 0;
+      
+      const attempt = async () => {
+        try {
+          return await fn();
+        } catch (error) {
+          retries++;
+          if (retries > maxRetries) {
+            throw error;
+          }
+          console.warn(`Retrying after error (${retries}/${maxRetries}):`, error);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return attempt();
+        }
+      };
+      
+      return attempt();
+    };
+
     const initializeFaceMesh = async () => {
       errorCount.current = 0;
-      
       const webcamReady = await initializeWebcam();
-      if (!webcamReady) return;
+      if (!webcamReady) return false;
 
-      // Clean up existing FaceMesh if it exists
-      if (faceMeshRef.current) {
-        try { faceMeshRef.current.close(); } catch (e) {}
-        faceMeshRef.current = null;
-      }
-
-      // Ensure global Module.arguments_ exists for Emscripten runtime
-      if (typeof window !== 'undefined') {
-        window.Module = window.Module || {};
-        window.Module.arguments_ = window.Module.arguments_ || [];
-      }
-
-      const faceMesh = new FaceMesh({
-        locateFile: (file) =>
-          `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`
-      });
-
-      faceMeshRef.current = faceMesh;
-
-      faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
-
-      faceMesh.onResults((results) => {
-        if (!isInitialized) {
-          isInitialized = true;
-          initializedRef.current = true;
-          onStatusChange('FaceMesh Ready');
+      // retryable factory for FaceMesh instance + initialize
+      const createAndInitFaceMesh = async () => {
+        // cleanup existing
+        if (faceMeshRef.current) {
+          try { faceMeshRef.current.close() } catch(e){}
+          faceMeshRef.current = null;
         }
-        onResults(results);
-        errorCount.current = 0;
-      });
-
-      try {
-        await faceMesh.initialize();
-      } catch (error) {
-        const msg = error.toString();
-        if (msg.includes('Module.arguments')) {
-          console.warn('Ignored Module.arguments runtime error during initialize');
-        } else {
-          console.error('FaceMesh initialization error:', error);
-          onStatusChange('Initialization Error - Click Retry');
-          return false;
+        // ensure Emscripten args
+        if (typeof window !== 'undefined') {
+          window.Module = window.Module||{};
+          window.Module.arguments_ = window.Module.arguments_||[];
+          // omit setting 'Module.arguments' directly to avoid TypeError
         }
-      }
-
-      // Don't use recursion for retries as it could lead to stack overflow
-      const retryWithDelay = async (fn, maxRetries = 3, delay = 1000) => {
-        let retries = 0;
-        
-        const attempt = async () => {
-          try {
-            return await fn();
-          } catch (error) {
-            retries++;
-            if (retries > maxRetries) {
-              throw error;
-            }
-            console.warn(`Retrying after error (${retries}/${maxRetries}):`, error);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return attempt();
+        // create new
+        const fm = new FaceMesh({
+          locateFile: f => 
+            `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${f}`
+        });
+        fm.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+        fm.onResults(results => {
+          if (!isInitialized) {
+            isInitialized = true;
+            initializedRef.current = true;
+            onStatusChange('FaceMesh Ready');
           }
-        };
-        
-        return attempt();
+          onResults(results);
+          errorCount.current = 0;
+        });
+        await fm.initialize();
+        return fm;
       };
+
+      // attempt full init up to 3 times
+      try {
+        faceMeshRef.current = await retryWithDelay(createAndInitFaceMesh, 3, 2000);
+      } catch(err) {
+        console.error('FaceMesh initialization failed after retries:', err);
+        onStatusChange('Initialization Error - Click Retry');
+        return false;
+      }
 
       // Ensure we have a valid reference before creating camera
       if (!faceMeshRef.current) {
@@ -178,11 +191,12 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
       }
     };
 
-    initializeFaceMesh().catch(err => {
-      console.error("FaceMesh initialization failed:", err);
-      initializedRef.current = false;
-      onStatusChange('Initialization Failed - Click Retry');
-    });
+    retryInitialization(initializeFaceMesh)
+      .catch(err => {
+        console.error("FaceMesh init failed after retries:", err);
+        initializedRef.current = false;
+        onStatusChange('Initialization Failed - Click Retry');
+      });
 
     return () => {
       // Full cleanup on component unmount only
@@ -208,5 +222,5 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
         faceMeshRef.current = null;
       }
     };
-  }, []);  // <- run only once on mount
+  }, [enabled, videoRef, onResults, onStatusChange]);  // <- run only once on mount
 }

@@ -4,16 +4,24 @@ import { Bar } from 'react-chartjs-2';
 import '../styles/VideoPlayer.css';
 import '../styles/TriviaVideoPage.css'; // Add this import for button styles
 
-import {fetchLastWatchTime,resetTracking ,  updateLatestLandmark ,handleVideoPause, handleVideoResume, setModelResultCallback } from '../services/videos';
-import { 
-  setEngagementDetectionEnabled, 
-  getEngagementDetectionEnabled, 
+import {
+  fetchLastWatchTime,
+  resetTracking,
+  updateLatestLandmark,
+  handleVideoPause,
+  handleVideoResume,
+  setModelResultCallback
+} from '../services/videos';
+import {
+  setEngagementDetectionEnabled,
+  getEngagementDetectionEnabled,
   setVideoPlaying,
   startManualTrigger,
   handleEngagementDetection,
   estimateGaze,
   canAskQuestion,
-  markQuestionAsked
+  markQuestionAsked,
+  setGazeSensitivity      
 } from '../services/videoLogic';
 
 import {
@@ -109,6 +117,12 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   const MODEL_THRESHOLD = -1.0; // Threshold for model results
   const [lastModelResult, setLastModelResult] = useState(null);
+
+  const [sensitivity, setSensitivity] = useState(7);
+
+  useEffect(() => {
+    setGazeSensitivity(sensitivity);
+  }, [sensitivity]);
 
   useEffect(() => {
     // FORRRRRRRRRRR !! unmount!!!
@@ -528,12 +542,22 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const renderDebugTools = () => (
     <div className="debug-tools">
       <h3>Debug Tools</h3>
-      <button 
+      {/*<button 
         className={`debug-button ${disableEngagementLogic ? 'active' : ''}`}
         onClick={handleEngagementLogicToggle}
       >
         {disableEngagementLogic ? '🔓 Engagement Logic: OFF' : '🔒 Engagement Logic: ON'}
-      </button>
+      </button>*/}
+      <div className="sensitivity-control">
+        <label> Engagement Sensitivity: {sensitivity}</label>
+        <input
+          type="range"
+          min="0"
+          max="10"
+          value={sensitivity}
+          onChange={e => setSensitivity(+e.target.value)}
+        />
+      </div>
       <button 
         className="debug-button trigger"
         onClick={() => startManualTrigger()}
