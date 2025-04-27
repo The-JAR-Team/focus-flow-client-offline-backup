@@ -7,16 +7,20 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
   const streamRef = useRef(null);
   const faceMeshRef = useRef(null);
   const cameraRef = useRef(null);
+  const initializedRef = useRef(false);
   const MAX_ERRORS = 10;
 
   useEffect(() => {
-    if (!enabled) return;
-    
     let isInitialized = false;
     
     const initializeWebcam = async () => {
       try {
-        // Request webcam access first
+        // Close any existing stream
+        if (streamRef.current) {
+          try { streamRef.current.getTracks().forEach(track => track.stop()); } catch (e) {}
+          streamRef.current = null;
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: {
             width: 640,
@@ -28,7 +32,6 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
           videoRef.current.srcObject = stream;
           streamRef.current = stream;
           
-          // Wait for video to be ready
           await new Promise((resolve) => {
             videoRef.current.onloadedmetadata = () => {
               videoRef.current.play();
@@ -49,14 +52,24 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
     const initializeFaceMesh = async () => {
       errorCount.current = 0;
       
-      // Initialize webcam first
       const webcamReady = await initializeWebcam();
       if (!webcamReady) return;
 
-      // Create new FaceMesh instance
+      // Clean up existing FaceMesh if it exists
+      if (faceMeshRef.current) {
+        try { faceMeshRef.current.close(); } catch (e) {}
+        faceMeshRef.current = null;
+      }
+
+      // Ensure global Module.arguments_ exists for Emscripten runtime
+      if (typeof window !== 'undefined') {
+        window.Module = window.Module || {};
+        window.Module.arguments_ = window.Module.arguments_ || [];
+      }
+
       const faceMesh = new FaceMesh({
         locateFile: (file) =>
-          `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+          `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`
       });
 
       faceMeshRef.current = faceMesh;
@@ -65,64 +78,135 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
         maxNumFaces: 1,
         refineLandmarks: true,
         minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
+        minTrackingConfidence: 0.5
       });
 
       faceMesh.onResults((results) => {
         if (!isInitialized) {
           isInitialized = true;
+          initializedRef.current = true;
           onStatusChange('FaceMesh Ready');
         }
         onResults(results);
         errorCount.current = 0;
       });
 
-      await faceMesh.initialize();
+      try {
+        await faceMesh.initialize();
+      } catch (error) {
+        const msg = error.toString();
+        if (msg.includes('Module.arguments')) {
+          console.warn('Ignored Module.arguments runtime error during initialize');
+        } else {
+          console.error('FaceMesh initialization error:', error);
+          onStatusChange('Initialization Error - Click Retry');
+          return false;
+        }
+      }
 
-      // Create camera after FaceMesh is initialized
+      // Don't use recursion for retries as it could lead to stack overflow
+      const retryWithDelay = async (fn, maxRetries = 3, delay = 1000) => {
+        let retries = 0;
+        
+        const attempt = async () => {
+          try {
+            return await fn();
+          } catch (error) {
+            retries++;
+            if (retries > maxRetries) {
+              throw error;
+            }
+            console.warn(`Retrying after error (${retries}/${maxRetries}):`, error);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return attempt();
+          }
+        };
+        
+        return attempt();
+      };
+
+      // Ensure we have a valid reference before creating camera
+      if (!faceMeshRef.current) {
+        onStatusChange('FaceMesh Instance Error - Click Retry');
+        return false;
+      }
+
       const camera = new Camera(videoRef.current, {
         onFrame: async () => {
-          if (!videoRef.current?.srcObject || !faceMeshRef.current) return;
+          if (!videoRef.current?.srcObject || videoRef.current.paused || !faceMeshRef.current) return;
+          
           try {
             await faceMeshRef.current.send({ image: videoRef.current });
           } catch (error) {
-            console.error('FaceMesh send error:', error);
             errorCount.current++;
+            console.error('FaceMesh send error:', error);
+            
             if (errorCount.current > MAX_ERRORS) {
               onStatusChange('Too many errors - Click Retry');
+              // Pause camera operation when there are too many errors
+              if (cameraRef.current) {
+                try { cameraRef.current.stop(); } catch (e) {}
+              }
+              initializedRef.current = false;
+            } else {
+              try {
+                // For non-critical errors, try once more without recursive retry
+                await retryWithDelay(() => 
+                  faceMeshRef.current?.send({ image: videoRef.current }), 
+                  1, // Only retry once per error
+                  500  // Shorter delay
+                );
+              } catch (retryError) {
+                // Silently handle retry failure, the error counter will handle it
+              }
             }
           }
         },
         width: 640,
-        height: 480,
+        height: 480
       });
 
       cameraRef.current = camera;
-      camera.start();
+      
+      try {
+        camera.start();
+        return true;
+      } catch (error) {
+        console.error('Camera start error:', error);
+        onStatusChange('Camera Start Error - Click Retry');
+        return false;
+      }
     };
 
-    // Start initialization
     initializeFaceMesh().catch(err => {
       console.error("FaceMesh initialization failed:", err);
+      initializedRef.current = false;
       onStatusChange('Initialization Failed - Click Retry');
     });
 
-    // Cleanup function
     return () => {
+      // Full cleanup on component unmount only
+      initializedRef.current = false;
+      isInitialized = false;
+      
       if (cameraRef.current) {
-        cameraRef.current.stop();
+        try { cameraRef.current.stop(); } catch (e) {}
+        cameraRef.current = null;
       }
-      if (faceMeshRef.current) {
-        faceMeshRef.current.close();
-      }
+      
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        try { streamRef.current.getTracks().forEach(track => track.stop()); } catch (e) {}
         streamRef.current = null;
       }
+      
       if (videoRef.current) {
-        videoRef.current.srcObject = null;
+        try { videoRef.current.srcObject = null; } catch (e) {}
       }
-      isInitialized = false;
+      
+      if (faceMeshRef.current) {
+        try { faceMeshRef.current.close(); } catch (e) {}
+        faceMeshRef.current = null;
+      }
     };
-  }, [enabled, videoRef, onResults, onStatusChange]);
+  }, []);  // <- run only once on mount
 }

@@ -77,70 +77,68 @@ export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSe
   isVideoPaused = false;
   landmarkBuffer = [];
 
-  console.log(`▶️ Video tracking started: collecting frame every ${FRAME_INTERVAL}ms, sending every ${sendIntervalSeconds}s.`);
+  // Only start tracking if in server mode
+  if (window.noStop) {
+    console.log(`▶️ Video tracking started: collecting frame every ${FRAME_INTERVAL}ms, sending every ${sendIntervalSeconds}s.`);
 
-  // Start collecting frames immediately
-  trackingInterval = setInterval(() => {
-    if (isVideoPaused) return;
-    // Only add to buffer if we have landmarks
-    if (latestLandmark) {
-      landmarkBuffer.push({
-        timestamp: Date.now(),
-        landmarks: latestLandmark
-      });
+    // Start collecting frames
+    trackingInterval = setInterval(() => {
+      if (isVideoPaused) return;
+      // Only add to buffer if we have landmarks
+      if (latestLandmark) {
+        landmarkBuffer.push({
+          timestamp: Date.now(),
+          landmarks: latestLandmark
+        });
 
-      // Keep only the most recent frames needed
-      if (landmarkBuffer.length > REQUIRED_FRAMES) {
-        landmarkBuffer.shift();
+        // Keep only the most recent frames needed
+        if (landmarkBuffer.length > REQUIRED_FRAMES) {
+          landmarkBuffer.shift();
+        }
       }
-    }
-  }, FRAME_INTERVAL);
+    }, FRAME_INTERVAL);
 
-  // Initialize sending interval regardless of mode
-  sendingInterval = setInterval(async () => {
-    // Always log progress
-    if (landmarkBuffer.length < REQUIRED_FRAMES) {
-      console.log(`⚠️ Not enough frames yet (${landmarkBuffer.length}/${REQUIRED_FRAMES})`);
-      return;
-    }
-
-    // Skip sending data to server if in client mode
-    if (!window.noStop) {
-      console.log('🚫 Client mode active - skipping server logs');
-      return;
-    }
-
-    try {
-      const relevantLandmarks = landmarkBuffer
-        .slice(-REQUIRED_FRAMES)
-        .map(item => item.landmarks);
-
-      const payload = {
-        youtube_id: youtube_id,
-        current_time: getCurrentTime(),
-        extraction: "mediapipe",
-        extraction_payload: {
-          fps: 10,
-          interval: 10,
-          number_of_landmarks: 478,
-          landmarks: [relevantLandmarks]
-        },
-        model: "v1"
-      };
-
-      const response = await axios.post(`${config.baseURL}/watch/log_watch`, payload, { withCredentials: true });
-      const modelResult = response.data?.model_result;
-      lastModelResult = modelResult;
-      
-      if (onModelResultCallback) {
-        onModelResultCallback(modelResult);
+    // Initialize sending interval
+    sendingInterval = setInterval(async () => {
+      if (landmarkBuffer.length < REQUIRED_FRAMES) {
+        console.log(`⚠️ Not enough frames yet (${landmarkBuffer.length}/${REQUIRED_FRAMES})`);
+        return;
       }
-      console.log('current_time', getCurrentTime());
-      console.log(`✅ Sent ${REQUIRED_FRAMES} frames successfully. Model result:`, modelResult);
-    } catch (error) {
-      console.error('❌ Error sending landmarks:', error);
-    }
-  }, sendIntervalSeconds * 1000);
+
+      try {
+        const relevantLandmarks = landmarkBuffer
+          .slice(-REQUIRED_FRAMES)
+          .map(item => item.landmarks);
+
+        const payload = {
+          youtube_id: youtube_id,
+          current_time: getCurrentTime(),
+          extraction: "mediapipe",
+          extraction_payload: {
+            fps: 10,
+            interval: 10,
+            number_of_landmarks: 478,
+            landmarks: [relevantLandmarks]
+          },
+          model: "v1"
+        };
+
+        const response = await axios.post(`${config.baseURL}/watch/log_watch`, payload, { withCredentials: true });
+        const modelResult = response.data?.model_result;
+        lastModelResult = modelResult;
+        
+        if (onModelResultCallback) {
+          onModelResultCallback(modelResult);
+        }
+        console.log('current_time', getCurrentTime());
+        console.log(`✅ Sent ${REQUIRED_FRAMES} frames successfully. Model result:`, modelResult);
+      } catch (error) {
+        console.error('❌ Error sending landmarks:', error);
+      }
+    }, sendIntervalSeconds * 1000);
+  } else {
+    console.log('🚫 Client mode active - no frame collection needed');
+  }
 };
 
 export const updateLatestLandmark = (faceMeshResults) => {
