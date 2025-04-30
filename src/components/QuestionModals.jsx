@@ -2,6 +2,22 @@
 import { useEffect, useState } from 'react';
 
 export function QuestionModal({ question, onAnswer, language }) {
+  // attention check if no real question
+  if (!question.text && (!question.answers || question.answers.length === 0)) {
+    return (
+      <div className="modal-overlay" role="dialog" aria-modal="true">
+        <div className="modal-content"
+             style={{ direction: language === 'Hebrew' ? 'rtl' : 'ltr' }}>
+          <h3>{language === 'Hebrew' ? 'האם אתה מתמקד?' : 'Are you in attention?'}</h3>
+          <p>{language === 'Hebrew' ? 'אין שאלות זמינות כרגע.' : 'No questions available at this time.'}</p>
+          <button onClick={() => onAnswer('continue')}>
+            {language === 'Hebrew' ? 'המשך' : 'Continue'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
       <div className="modal-content" style={{ direction: language === 'Hebrew' ? 'rtl' : 'ltr' }}>

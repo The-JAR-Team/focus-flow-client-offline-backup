@@ -371,18 +371,24 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         answeredQIDs
       );
 
-      if (availableQuestions.length > 0) {
-        const nextQuestion = selectNextQuestion(availableQuestions);
-        if (nextQuestion) {
-          markQuestionAsked();
-          setCurrentQuestion({
-            q_id: nextQuestion.q_id,
-            text: nextQuestion.question,
-            answers: shuffleAnswers(nextQuestion, selectedLanguage),
-            originalTime: parseTimeToSeconds(nextQuestion.question_origin),
-            endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
-          });
-        }
+      // If no questions are available, show the attention check modal
+      if (availableQuestions.length === 0) {
+        console.log("No questions available, showing attention check.");
+        setCurrentQuestion({ text: '', answers: [] }); // Trigger attention check modal
+        return; // Stop further processing in this function
+      }
+
+      // If questions are available, select and show one
+      const nextQuestion = selectNextQuestion(availableQuestions);
+      if (nextQuestion) {
+        markQuestionAsked();
+        setCurrentQuestion({
+          q_id: nextQuestion.q_id,
+          text: nextQuestion.question,
+          answers: shuffleAnswers(nextQuestion, selectedLanguage),
+          originalTime: parseTimeToSeconds(nextQuestion.question_origin),
+          endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
+        });
       }
     }
   }, [mode, isPlaying, currentQuestion, selectedLanguage, answeredQIDs]);
@@ -475,6 +481,16 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   }, [faceMeshReady, playerRef.current, sendIntervalSeconds, lectureInfo.videoId, isVideoPaused]);
 
   const handleAnswer = (selectedKey) => {
+    // Handle the 'continue' action from the attention check modal
+    if (selectedKey === 'continue') {
+      setCurrentQuestion(null);
+      playerRef.current.playVideo();
+      setIsPlaying(true);
+      setPauseStatus('Playing');
+      setVideoPlaying(true);
+      return; // Skip the rest of the logic for normal answers
+    }
+
     if (selectedKey === 'dontknow') {
       setStats(prev => ({
         ...prev,
