@@ -353,10 +353,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [noClientPause]);
 
+  // new: track when both question sets have loaded
+  const [questionsLoaded, setQuestionsLoaded] = useState(false);
+  useEffect(() => {
+    if (!isHebrewLoading && !isEnglishLoading) {
+      setQuestionsLoaded(true);
+    }
+  }, [isHebrewLoading, isEnglishLoading]);
+
   // Define handleLowEngagement first since it's used in other function dependencies
   const handleLowEngagement = useCallback(() => {
-    if (!isPlaying || currentQuestion) return;
-
+    if (!isPlaying || currentQuestion || !questionsLoaded) return;
+    
     if (playerRef.current) {
       playerRef.current.pauseVideo();
       setIsPlaying(false);
@@ -370,16 +378,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         questionsRef.current,
         answeredQIDs
       );
+      
+      console.log('debugg: availableQuestions:', availableQuestions);
 
-      // If no questions are available, show the attention check modal
+      // no questions → attention check
       if (availableQuestions.length === 0) {
-        console.log("No questions available, showing attention check.");
-        setCurrentQuestion({ text: '', answers: [] }); // Trigger attention check modal
-        return; // Stop further processing in this function
+        console.log('debugg: no questions available for this segment');
+        setCurrentQuestion({ text: '', answers: [] });
+        return;
       }
 
-      // If questions are available, select and show one
       const nextQuestion = selectNextQuestion(availableQuestions);
+      console.log('debugg: nextQuestion to ask:', nextQuestion);
       if (nextQuestion) {
         markQuestionAsked();
         setCurrentQuestion({
@@ -391,10 +401,16 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         });
       }
     }
-  }, [mode, isPlaying, currentQuestion, selectedLanguage, answeredQIDs]);
+  }, [
+    isPlaying, currentQuestion, mode, selectedLanguage,
+    answeredQIDs, questionsLoaded
+  ]);
 
   // Then define handleVideoPlayback which uses handleLowEngagement
   const handleVideoPlayback = useCallback((newGaze) => {
+    // skip all engagement logic if user manually paused
+    if (userPausedRef.current) return;
+
     if (noClientPause) return;
 
     handleEngagementDetection({
@@ -628,6 +644,13 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [debugTriggerActive, handleLowEngagement]);
 
+  // Function to reset answered questions
+  const handleResetAnsweredQuestions = () => {
+    setAnsweredQIDs([]);
+    localStorage.removeItem(`answeredQuestions_${lectureInfo.videoId}`);
+    console.log(`debugg: Answered questions reset for video ${lectureInfo.videoId}`);
+  };
+
   const renderStatus = () => (
     <div className="status-info">
       <p>Mode: {mode}</p>
@@ -678,6 +701,13 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         onClick={() => startManualTrigger()}
       >
         🎯 Trigger Question
+      </button>
+      {/* Add the reset button */}
+      <button 
+        className="debug-button reset-answers"
+        onClick={handleResetAnsweredQuestions}
+      >
+        🔄 Reset Answered Qs
       </button>
     </div>
   );
