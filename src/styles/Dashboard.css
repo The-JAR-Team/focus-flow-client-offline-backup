@@ -287,10 +287,16 @@ h2:hover {
 }
 
 .section-header {
-  margin-bottom: 20px;
+  /* push header clear of previous grid’s overflow */
+  margin-top: 140px;
+  position: relative;
+  z-index: 2;
 }
 
 .collapsible-header {
+  /* ensure the clickable header sits above thumbnails */
+  position: relative;
+  z-index: 3;
   cursor: pointer;
   display: flex;
   align-items: center;
