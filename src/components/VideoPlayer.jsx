@@ -710,19 +710,35 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
             {englishStatus && englishStatus.includes('Building') && 
               <span className="status-counter">#{retryCount.english}</span>}
           </button>
-          
-          {(hebrewStatus || englishStatus) && (
-            <div className="question-generation-status">
-              {selectedLanguage === 'Hebrew' && hebrewStatus && (
-                <div className="status-message">{hebrewStatus}</div>
+        </div>
+      )}
+      
+      {/* Status message moved below the language options */}
+      {mode === 'question' && (hebrewStatus || englishStatus) && (
+        <div className="question-generation-status" style={{ margin: '10px 0 20px', textAlign: 'center' }}>
+          {selectedLanguage === 'Hebrew' && hebrewStatus && (
+            <div className="status-message">
+              {hebrewStatus.includes('No') ? (
+                <span className="error-icon">⚠️</span>
+              ) : (
+                <span className="spinner small"></span>
               )}
-              {selectedLanguage === 'English' && englishStatus && (
-                <div className="status-message">{englishStatus}</div>
+              {hebrewStatus}
+            </div>
+          )}
+          {selectedLanguage === 'English' && englishStatus && (
+            <div className="status-message">
+              {englishStatus.includes('No') ? (
+                <span className="error-icon">⚠️</span>
+              ) : (
+                <span className="spinner small"></span>
               )}
+              {englishStatus}
             </div>
           )}
         </div>
       )}
+      
       {mode === 'analytics' && (
         <div className="focus-graph">
           <Bar
