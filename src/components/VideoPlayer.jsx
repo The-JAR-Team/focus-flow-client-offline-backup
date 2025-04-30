@@ -12,6 +12,7 @@ import {
   handleVideoResume,
   setModelResultCallback,
   fetchTranscriptQuestions,
+  fetchWatchItemResults
 } from '../services/videos';
 import {
   setEngagementDetectionEnabled,
@@ -62,13 +63,17 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [debugTriggerActive, setDebugTriggerActive] = useState(false);
 
   const [initialPlaybackTime, setInitialPlaybackTime] = useState(0);
-  const [sendIntervalSeconds, setSendIntervalSeconds] = useState(10);
+  const [sendIntervalSeconds, setSendIntervalSeconds] = useState(2);
   const [isPlaying, setIsPlaying] = useState(true);
   const [pauseStatus, setPauseStatus] = useState('Playing');
   const [userPaused, setUserPaused] = useState(false);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
 
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
+  // New state for the results plot
+  const [resultsChartData, setResultsChartData] = useState({ labels: [], datasets: [] });
+  const [showResultsChart, setShowResultsChart] = useState(false);
+
   const [loaded, setLoaded] = useState(false);
 
   const [questions, setQuestions] = useState([]);
@@ -651,6 +656,49 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     console.log(`debugg: Answered questions reset for video ${lectureInfo.videoId}`);
   };
 
+  // Function to plot results
+  const handlePlotResults = async() => {
+    // Toggle visibility if chart is already shown
+    if (showResultsChart) {
+      setShowResultsChart(false);
+    }
+
+    fetchWatchItemResults(lectureInfo.videoId).then((data) => {
+      const resultsArray = data[Object.keys(data)[0]];
+      console.debug('plot results raw data:', data[Object.keys(data)[0]]); 
+      
+      if (resultsArray && Array.isArray(resultsArray) && resultsArray.length > 0) {
+        const sortedData = resultsArray.sort((a, b) => a.video_time - b.video_time);
+
+        const labels = sortedData.map(item => (item.video_time/60).toFixed(1)); // Use video_time for x-axis, rounded
+        const values = sortedData.map(item => item.result*100); // Use result for y-axis
+
+        setResultsChartData({
+          labels,
+          datasets: [
+            {
+              label: 'Focus over Time',
+              data: values,
+              backgroundColor: 'rgba(153, 102, 255, 0.6)', // Different color
+              borderColor: 'rgba(153, 102, 255, 1)',
+              borderWidth: 1,
+            },
+          ],
+        });
+        setShowResultsChart(true); // Show the chart
+        console.log('Results chart data updated:', { labels, values });
+      } else {
+        console.error('No data available for plotting results or data is not in the expected array format.');
+        setResultsChartData({ labels: [], datasets: [] });
+        setShowResultsChart(false); // Hide the chart if no data
+      }
+    }).catch(error => {
+      console.error('Error fetching or processing watch item results:', error);
+      setResultsChartData({ labels: [], datasets: [] });
+      setShowResultsChart(false); // Hide the chart on error
+    });
+  }
+
   const renderStatus = () => (
     <div className="status-info">
       <p>Mode: {mode}</p>
@@ -709,6 +757,13 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       >
         🔄 Reset Answered Qs
       </button>
+      {/* Button for getting results' plot */}
+      <button
+        className="debug-button"
+        onClick={handlePlotResults}
+      >
+        Plot results
+      </button>
     </div>
   );
 
@@ -726,6 +781,32 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       />
       {renderStatus()}
       {mode === 'question' && renderDebugTools()}
+
+      {/* Conditionally render the new results chart */}
+      {showResultsChart && (
+        <div 
+          className="results-plot-chart" 
+          style={{ 
+            width: '90%', // Use percentage width for responsiveness
+            height: '450px', // Set a fixed height, otherwise is sliiiiiiiides down
+            margin: '20px auto' // Center the chart
+          }}
+        >
+          <h3>Focus Results Over Time</h3>
+          <Bar
+            data={resultsChartData}
+            options={{
+              maintainAspectRatio: false, // Allow chart to fill container height
+              scales: {
+                x: { title: { display: true, text: 'Video Time (s)' } },
+                y: { title: { display: true, text: 'Concentration' }, min: 0 }, // Adjust min/max if needed
+              },
+              plugins: { legend: { display: true } }, // Show legend for this chart
+            }}
+          />
+        </div>
+      )}
+
       {mode === 'question' && (
         <div className="language-options" style={{ margin: '20px 0', direction: 'ltr' }}>
           <button 
@@ -797,6 +878,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
               plugins: { legend: { display: false } },
             }}
           />
+          {showResultsChart && (
+            <Bar
+              data={resultsChartData}
+              options={{
+                scales: {
+                  x: { title: { display: true, text: 'Time (s)' } },
+                  y: { title: { display: true, text: 'Focus' }, min: 0, max: 1 },
+                },
+                plugins: { legend: { display: true } },
+              }}
+            />
+          )}
         </div>
       )}
       <video 

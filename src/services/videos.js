@@ -163,3 +163,20 @@ export const fetchLastWatchTime = async (youtube_id) => {
     return 0;
   }
 };
+
+
+export const fetchWatchItemResults = async (youtube_id, option) => {
+  try {
+    if (!option) 
+      option = 'alone';
+    const response = await axios.get(
+      `${config.baseURL}/watch/get_results?youtube_id=${youtube_id}&option=${option}`,
+      { withCredentials: true }
+    );
+    // return response.data;
+    return response.data.results_by_user;
+  } catch (error) {
+    console.error('❌ Error fetching results:', error);
+    return 0;
+  }
+};
