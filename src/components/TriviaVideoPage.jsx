@@ -44,18 +44,27 @@ function TriviaVideoPage() {
         
         const data = await fetchTranscriptQuestions(externalId, language);
         
+        // Check for transcript not available error
+        if (data.status === 'failed' && 
+            data.reason && 
+            data.reason.includes('Could not retrieve a transcript')) {
+          statusSetter(`No ${language} subtitles available for this video`);
+          return null; // Exit immediately, no need to retry
+        }
+        
         if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
           statusSetter(`Building ${language} questions... (Check #${attempt + 1})`);
           await new Promise(resolve => setTimeout(resolve, 2000));
           continue;
         }
         
-        // If we got here, we either have questions or a definitive error
+        // If we got here, we either have questions or a different error
         const formattedQuestions = formatQuestions(data);
         questionsSetter(formattedQuestions);
         
         if (formattedQuestions.length === 0) {
-          statusSetter(`No questions available for ${language}`);
+          //statusSetter(`No questions available for ${language}`);
+          statusSetter(`No questions available`);
         } else {
           statusSetter(null);
         }
@@ -118,10 +127,18 @@ function TriviaVideoPage() {
         setEnglishStatus('Starting question generation...');
         
         // Use external_id for fetching questions with retry
-        await Promise.all([
+        const [hebrewResult, englishResult] = await Promise.all([
           fetchQuestionsWithRetry(videoData.external_id, 'Hebrew'),
           fetchQuestionsWithRetry(videoData.external_id, 'English')
         ]);
+
+        // If both languages failed with no subtitles, set appropriate error
+        const hebrewFailed = hebrewStatus && hebrewStatus.includes('No Hebrew subtitles available');
+        const englishFailed = englishStatus && englishStatus.includes('No English subtitles available');
+        
+        if (hebrewFailed && englishFailed) {
+          setError('No subtitles available for this video in any language. Cannot generate questions.');
+        }
 
       } catch (err) {
         console.error('Error details:', err);
@@ -240,6 +257,10 @@ function TriviaVideoPage() {
     const currentStatus = selectedLanguage === 'Hebrew' ? hebrewStatus : englishStatus;
     const currentRetry = selectedLanguage === 'Hebrew' ? retryCount.hebrew : retryCount.english;
     
+    // Check if status indicates no subtitles
+    const hebrewNoSubtitles = hebrewStatus && hebrewStatus.includes('No Hebrew subtitles available');
+    const englishNoSubtitles = englishStatus && englishStatus.includes('No English subtitles available');
+    
     return (
       <div style={{ padding: '20px' }}>
         <Navbar />
@@ -252,18 +273,18 @@ function TriviaVideoPage() {
                 <button 
                   className={`lang-btn ${selectedLanguage === 'Hebrew' ? 'active' : ''} ${hebrewQuestions.length === 0 ? 'disabled' : ''}`}
                   onClick={() => setSelectedLanguage('Hebrew')}
-                  disabled={hebrewQuestions.length === 0 && !hebrewStatus}
+                  disabled={hebrewQuestions.length === 0}
                 >
-                  Hebrew {hebrewQuestions.length === 0 && !hebrewStatus && '❌'}
-                  {hebrewStatus && <span className="status-icon">⏳</span>}
+                  Hebrew {hebrewNoSubtitles ? '❌' : (hebrewQuestions.length === 0 && !hebrewStatus ? '❌' : '')}
+                  {hebrewStatus && !hebrewNoSubtitles && <span className="status-icon">⏳</span>}
                 </button>
                 <button 
                   className={`lang-btn ${selectedLanguage === 'English' ? 'active' : ''} ${englishQuestions.length === 0 ? 'disabled' : ''}`}
                   onClick={() => setSelectedLanguage('English')}
-                  disabled={englishQuestions.length === 0 && !englishStatus}
+                  disabled={englishQuestions.length === 0}
                 >
-                  English {englishQuestions.length === 0 && !englishStatus && '❌'}
-                  {englishStatus && <span className="status-icon">⏳</span>}
+                  English {englishNoSubtitles ? '❌' : (englishQuestions.length === 0 && !englishStatus ? '❌' : '')}
+                  {englishStatus && !englishNoSubtitles && <span className="status-icon">⏳</span>}
                 </button>
               </div>
 
@@ -298,12 +319,24 @@ function TriviaVideoPage() {
             </div>
 
             {currentStatus && (
-              <div className="status-message">
-                <span className="spinner small"></span>
-                <strong>Building {selectedLanguage} questions</strong>
+              <div className={`status-message ${currentStatus.includes('No') ? 'error-status' : ''}`}>
+                {currentStatus.includes('No') ? (
+                  <span className="error-icon">⚠️</span>
+                ) : (
+                  <span className="spinner small"></span>
+                )}
+                <strong>
+                  {currentStatus.includes('No') ? 'Error: ' : `Building ${selectedLanguage} questions`}
+                </strong>
                 <div className="status-detail">
-                  Server check #{currentRetry}: {currentStatus}
+                  {currentStatus.includes('No') ? currentStatus : `Server check #${currentRetry}: ${currentStatus}`}
                 </div>
+              </div>
+            )}
+
+            {(hebrewNoSubtitles && englishNoSubtitles) && (
+              <div className="no-subtitles-warning">
+                <p>⚠️ This video doesn't have subtitles in any language. Try another video or add subtitles to this one.</p>
               </div>
             )}
 

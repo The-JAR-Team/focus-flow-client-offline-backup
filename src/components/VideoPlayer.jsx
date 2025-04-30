@@ -10,7 +10,8 @@ import {
   updateLatestLandmark,
   handleVideoPause,
   handleVideoResume,
-  setModelResultCallback
+  setModelResultCallback,
+  fetchTranscriptQuestions,
 } from '../services/videos';
 import {
   setEngagementDetectionEnabled,
@@ -101,6 +102,10 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [englishQuestions, setEnglishQuestions] = useState([]);
   const [isHebrewLoading, setIsHebrewLoading] = useState(true);
   const [isEnglishLoading, setIsEnglishLoading] = useState(true);
+  
+  const [hebrewStatus, setHebrewStatus] = useState(null);
+  const [englishStatus, setEnglishStatus] = useState(null);
+  const [retryCount, setRetryCount] = useState({ hebrew: 0, english: 0 });
 
   const [faceMeshReady, setFaceMeshReady] = useState(false);
 
@@ -179,6 +184,95 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     setDisableEngagementLogic(newState);
     setEngagementDetectionEnabled(!newState); // Opposite of disable state
   }, [disableEngagementLogic]);
+
+  // Function to fetch questions with retry logic
+  const fetchQuestionsWithRetry = async (videoId, language, maxRetries = 15) => {
+    const statusSetter = language === 'Hebrew' ? setHebrewStatus : setEnglishStatus;
+    const loadingSetter = language === 'Hebrew' ? setIsHebrewLoading : setIsEnglishLoading;
+    const questionsSetter = language === 'Hebrew' ? setHebrewQuestions : setEnglishQuestions;
+    const retryCountKey = language.toLowerCase();
+    
+    loadingSetter(true);
+    statusSetter(`Starting ${language} question generation...`);
+    
+    try {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (attempt > 0) {
+          setRetryCount(prev => ({ ...prev, [retryCountKey]: attempt }));
+        }
+        
+        const data = await fetchTranscriptQuestions(videoId, language);
+        
+        // Check for transcript not available error
+        if (data.status === 'failed' && 
+            data.reason && 
+            data.reason.includes('Could not retrieve a transcript')) {
+          statusSetter(`No ${language} subtitles`);
+          loadingSetter(false);
+          return [];
+        }
+        
+        // Check for pending status
+        if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
+          statusSetter(`Building questions... (${attempt + 1})`);
+          await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds before retrying
+          continue;
+        }
+        
+        // Extract questions from response
+        const questionsArray = [
+          ...(data.video_questions?.questions || []),
+          ...(data.generic_questions?.questions || []),
+          ...(data.subject_questions?.questions || [])
+        ];
+        
+        if (questionsArray.length > 0) {
+          const sortedQuestions = questionsArray.sort((a, b) => {
+            return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
+          });
+          
+          questionsSetter(sortedQuestions);
+          statusSetter(null);
+          
+          // If this is the current language, update the main questions state too
+          if (selectedLanguage === language) {
+            questionsRef.current = sortedQuestions;
+            setQuestions(sortedQuestions);
+          }
+          
+          loadingSetter(false);
+          return sortedQuestions;
+        } else {
+          statusSetter(`No questions available`);
+          loadingSetter(false);
+          return [];
+        }
+      }
+      
+      // If we've exhausted all retries
+      statusSetter(`Timed out waiting for questions`);
+      loadingSetter(false);
+      return [];
+      
+    } catch (err) {
+      console.error(`Error fetching ${language} questions:`, err);
+      statusSetter(`Error: ${err.message}`);
+      loadingSetter(false);
+      return [];
+    }
+  };
+
+  // Replace the question fetching logic in useEffect
+  useEffect(() => {
+    setTimeout(() => setLoaded(true), 1000);
+    if (mode === 'question') {
+      console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
+      
+      // Start fetch with retry for both languages
+      fetchQuestionsWithRetry(lectureInfo.videoId, 'Hebrew');
+      fetchQuestionsWithRetry(lectureInfo.videoId, 'English');
+    }
+  }, [lectureInfo.videoId, mode]);
 
   // Set loaded after a short delay and fetch questions if in question mode.
   useEffect(() => {
@@ -489,8 +583,13 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   const handleLanguageChange = (language) => {
     setSelectedLanguage(language);
-    questionsRef.current = language === 'Hebrew' ? hebrewQuestions : englishQuestions;
-    setQuestions(language === 'Hebrew' ? hebrewQuestions : englishQuestions);
+    if (language === 'Hebrew') {
+      questionsRef.current = hebrewQuestions;
+      setQuestions(hebrewQuestions);
+    } else {
+      questionsRef.current = englishQuestions;
+      setQuestions(englishQuestions);
+    }
   };
 
   // Setup model result handling
@@ -586,17 +685,42 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           <button 
             className={`lang-btn ${selectedLanguage === 'Hebrew' ? 'active' : ''} ${hebrewQuestions.length === 0 ? 'disabled' : ''}`}
             onClick={() => handleLanguageChange('Hebrew')}
-            disabled={isHebrewLoading || hebrewQuestions.length === 0}
+            disabled={hebrewQuestions.length === 0 && !hebrewStatus?.includes('Building')}
           >
-            Hebrew {isHebrewLoading ? '⌛' : hebrewQuestions.length === 0 ? '❌' : '✓'}
+            Hebrew {hebrewStatus ? (
+              hebrewStatus.includes('Building') ? '⌛' : 
+              hebrewStatus.includes('No') ? '❌' : '⏳'
+            ) : (
+              hebrewQuestions.length > 0 ? '✓' : '❌'
+            )}
+            {hebrewStatus && hebrewStatus.includes('Building') && 
+              <span className="status-counter">#{retryCount.hebrew}</span>}
           </button>
           <button 
             className={`lang-btn ${selectedLanguage === 'English' ? 'active' : ''} ${englishQuestions.length === 0 ? 'disabled' : ''}`}
             onClick={() => handleLanguageChange('English')}
-            disabled={isEnglishLoading || englishQuestions.length === 0}
+            disabled={englishQuestions.length === 0 && !englishStatus?.includes('Building')}
           >
-            English {isEnglishLoading ? '⌛' : englishQuestions.length === 0 ? '❌' : '✓'}
+            English {englishStatus ? (
+              englishStatus.includes('Building') ? '⌛' : 
+              englishStatus.includes('No') ? '❌' : '⏳'
+            ) : (
+              englishQuestions.length > 0 ? '✓' : '❌'
+            )}
+            {englishStatus && englishStatus.includes('Building') && 
+              <span className="status-counter">#{retryCount.english}</span>}
           </button>
+          
+          {(hebrewStatus || englishStatus) && (
+            <div className="question-generation-status">
+              {selectedLanguage === 'Hebrew' && hebrewStatus && (
+                <div className="status-message">{hebrewStatus}</div>
+              )}
+              {selectedLanguage === 'English' && englishStatus && (
+                <div className="status-message">{englishStatus}</div>
+              )}
+            </div>
+          )}
         </div>
       )}
       {mode === 'analytics' && (
