@@ -8,6 +8,8 @@ import StackedThumbnails from './StackedThumbnails';
 import Spinner from './Spinner';
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedPlaylist } from '../redux/playlistSlice';
+import { setDashboardData } from '../redux/dashboardSlice';
+import { initializeDashboardData } from '../services/dashboardService';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -62,6 +64,17 @@ function Dashboard() {
     setSelectedVideo(video);
   };
 
+  const refreshDashboard = async (e) => {
+    const dashboardData = await initializeDashboardData(currentUser);
+
+    dispatch(setDashboardData({
+      myGenericVideos: dashboardData.myGenericVideos,
+      otherGenericVideos: dashboardData.otherGenericVideos,
+      myPlaylists: dashboardData.myPlaylists,
+      otherPlaylists: dashboardData.otherPlaylists
+    }));
+  }
+
   const groups = ['All Lectures', ...new Set(videos.map(v => v.group))];
   const filteredVideos = selectedGroup === 'All Lectures'
     ? videos
@@ -84,6 +97,9 @@ function Dashboard() {
             <div className="user-greeting">
               <h1>Hello {currentUser.first_name} {currentUser.last_name}</h1>
             </div>
+            <button className="back-button" onClick={() => refreshDashboard()}>
+              Refresh Dashboard
+            </button>
           </>
         ) : (
           <div className="login-prompt">
