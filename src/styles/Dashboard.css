@@ -14,8 +14,8 @@
 .content-grid {
   /* Revert to grid layout */
   display: grid;
-  /* Increase min column size to fit larger playlist cards */
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+  /* Increase min column size by 1px */
+  grid-template-columns: repeat(auto-fit, minmax(281px, 1fr)); 
   justify-content: center; /* Center items if space allows */
   gap: 30px;
   padding: 20px; 
@@ -54,8 +54,8 @@
   box-shadow: 0 3px 6px rgba(0,0,0,0.1);
   cursor: pointer;
   transition: all 0.2s ease;
-  /* Increase min-height */
-  min-height: 240px; 
+  /* Increase min-height by 1px */
+  min-height: 241px; /* Adjusted from 240px */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -69,8 +69,8 @@
 
 .stacked-thumbnails {
   position: relative;
-  /* Increase height */
-  height: 120px; 
+  /* Increase height by 1px */
+  height: 121px; 
   width: 90%;
   margin: 25px auto; /* Adjust margin */
   transform-style: preserve-3d;
@@ -78,9 +78,9 @@
 
 .stacked-thumbnail {
   position: absolute;
-  /* Increase width and height */
-  width: 160px; 
-  height: 90px; 
+  /* Increase width and height by 1px */
+  width: 161px; 
+  height: 100px; 
   border-radius: 4px;
   overflow: hidden;
   box-shadow: -2px 2px 8px rgba(0,0,0,0.3);
