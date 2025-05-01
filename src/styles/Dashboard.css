@@ -12,14 +12,16 @@
 }
 
 .content-grid {
+  /* Revert to grid layout */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 25%));
-  justify-content: center;
+  /* Increase min column size to fit larger playlist cards */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+  justify-content: center; /* Center items if space allows */
   gap: 30px;
-  padding: 20px;
+  padding: 20px; 
   width: 100%;
-  min-height: 100px;
-  
+  overflow-y: hidden; 
+  max-height: none; /* Default: no max height */
 }
 
 .video-card {
@@ -48,16 +50,18 @@
 
 .playlist-card {
   background: #f5f5f5;
-  padding: 15px;
+  /* Increase padding slightly */
+  padding: 20px 20px 35px 20px; 
   border-radius: 8px;
   box-shadow: 0 3px 6px rgba(0,0,0,0.1);
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 200px;
+  /* Increase min-height */
+  min-height: 240px; 
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
+  position: relative; 
 }
 
 .playlist-card:hover {
@@ -67,16 +71,18 @@
 
 .stacked-thumbnails {
   position: relative;
-  height: 100px;
+  /* Increase height */
+  height: 120px; 
   width: 90%;
-  margin: 20px auto;
+  margin: 25px auto; /* Adjust margin */
   transform-style: preserve-3d;
 }
 
 .stacked-thumbnail {
   position: absolute;
-  width: 140px;
-  height: 80px;
+  /* Increase width and height */
+  width: 160px; 
+  height: 90px; 
   border-radius: 4px;
   overflow: hidden;
   box-shadow: -2px 2px 8px rgba(0,0,0,0.3);
@@ -88,19 +94,19 @@
   object-fit: cover;
 }
 
-/* New spread hover effects for stacked thumbnails */
+/* Adjust hover transforms slightly for new size */
 .stacked-thumbnail[data-index="0"]:hover {
-  transform: translateX(-10px) translateY(-10px) rotate(30deg) scale(0.95);
+  transform: translateX(-12px) translateY(-12px) rotate(30deg) scale(0.95); /* Adjusted */
   box-shadow: -8px 4px 12px rgba(0,0,0,0.3);
 }
 
 .stacked-thumbnail[data-index="1"]:hover {
-  transform: translateX(0px) translateY(-5px) rotate(10deg) scale(0.95);
+  transform: translateX(0px) translateY(-6px) rotate(10deg) scale(0.95); /* Adjusted */
   box-shadow: -8px 4px 12px rgba(0,0,0,0.3);
 }
 
 .stacked-thumbnail[data-index="2"]:hover {
-  transform: translateX(10px) translateY(0px) rotate(0deg) scale(0.95);
+  transform: translateX(12px) translateY(0px) rotate(0deg) scale(0.95); /* Adjusted */
   box-shadow: -8px 4px 12px rgba(0,0,0,0.3);
 }
 
@@ -287,10 +293,13 @@ h2:hover {
 }
 
 .section-header {
-  /* push header clear of previous grid’s overflow */
-  margin-top: 140px;
   position: relative;
   z-index: 2;
+}
+
+.dashboard-section {
+  margin-bottom: 60px; /* Adjusted base margin slightly */
+  position: relative; 
 }
 
 .collapsible-header {
@@ -323,13 +332,33 @@ h2:hover {
 .collapsible-content {
   max-height: 0;
   opacity: 0;
-  overflow: hidden;
+  overflow: hidden; 
   transition: all 0.3s ease-in-out;
 }
 
 .collapsible-content.expanded {
-  max-height: 3000px; /* Increased to handle more content */
-  opacity: 1;
-  overflow: visible;
-  margin-bottom: 40px;
+  /* Increase max-height slightly if needed to show more rows before scrolling */
+  max-height: 500px; /* Adjusted */
+  opacity: 1;         
+  overflow: visible; 
+}
+
+.collapsible-content.expanded .content-grid {
+  max-height: 500px; /* Adjusted */
+  overflow-y: auto; /* Enable vertical scroll if content exceeds max-height */
+   scrollbar-width: thin;
+   scrollbar-color: #ccc #f5f5f5;
+}
+
+.collapsible-content.expanded .content-grid::-webkit-scrollbar {
+  width: 8px; /* Use width for vertical scrollbar */
+}
+.collapsible-content.expanded .content-grid::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+.collapsible-content.expanded .content-grid::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 4px;
+  border: 2px solid #f5f5f5;
 }

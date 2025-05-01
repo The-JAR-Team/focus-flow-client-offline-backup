@@ -135,100 +135,108 @@ function Dashboard() {
             </div>
             
             {/* My Playlists Section */}
-            <div className="section-header">
-              <h2 onClick={() => toggleSection('myPlaylists')} className="collapsible-header">
-                My Playlists
-                <span className={`arrow ${expandedSections.myPlaylists ? 'expanded' : ''}`}>▼</span>
-              </h2>
-            </div>
-            <div className={`collapsible-content ${expandedSections.myPlaylists ? 'expanded' : ''}`}>
-              <div className="content-grid">
-                {myPlaylists.map(playlist => (
-                  <div 
-                    className="playlist-card" 
-                    key={playlist.playlist_id}
-                    onClick={() => handlePlaylistClick(playlist)}
-                  >
-                    <h4>{playlist.playlist_name}</h4>
-                    <StackedThumbnails videos={playlist.playlist_items} />
-                    <div className="playlist-info">
-                      <p>Permission: {playlist.playlist_permission}</p>
-                      <p>Videos: {playlist.playlist_items.length}</p>
+            <div className="dashboard-section">
+              <div className="section-header">
+                <h2 onClick={() => toggleSection('myPlaylists')} className="collapsible-header">
+                  My Playlists
+                  <span className={`arrow ${expandedSections.myPlaylists ? 'expanded' : ''}`}>▼</span>
+                </h2>
+              </div>
+              <div className={`collapsible-content ${expandedSections.myPlaylists ? 'expanded' : ''}`}>
+                <div className="content-grid">
+                  {myPlaylists.map(playlist => (
+                    <div 
+                      className="playlist-card" 
+                      key={playlist.playlist_id}
+                      onClick={() => handlePlaylistClick(playlist)}
+                    >
+                      <h4>{playlist.playlist_name}</h4>
+                      <StackedThumbnails videos={playlist.playlist_items} />
+                      <div className="playlist-info">
+                        <p>Permission: {playlist.playlist_permission}</p>
+                        <p>Videos: {playlist.playlist_items.length}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Public Playlists Section */}
-            <div className="section-header">
-              <h2 onClick={() => toggleSection('publicPlaylists')} className="collapsible-header">
-                Public Playlists
-                <span className={`arrow ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>▼</span>
-              </h2>
-            </div>
-            <div className={`collapsible-content ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>
-              <div className="content-grid">
-                {otherPlaylists.map(playlist => (
-                  <div 
-                    className="playlist-card" 
-                    key={playlist.playlist_id}
-                    onClick={() => handlePlaylistClick(playlist)}
-                  >
-                    <h4>{playlist.playlist_name}</h4>
-                    <StackedThumbnails videos={playlist.playlist_items} />
-                    <div className="playlist-info">
-                      <p>Owner: {playlist.playlist_owner_name}</p>
-                      <p>Permission: {playlist.playlist_permission}</p>
-                      <p>Videos: {playlist.playlist_items.length}</p>
+            <div className="dashboard-section">
+              <div className="section-header">
+                <h2 onClick={() => toggleSection('publicPlaylists')} className="collapsible-header">
+                  Public Playlists
+                  <span className={`arrow ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>▼</span>
+                </h2>
+              </div>
+              <div className={`collapsible-content ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>
+                <div className="content-grid">
+                  {otherPlaylists.map(playlist => (
+                    <div 
+                      className="playlist-card" 
+                      key={playlist.playlist_id}
+                      onClick={() => handlePlaylistClick(playlist)}
+                    >
+                      <h4>{playlist.playlist_name}</h4>
+                      <StackedThumbnails videos={playlist.playlist_items} />
+                      <div className="playlist-info">
+                        <p>Owner: {playlist.playlist_owner_name}</p>
+                        <p>Permission: {playlist.playlist_permission}</p>
+                        <p>Videos: {playlist.playlist_items.length}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* My Videos Section */}
-            <div className="section-header">
-              <h2 onClick={() => toggleSection('myVideos')} className="collapsible-header">
-                My Videos
-                <span className={`arrow ${expandedSections.myVideos ? 'expanded' : ''}`}>▼</span>
-              </h2>
-            </div>
-            <div className={`collapsible-content ${expandedSections.myVideos ? 'expanded' : ''}`}>
-              <div className="content-grid">
-                {myGenericVideos.map(video => (
-                  <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
-                    <h4>{video.video_name}</h4>
-                    <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
-                    <div className="video-info">
-                      <h5>Subject: {video.group}</h5>
-                      <small>Length: {video.length}</small>
+            <div className="dashboard-section">
+              <div className="section-header">
+                <h2 onClick={() => toggleSection('myVideos')} className="collapsible-header">
+                  My Videos
+                  <span className={`arrow ${expandedSections.myVideos ? 'expanded' : ''}`}>▼</span>
+                </h2>
+              </div>
+              <div className={`collapsible-content ${expandedSections.myVideos ? 'expanded' : ''}`}>
+                <div className="content-grid">
+                  {myGenericVideos.map(video => (
+                    <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
+                      <h4>{video.video_name}</h4>
+                      <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
+                      <div className="video-info">
+                        <h5>Subject: {video.group}</h5>
+                        <small>Length: {video.length}</small>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Public Videos Section */}
-            <div className="section-header">
-              <h2 onClick={() => toggleSection('publicVideos')} className="collapsible-header">
-                Public Videos
-                <span className={`arrow ${expandedSections.publicVideos ? 'expanded' : ''}`}>▼</span>
-              </h2>
-            </div>
-            <div className={`collapsible-content ${expandedSections.publicVideos ? 'expanded' : ''}`}>
-              <div className="content-grid">
-                {otherGenericVideos.map(video => (
-                  <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
-                    <h4>{video.video_name}</h4>
-                    <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
-                    <div className="video-info">
-                      <h5>Subject: {video.group}</h5>
-                      <small>Uploaded by: {video.uploadby}</small><br />
-                      <small>Length: {video.length}</small>
+            <div className="dashboard-section">
+              <div className="section-header">
+                <h2 onClick={() => toggleSection('publicVideos')} className="collapsible-header">
+                  Public Videos
+                  <span className={`arrow ${expandedSections.publicVideos ? 'expanded' : ''}`}>▼</span>
+                </h2>
+              </div>
+              <div className={`collapsible-content ${expandedSections.publicVideos ? 'expanded' : ''}`}>
+                <div className="content-grid">
+                  {otherGenericVideos.map(video => (
+                    <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
+                      <h4>{video.video_name}</h4>
+                      <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
+                      <div className="video-info">
+                        <h5>Subject: {video.group}</h5>
+                        <small>Uploaded by: {video.uploadby}</small><br />
+                        <small>Length: {video.length}</small>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </>
