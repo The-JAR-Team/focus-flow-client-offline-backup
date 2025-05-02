@@ -52,26 +52,26 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight, onQu
     const maxScroll = scrollHeight - clientHeight;
     
     // Which question index to target
-    const targetIdx = currentQuestionIndex !== -1 ? currentQuestionIndex : nextQuestionIndex;
+    let targetIdx = currentQuestionIndex !== -1 ? currentQuestionIndex : nextQuestionIndex;
     if (targetIdx < 0 || targetIdx >= processedQuestions.length) return;
+    
+    // Create backward indentation by scrolling to one question before the target
+    const displayIdx = Math.max(0, targetIdx - 1); // Show one question before target (with lower bound of 0)
     
     // Basic throttle to avoid too many scrolls
     const now = Date.now();
-    if (now - lastScrollRef.current.time < 500 && targetIdx === lastScrollRef.current.idx) return;
+    //if (now - lastScrollRef.current.time < 500 && displayIdx === lastScrollRef.current.idx) return;
     
-    
-    // The key idea: divide the timeline into fixed segments
-    // Use the target index / total questions to determine scroll position
-    const scrollRatio = targetIdx / (processedQuestions.length - 1);
+    // The key idea: divide the timeline into fixed segments based on adjusted index
+    const scrollRatio = displayIdx / (processedQuestions.length - 1);
     const scrollTarget = Math.floor(scrollRatio * maxScroll);
 
     // Ensure bounds
     const clampedTarget = Math.max(0, Math.min(scrollTarget, maxScroll));
     
-    
-    // Record this scroll to avoid duplicates
+    // Record this scroll to avoid duplicates (store the display index, not the target)
     lastScrollRef.current = {
-      idx: targetIdx,
+      idx: displayIdx,
       time: now
     };
     
