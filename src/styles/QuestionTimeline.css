@@ -45,6 +45,7 @@
   scroll-margin-top: 50px;        /* Add margin for header when snapping */
   position: relative;             /* For timeline connector */
   padding-left: 15px;             /* Space for timeline connector */
+  cursor: pointer; /* Indicate item is clickable */
 }
 
 .question-item::before {
@@ -126,6 +127,7 @@
 .question-item:hover {
   background-color: #f0f8ff; /* Very light blue on hover */
   transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Add subtle shadow on hover */
 }
 
 /* Scrollbar styling (optional, browser-dependent) */

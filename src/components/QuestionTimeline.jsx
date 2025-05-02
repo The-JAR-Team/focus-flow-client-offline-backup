@@ -6,7 +6,7 @@ import {
 } from '../services/questionTimelineService';
 import '../styles/QuestionTimeline.css';
 
-const QuestionTimeline = ({ questions, currentTime, language, playerHeight }) => {
+const QuestionTimeline = ({ questions, currentTime, language, playerHeight, onQuestionClick }) => {
   const timelineRef = useRef(null);
   const questionRefs = useRef({});
   const [processedQuestions, setProcessedQuestions] = useState([]);
@@ -31,11 +31,11 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight }) =>
     const currentIdx = processedQuestions.findIndex(q => currentTime >= q.startTime && currentTime < q.endTime);
 
     if (nextIdx !== nextQuestionIndex) {
-      console.log(`🔄 Next question index changed to ${nextIdx}`);
+      //console.log(`🔄 Next question index changed to ${nextIdx}`);
       setNextQuestionIndex(nextIdx);
     }
     if (currentIdx !== currentQuestionIndex) {
-      console.log(`🔄 Current question index changed to ${currentIdx}`);
+      //console.log(`🔄 Current question index changed to ${currentIdx}`);
       setCurrentQuestionIndex(currentIdx);
     }
   }, [currentTime, processedQuestions, nextQuestionIndex, currentQuestionIndex]);
@@ -59,7 +59,6 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight }) =>
     const now = Date.now();
     if (now - lastScrollRef.current.time < 500 && targetIdx === lastScrollRef.current.idx) return;
     
-    console.log(`🎯 Focusing on question index ${targetIdx}/${processedQuestions.length-1}`);
     
     // The key idea: divide the timeline into fixed segments
     // Use the target index / total questions to determine scroll position
@@ -69,7 +68,6 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight }) =>
     // Ensure bounds
     const clampedTarget = Math.max(0, Math.min(scrollTarget, maxScroll));
     
-    console.log(`📜 Scrolling to position ${clampedTarget}/${maxScroll} (${Math.round(scrollRatio*100)}%)`);
     
     // Record this scroll to avoid duplicates
     lastScrollRef.current = {
@@ -111,6 +109,9 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight }) =>
             ref={questionRefs.current[q.q_id]}
             className={itemClass}
             id={`q${q.startTime}-${q.q_id}`}
+            onClick={() => onQuestionClick && onQuestionClick(q.startTime-2)}
+            title={`Click to seek to ${formatTime(q.startTime)}`} // Add tooltip
+            style={{ cursor: 'pointer' }} // Show pointer cursor on hover
           >
             <span className="question-time">[{formatTime(q.startTime)}]</span>
             <span className="question-text">{q.question}</span>

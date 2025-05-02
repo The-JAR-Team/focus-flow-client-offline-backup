@@ -34,6 +34,9 @@ import {
   getAvailableQuestions,
   selectNextQuestion
 } from '../services/videoPlayerService';
+import {
+  formatTime
+} from '../services/questionTimelineService';
 
 import {
   Chart as ChartJS,
@@ -508,6 +511,19 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     setShowTimeline(prev => !prev);
   };
 
+  // Add handler for seeking to timestamp when a question is clicked
+  const handleQuestionClick = useCallback((timestamp) => {
+    if (playerRef.current) {
+      console.log(`🎯 Seeking to ${formatTime(timestamp)}`);
+      playerRef.current.seekTo(timestamp, true);
+      
+      // If video is paused, play it
+      if (!isPlaying) {
+        playerRef.current.playVideo();
+      }
+    }
+  }, [isPlaying]);
+
   const renderStatus = () => (
     <div className="status-info">
       <p>Mode: {mode}</p>
@@ -707,6 +723,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
             currentTime={currentTime}
             language={selectedLanguage}
             playerHeight={playerHeight}
+            onQuestionClick={handleQuestionClick}
           />
         </div>
       )}
