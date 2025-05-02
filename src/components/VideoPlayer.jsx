@@ -11,8 +11,6 @@ import {
   handleVideoPause,
   handleVideoResume,
   setModelResultCallback,
-  fetchTranscriptQuestions,
-  fetchWatchItemResults
 } from '../services/videos';
 import {
   setEngagementDetectionEnabled,
@@ -23,8 +21,14 @@ import {
   estimateGaze,
   canAskQuestion,
   markQuestionAsked,
-  setGazeSensitivity      
+  setGazeSensitivity
 } from '../services/videoLogic';
+import {
+  fetchQuestionsWithRetry,
+  handleResetAnsweredQuestions as serviceResetAnsweredQuestions,
+  handlePlotResults as servicePlotResults,
+  handleLanguageChange as serviceHandleLanguageChange
+} from '../services/videoPlayerService';
 
 import {
   Chart as ChartJS,
@@ -35,7 +39,6 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { fetchTranscriptQuestionsForVideo } from '../services/videos';
 import {
   parseTimeToSeconds,
   shuffleAnswers,
@@ -45,8 +48,7 @@ import {
 import { QuestionModal, DecisionModal } from './QuestionModals';
 import useFaceMesh from '../hooks/useFaceMesh';
 
-import EyeDebugger
- from './EyeDebugger';
+import EyeDebugger from './EyeDebugger';
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 window.noStop = false;
@@ -58,7 +60,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const lastGazeTime = useRef(Date.now());
   const lastQuestionAnsweredTime = useRef(0);
 
-  // Debug tools state - moved to top
   const [disableEngagementLogic, setDisableEngagementLogic] = useState(false);
   const [debugTriggerActive, setDebugTriggerActive] = useState(false);
 
@@ -70,7 +71,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [isVideoPaused, setIsVideoPaused] = useState(false);
 
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
-  // New state for the results plot
   const [resultsChartData, setResultsChartData] = useState({ labels: [], datasets: [] });
   const [showResultsChart, setShowResultsChart] = useState(false);
 
@@ -96,7 +96,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     setShowRetryButton(false);
     setFaceMeshStatus('Initializing');
     setFaceMeshEnabled(false);
-    // Give time for cleanup
     setTimeout(() => {
       setFaceMeshEnabled(true);
     }, 1000);
@@ -125,7 +124,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const CENTER_THRESHOLD_MS = 100;
   const AWAY_THRESHOLD_MS = 400;
 
-  const MODEL_THRESHOLD = -1.0; // Threshold for model results
+  const MODEL_THRESHOLD = -1.0;
   const [lastModelResult, setLastModelResult] = useState(null);
 
   const [sensitivity, setSensitivity] = useState(7);
@@ -135,7 +134,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   }, [sensitivity]);
 
   useEffect(() => {
-    // FORRRRRRRRRRR !! unmount!!!
     return () => {
       resetTracking();
     };
@@ -149,226 +147,70 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         console.log('⏩ Last watched time fetched:', time);
       }
     });
-  
-    // Cleanup
     return () => { mounted = false; };
   }, [lectureInfo.videoId]);
 
-  // Use a ref for immediate access to the userPaused flag
   const userPausedRef = useRef(userPaused);
   useEffect(() => {
     userPausedRef.current = userPaused;
   }, [userPaused]);
 
-  // Maintain the latest questions in a ref
   const questionsRef = useRef(questions);
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
 
-  // Maintain the active question in a ref
   const questionActiveRef = useRef(null);
   useEffect(() => {
     questionActiveRef.current = currentQuestion;
   }, [currentQuestion]);
 
   const handleNoClientPauseToggle = () => {
-    // First update the window flag
     window.noStop = !noClientPause;
-    // Then update the state
     setNoClientPause(prev => !prev);
     console.log(`🎮 No Client Pause ${!noClientPause ? 'Enabled' : 'Disabled'}`);
-
-    // Reset tracking state whenever we switch modes
     resetTracking();
   };
 
-  // Update the toggle handler
   const handleEngagementLogicToggle = useCallback(() => {
     const newState = !disableEngagementLogic;
     setDisableEngagementLogic(newState);
-    setEngagementDetectionEnabled(!newState); // Opposite of disable state
+    setEngagementDetectionEnabled(!newState);
   }, [disableEngagementLogic]);
 
-  // Function to fetch questions with retry logic
-  const fetchQuestionsWithRetry = async (videoId, language, maxRetries = 15) => {
-    const statusSetter = language === 'Hebrew' ? setHebrewStatus : setEnglishStatus;
-    const loadingSetter = language === 'Hebrew' ? setIsHebrewLoading : setIsEnglishLoading;
-    const questionsSetter = language === 'Hebrew' ? setHebrewQuestions : setEnglishQuestions;
-    const retryCountKey = language.toLowerCase();
-    
-    loadingSetter(true);
-    statusSetter(`Starting ${language} question generation...`);
-    
-    try {
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        if (attempt > 0) {
-          setRetryCount(prev => ({ ...prev, [retryCountKey]: attempt }));
-        }
-        
-        const data = await fetchTranscriptQuestions(videoId, language);
-        
-        // Check for transcript not available error
-        if (data.status === 'failed' && 
-            data.reason && 
-            data.reason.includes('Could not retrieve a transcript')) {
-          statusSetter(`No ${language} subtitles`);
-          loadingSetter(false);
-          return [];
-        }
-        
-        // Check for pending status
-        if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
-          statusSetter(`Building questions... (${attempt + 1})`);
-          await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds before retrying
-          continue;
-        }
-        
-        // Extract questions from response
-        const questionsArray = [
-          ...(data.video_questions?.questions || []),
-          ...(data.generic_questions?.questions || []),
-          ...(data.subject_questions?.questions || [])
-        ];
-        
-        if (questionsArray.length > 0) {
-          const sortedQuestions = questionsArray.sort((a, b) => {
-            return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
-          });
-          
-          questionsSetter(sortedQuestions);
-          statusSetter(null);
-          
-          // If this is the current language, update the main questions state too
-          if (selectedLanguage === language) {
-            questionsRef.current = sortedQuestions;
-            setQuestions(sortedQuestions);
-          }
-          
-          loadingSetter(false);
-          return sortedQuestions;
-        } else {
-          statusSetter(`No questions available`);
-          loadingSetter(false);
-          return [];
-        }
-      }
-      
-      // If we've exhausted all retries
-      statusSetter(`Timed out waiting for questions`);
-      loadingSetter(false);
-      return [];
-      
-    } catch (err) {
-      console.error(`Error fetching ${language} questions:`, err);
-      statusSetter(`Error: ${err.message}`);
-      loadingSetter(false);
-      return [];
-    }
-  };
-
-  // Replace the question fetching logic in useEffect
   useEffect(() => {
     setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
       console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
-      
-      // Start fetch with retry for both languages
-      fetchQuestionsWithRetry(lectureInfo.videoId, 'Hebrew');
-      fetchQuestionsWithRetry(lectureInfo.videoId, 'English');
-    }
-  }, [lectureInfo.videoId, mode]);
-
-  // Set loaded after a short delay and fetch questions if in question mode.
-  useEffect(() => {
-    setTimeout(() => setLoaded(true), 1000);
-    if (mode === 'question') {
-      console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
-      // Fetch Hebrew questions
-      setIsHebrewLoading(true);
-      fetchTranscriptQuestionsForVideo(lectureInfo.videoId, 'Hebrew')
-        .then(questions => {
-          if (Array.isArray(questions) && questions.length > 0) {
-            const sortedQuestions = questions.sort((a, b) => {
-              return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
-            });
-            setHebrewQuestions(sortedQuestions);
-            if (selectedLanguage === 'Hebrew') {
-              questionsRef.current = sortedQuestions;
-              setQuestions(sortedQuestions);
-            }
-          }
-        })
-        .catch(error => console.error("[DEBUG] Error fetching Hebrew questions:", error))
-        .finally(() => setIsHebrewLoading(false));
-
-      // Fetch English questions
-      setIsEnglishLoading(true);
-      fetchTranscriptQuestionsForVideo(lectureInfo.videoId, 'English')
-        .then(questions => {
-          if (Array.isArray(questions) && questions.length > 0) {
-            const sortedQuestions = questions.sort((a, b) => {
-              return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
-            });
-            setEnglishQuestions(sortedQuestions);
-            if (selectedLanguage === 'English') {
-              questionsRef.current = sortedQuestions;
-              setQuestions(sortedQuestions);
-            }
-          }
-        })
-        .catch(error => console.error("[DEBUG] Error fetching English questions:", error))
-        .finally(() => setIsEnglishLoading(false));
+      fetchQuestionsWithRetry(
+        lectureInfo.videoId,
+        'Hebrew',
+        15,
+        setHebrewStatus,
+        setIsHebrewLoading,
+        setHebrewQuestions,
+        setRetryCount,
+        selectedLanguage,
+        questionsRef,
+        setQuestions
+      );
+      fetchQuestionsWithRetry(
+        lectureInfo.videoId,
+        'English',
+        15,
+        setEnglishStatus,
+        setIsEnglishLoading,
+        setEnglishQuestions,
+        setRetryCount,
+        selectedLanguage,
+        questionsRef,
+        setQuestions
+      );
     }
   }, [lectureInfo.videoId, mode, selectedLanguage]);
 
-  // Add effect to monitor questions state
-  useEffect(() => {
-    if (questions.length > 0) {
-      console.log("[DEBUG] Questions state updated. Length:", questions.length);
-      console.log("[DEBUG] First question in state:", questions[0]);
-    }
-  }, [questions]);
-
-  // Add this effect to monitor interval changes
-  useEffect(() => {
-    if (isPlaying && faceMeshReady && playerRef.current) {
-      handleVideoResume(
-        lectureInfo.videoId, 
-        'basic', 
-        sendIntervalSeconds,
-        () => playerRef.current?.getCurrentTime() || 0
-      );
-    }
-  }, [sendIntervalSeconds]);
-
-  // Add this useEffect to properly handle mode changes
-  useEffect(() => {
-    // When switching modes, ensure we properly set up tracking
-    if (playerRef.current && faceMeshReady) {
-      // Small delay to ensure state is updated
-      setTimeout(() => {
-        handleVideoResume(
-          lectureInfo.videoId,
-          'basic',
-          sendIntervalSeconds,
-          () => playerRef.current?.getCurrentTime() || 0
-        );
-      }, 500);
-    }
-  }, [noClientPause]);
-
-  // new: track when both question sets have loaded
-  const [questionsLoaded, setQuestionsLoaded] = useState(false);
-  useEffect(() => {
-    if (!isHebrewLoading && !isEnglishLoading) {
-      setQuestionsLoaded(true);
-    }
-  }, [isHebrewLoading, isEnglishLoading]);
-
-  // Define handleLowEngagement first since it's used in other function dependencies
   const handleLowEngagement = useCallback(() => {
-    if (!isPlaying || currentQuestion || !questionsLoaded) return;
+    if (!isPlaying || currentQuestion || isHebrewLoading || isEnglishLoading) return;
     
     if (playerRef.current) {
       playerRef.current.pauseVideo();
@@ -386,7 +228,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       
       console.log('debugg: availableQuestions:', availableQuestions);
 
-      // no questions → attention check
       if (availableQuestions.length === 0) {
         console.log('debugg: no questions available for this segment');
         setCurrentQuestion({ text: '', answers: [] });
@@ -408,14 +249,11 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [
     isPlaying, currentQuestion, mode, selectedLanguage,
-    answeredQIDs, questionsLoaded
+    answeredQIDs, isHebrewLoading, isEnglishLoading
   ]);
 
-  // Then define handleVideoPlayback which uses handleLowEngagement
   const handleVideoPlayback = useCallback((newGaze) => {
-    // skip all engagement logic if user manually paused
     if (userPausedRef.current) return;
-
     if (noClientPause) return;
 
     handleEngagementDetection({
@@ -440,14 +278,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     });
   }, [noClientPause, isPlaying, currentQuestion, mode, handleLowEngagement]);
 
-  // Finally define handleFaceMeshResults which uses handleVideoPlayback
   const handleFaceMeshResults = useCallback((results) => {
     if (!noClientPause && mode === 'question' && questionActiveRef.current) return;
-    
-    // Always update landmarks for server processing
     updateLatestLandmark(results);
-    
-    // Only process gaze for client-side pausing
     if (!noClientPause && results?.multiFaceLandmarks?.length > 0) {
       try {
         const gaze = estimateGaze(results.multiFaceLandmarks[0]);
@@ -460,12 +293,10 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [mode, noClientPause, handleVideoPlayback]);
 
-  // Update the FaceMesh status handler
   const handleFaceMeshStatus = useCallback((status) => {
     setFaceMeshStatus(status);
     if (status === 'FaceMesh Ready') {
       setFaceMeshReady(true);
-      // Initialize tracking immediately when FaceMesh is ready
       if (playerRef.current) {
         setTimeout(() => {
           handleVideoResume(
@@ -479,14 +310,10 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [lectureInfo.videoId, sendIntervalSeconds]);
 
-  // Use the shared FaceMesh hook with the new status handler
   useFaceMesh(loaded && isPlaying, webcamRef, handleFaceMeshResults, handleFaceMeshStatus);
 
-  // Add effect to handle initialization
   useEffect(() => {
     if (!playerRef.current || !faceMeshReady) return;
-
-    // Initialize tracking with a short delay to ensure everything is ready
     const initTimeout = setTimeout(() => {
       if (playerRef.current && faceMeshReady && !isVideoPaused) {
         handleVideoResume(
@@ -496,20 +323,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           () => playerRef.current?.getCurrentTime() || 0
         );
       }
-    }, 2000); // Give extra time for FaceMesh to fully initialize
-
+    }, 2000);
     return () => clearTimeout(initTimeout);
   }, [faceMeshReady, playerRef.current, sendIntervalSeconds, lectureInfo.videoId, isVideoPaused]);
 
   const handleAnswer = (selectedKey) => {
-    // Handle the 'continue' action from the attention check modal
     if (selectedKey === 'continue') {
       setCurrentQuestion(null);
       playerRef.current.playVideo();
       setIsPlaying(true);
       setPauseStatus('Playing');
       setVideoPlaying(true);
-      return; // Skip the rest of the logic for normal answers
+      return;
     }
 
     if (selectedKey === 'dontknow') {
@@ -561,10 +386,8 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       playerRef.current.seekTo(initialPlaybackTime, true);
     }
   
-    // Start playing and initialize tracking
     playerRef.current.playVideo();
     
-    // Small delay to ensure player state is updated
     setTimeout(() => {
       handleVideoResume(
         lectureInfo.videoId,
@@ -583,12 +406,12 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     const playerState = event.data;
   
     switch (playerState) {
-      case 1: // Playing
+      case 1:
         setIsPlaying(true);
         setPauseStatus('Playing');
         setUserPaused(false);
         setIsVideoPaused(false);
-        setVideoPlaying(true); // Add this line
+        setVideoPlaying(true);
         handleVideoResume(
           lectureInfo.videoId, 
           'basic', 
@@ -596,7 +419,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           () => playerRef.current?.getCurrentTime() || 0
         );
         break;
-      case 2: // Paused
+      case 2:
         if (systemPauseRef.current) {
           setPauseStatus('Paused (Not Engaged)');
         } else {
@@ -605,7 +428,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         }
         setIsPlaying(false);
         setIsVideoPaused(true);
-        setVideoPlaying(false); // Add this line
+        setVideoPlaying(false);
         handleVideoPause();
         break;
       default:
@@ -613,23 +436,21 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   };
   
-  // Update the interval change handler
   const handleIntervalChange = (newValue) => {
     setSendIntervalSeconds(Number(newValue));
   };
 
   const handleLanguageChange = (language) => {
-    setSelectedLanguage(language);
-    if (language === 'Hebrew') {
-      questionsRef.current = hebrewQuestions;
-      setQuestions(hebrewQuestions);
-    } else {
-      questionsRef.current = englishQuestions;
-      setQuestions(englishQuestions);
-    }
+    serviceHandleLanguageChange(
+      language,
+      setSelectedLanguage,
+      hebrewQuestions,
+      englishQuestions,
+      questionsRef,
+      setQuestions
+    );
   };
 
-  // Setup model result handling
   useEffect(() => {
     setModelResultCallback((result) => {
       setLastModelResult(result);
@@ -641,7 +462,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     return () => setModelResultCallback(null);
   }, [noClientPause, handleLowEngagement]);
 
-  // Add this after other useEffect hooks
   useEffect(() => {
     if (debugTriggerActive) {
       handleLowEngagement();
@@ -649,54 +469,17 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [debugTriggerActive, handleLowEngagement]);
 
-  // Function to reset answered questions
   const handleResetAnsweredQuestions = () => {
-    setAnsweredQIDs([]);
-    localStorage.removeItem(`answeredQuestions_${lectureInfo.videoId}`);
-    console.log(`debugg: Answered questions reset for video ${lectureInfo.videoId}`);
+    serviceResetAnsweredQuestions(lectureInfo.videoId, setAnsweredQIDs);
   };
 
-  // Function to plot results
-  const handlePlotResults = async() => {
-    // Toggle visibility if chart is already shown
-    if (showResultsChart) {
-      setShowResultsChart(false);
-    }
-
-    fetchWatchItemResults(lectureInfo.videoId).then((data) => {
-      const resultsArray = data[Object.keys(data)[0]];
-      console.debug('plot results raw data:', data[Object.keys(data)[0]]); 
-      
-      if (resultsArray && Array.isArray(resultsArray) && resultsArray.length > 0) {
-        const sortedData = resultsArray.sort((a, b) => a.video_time - b.video_time);
-
-        const labels = sortedData.map(item => (item.video_time/60).toFixed(1)); // Use video_time for x-axis, rounded
-        const values = sortedData.map(item => item.result*100); // Use result for y-axis
-
-        setResultsChartData({
-          labels,
-          datasets: [
-            {
-              label: 'Focus over Time',
-              data: values,
-              backgroundColor: 'rgba(153, 102, 255, 0.6)', // Different color
-              borderColor: 'rgba(153, 102, 255, 1)',
-              borderWidth: 1,
-            },
-          ],
-        });
-        setShowResultsChart(true); // Show the chart
-        console.log('Results chart data updated:', { labels, values });
-      } else {
-        console.error('No data available for plotting results or data is not in the expected array format.');
-        setResultsChartData({ labels: [], datasets: [] });
-        setShowResultsChart(false); // Hide the chart if no data
-      }
-    }).catch(error => {
-      console.error('Error fetching or processing watch item results:', error);
-      setResultsChartData({ labels: [], datasets: [] });
-      setShowResultsChart(false); // Hide the chart on error
-    });
+  const handlePlotResults = async () => {
+    servicePlotResults(
+      lectureInfo.videoId,
+      showResultsChart,
+      setShowResultsChart,
+      setResultsChartData
+    );
   }
 
   const renderStatus = () => (
@@ -724,16 +507,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     </div>
   );
 
-  // Update the renderDebugTools to use the new toggle handler
   const renderDebugTools = () => (
     <div className="debug-tools">
       <h3>Debug Tools</h3>
-      {/*<button 
-        className={`debug-button ${disableEngagementLogic ? 'active' : ''}`}
-        onClick={handleEngagementLogicToggle}
-      >
-        {disableEngagementLogic ? '🔓 Engagement Logic: OFF' : '🔒 Engagement Logic: ON'}
-      </button>*/}
       <div className="sensitivity-control">
         <label> Engagement Sensitivity: {sensitivity}</label>
         <input
@@ -750,14 +526,12 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       >
         🎯 Trigger Question
       </button>
-      {/* Add the reset button */}
       <button 
         className="debug-button reset-answers"
         onClick={handleResetAnsweredQuestions}
       >
         🔄 Reset Answered Qs
       </button>
-      {/* Button for getting results' plot */}
       <button
         className="debug-button"
         onClick={handlePlotResults}
@@ -782,26 +556,25 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       {renderStatus()}
       {mode === 'question' && renderDebugTools()}
 
-      {/* Conditionally render the new results chart */}
       {showResultsChart && (
         <div 
           className="results-plot-chart" 
           style={{ 
-            width: '90%', // Use percentage width for responsiveness
-            height: '450px', // Set a fixed height, otherwise is sliiiiiiiides down
-            margin: '20px auto' // Center the chart
+            width: '90%',
+            height: '450px',
+            margin: '20px auto'
           }}
         >
           <h3>Focus Results Over Time</h3>
           <Bar
             data={resultsChartData}
             options={{
-              maintainAspectRatio: false, // Allow chart to fill container height
+              maintainAspectRatio: false,
               scales: {
                 x: { title: { display: true, text: 'Video Time (s)' } },
-                y: { title: { display: true, text: 'Concentration' }, min: 0 }, // Adjust min/max if needed
+                y: { title: { display: true, text: 'Concentration' }, min: 0 },
               },
-              plugins: { legend: { display: true } }, // Show legend for this chart
+              plugins: { legend: { display: true } },
             }}
           />
         </div>
@@ -840,7 +613,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         </div>
       )}
       
-      {/* Status message moved below the language options */}
       {mode === 'question' && (hebrewStatus || englishStatus) && (
         <div className="question-generation-status" style={{ margin: '10px 0 20px', textAlign: 'center' }}>
           {selectedLanguage === 'Hebrew' && hebrewStatus && (
@@ -913,8 +685,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           language={selectedLanguage}
         />
       )}
-            <EyeDebugger enabled={false} />
-
+      <EyeDebugger enabled={false} />
     </div>
   );
 }
