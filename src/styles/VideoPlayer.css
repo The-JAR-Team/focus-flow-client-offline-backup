@@ -19,6 +19,100 @@
   margin-top: 20px;
 }
 
+/* Flexbox Layout for Centering Video Section */
+.video-player-layout {
+  display: flex;
+  justify-content: center; /* Center the video-section horizontally */
+  align-items: flex-start; /* Align items to the top */
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  position: relative; /* Needed for absolute positioning of the timeline */
+  min-height: 500px; /* Ensure layout has height for positioning */
+}
+
+.video-section {
+  /* Let the content define the width, primarily the YouTube player */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 640px; /* Fixed width for the video section */
+  max-width: 100%; /* Ensure it doesn't overflow viewport */
+  flex-shrink: 0; /* Prevent shrinking */
+  /* This section is now centered by the parent's justify-content: center */
+}
+
+.timeline-section {
+  position: absolute;
+  /* Position relative to the video-player-layout container */
+  top: 20px; /* Match parent's padding-top */
+  /* Calculate left position:
+     50% = center of the layout container
+     + 640px / 2 = half the width of the video section (to get to its right edge)
+     + 20px = desired gap
+  */
+  left: calc(50% + (640px / 2) + 20px);
+  height: auto; /* Allow height to be determined by content or props */
+  /* Width is controlled by .timeline-container in QuestionTimeline.css (300px) */
+  /* Ensure it doesn't prevent interaction with elements behind it if needed */
+  z-index: 10; /* Optional: ensure it's above other static content if necessary */
+}
+
+/* Ensure items below the player stay within the video section's bounds */
+.status-info,
+.debug-tools,
+.language-options,
+.question-generation-status,
+.results-plot-chart {
+  width: 100%; /* Take full width relative to video-section */
+  max-width: 640px; /* Limit to player width */
+  box-sizing: border-box;
+}
+
+.status-info {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.debug-tools {
+  margin: 20px 0;
+  padding: 15px;
+  border: 2px dashed #666;
+  border-radius: 8px;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-wrap: wrap; /* Allow buttons to wrap */
+  justify-content: center; /* Center buttons if they wrap */
+  gap: 10px; /* Consistent gap */
+}
+
+.debug-tools h3 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+}
+
+.language-options {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.question-generation-status {
+    margin: 10px 0 20px;
+    text-align: center;
+    font-size: 0.9em;
+    color: #555;
+}
+
+.results-plot-chart {
+    margin: 20px 0; /* Adjust margin */
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
@@ -115,7 +209,6 @@
   }
 }
 
-
 .control-button {
   margin-top: 10px;
   padding: 8px 16px;
@@ -139,30 +232,15 @@
   background-color: #d32f2f;
 }
 
-/* Debug Tools Styles */
-.debug-tools {
-  margin: 20px 0;
-  padding: 15px;
-  border: 2px dashed #666;
-  border-radius: 8px;
-  background-color: #f5f5f5;
-}
-
-.debug-tools h3 {
-  color: #333;
-  margin-bottom: 15px;
-  font-size: 1.2rem;
-}
-
 .debug-button {
-  padding: 8px 16px;
-  margin: 0 10px;
-  border: 2px solid #444;
-  border-radius: 4px;
-  background-color: #fff;
-  color: #444;
-  cursor: pointer;
-  transition: all 0.3s ease;
+   padding: 8px 16px;
+   margin: 0; /* Remove margin if using gap */
+   border: 2px solid #444;
+   border-radius: 4px;
+   background-color: #fff;
+   color: #444;
+   cursor: pointer;
+   transition: all 0.3s ease;
 }
 
 .debug-button.active {

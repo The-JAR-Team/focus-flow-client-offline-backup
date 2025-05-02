@@ -2,8 +2,76 @@ import {
     fetchTranscriptQuestions,
     fetchWatchItemResults
   } from './videos';
-  import { parseTimeToSeconds } from './questionLogic';
-  
+
+  // --- Functions moved from questionLogic.js ---
+
+  export const parseTimeToSeconds = (timeStr) => {
+    if (!timeStr || typeof timeStr !== 'string') return 0; // Basic validation
+    const parts = timeStr.split(':').map(Number);
+    if (parts.some(isNaN)) return 0; // Check if parsing resulted in NaN
+
+    if (parts.length === 3) {
+      // Handle HH:MM:SS format
+      const [hours, minutes, seconds] = parts;
+      return (hours * 3600) + (minutes * 60) + seconds;
+    } else if (parts.length === 2) {
+      // Handle MM:SS format
+      const [minutes, seconds] = parts;
+      return (minutes * 60) + seconds;
+    } else if (parts.length === 1) {
+        // Handle seconds only format (S or SS)
+        return parts[0];
+    }
+    return 0; // Default case or invalid format
+  };
+
+  export const getAvailableQuestions = (currentTime, questions, answeredQIDs) => {
+    if (!questions || !Array.isArray(questions)) return [];
+
+    // Filter out answered questions and find the latest one whose start time is before or at the current time
+    const available = questions
+      .filter(q => !answeredQIDs.includes(q.q_id))
+      .map(q => ({ ...q, timeInSeconds: parseTimeToSeconds(q.question_origin) }))
+      .filter(q => q.timeInSeconds <= currentTime) // Only consider questions up to the current time
+      .sort((a, b) => b.timeInSeconds - a.timeInSeconds); // Sort descending by time
+
+    // Return the most recent available question (first in the sorted list)
+    return available.length > 0 ? [available[0]] : [];
+  };
+
+  export const selectNextQuestion = (availableQuestions) => {
+    // Since getAvailableQuestions now returns at most one question (the most recent one)
+    // we just return that question if it exists.
+    if (availableQuestions.length === 0) return null;
+    return availableQuestions[0];
+    // Old random logic: return availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+  };
+
+  export const shuffleAnswers = (question, language = 'Hebrew') => {
+    if (!question) return []; // Handle null question case
+    const answers = [
+      { key: 'answer1', text: question.answer1 },
+      { key: 'answer2', text: question.answer2 },
+      { key: 'answer3', text: question.answer3 },
+      { key: 'answer4', text: question.answer4 },
+    ].filter(a => a.text); // Filter out potential null/empty answers
+
+    // Add "don't know" option
+    answers.push({ key: 'dontknow', text: language === 'Hebrew' ? 'לא יודע/ת' : "I don't know" });
+
+    // Shuffle only the actual answers (excluding "don't know" for now)
+    const regularAnswers = answers.slice(0, -1);
+    for (let i = regularAnswers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [regularAnswers[i], regularAnswers[j]] = [regularAnswers[j], regularAnswers[i]];
+    }
+
+    // Return shuffled regular answers followed by "don't know"
+    return [...regularAnswers, answers[answers.length - 1]];
+  };
+
+  // --- End of moved functions ---
+
   // Function to fetch questions with retry logic
   export const fetchQuestionsWithRetry = async (
     videoId,
@@ -18,18 +86,18 @@ import {
     setQuestions // Add setQuestions callback
   ) => {
     const retryCountKey = language.toLowerCase();
-  
+
     loadingSetter(true);
     statusSetter(`Starting ${language} question generation...`);
-  
+
     try {
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         if (attempt > 0) {
           retryCountSetter(prev => ({ ...prev, [retryCountKey]: attempt }));
         }
-  
+
         const data = await fetchTranscriptQuestions(videoId, language);
-  
+
         // Check for transcript not available error
         if (data.status === 'failed' &&
             data.reason &&
@@ -38,35 +106,35 @@ import {
           loadingSetter(false);
           return [];
         }
-  
+
         // Check for pending status
         if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
           statusSetter(`Building questions... (${attempt + 1})`);
           await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds before retrying
           continue;
         }
-  
+
         // Extract questions from response
         const questionsArray = [
           ...(data.video_questions?.questions || []),
           ...(data.generic_questions?.questions || []),
           ...(data.subject_questions?.questions || [])
         ];
-  
+
         if (questionsArray.length > 0) {
           const sortedQuestions = questionsArray.sort((a, b) => {
             return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
           });
-  
+
           questionsSetter(sortedQuestions); // Set specific language questions (e.g., setHebrewQuestions)
           statusSetter(null);
-  
+
           // If this is the current language, update the main questions state too
           if (selectedLanguage === language) {
             questionsRef.current = sortedQuestions;
             setQuestions(sortedQuestions); // Update the main 'questions' state
           }
-  
+
           loadingSetter(false);
           return sortedQuestions;
         } else {
@@ -75,12 +143,12 @@ import {
           return [];
         }
       }
-  
+
       // If we've exhausted all retries
       statusSetter(`Timed out waiting for questions`);
       loadingSetter(false);
       return [];
-  
+
     } catch (err) {
       console.error(`Error fetching ${language} questions:`, err);
       statusSetter(`Error: ${err.message}`);
@@ -88,14 +156,14 @@ import {
       return [];
     }
   };
-  
+
   // Function to reset answered questions
   export const handleResetAnsweredQuestions = (videoId, setAnsweredQIDs) => {
     setAnsweredQIDs([]);
     localStorage.removeItem(`answeredQuestions_${videoId}`);
     console.log(`debugg: Answered questions reset for video ${videoId}`);
   };
-  
+
   // Function to plot results
   export const handlePlotResults = async (
     videoId,
@@ -108,18 +176,18 @@ import {
       setShowResultsChart(false);
       return; // Exit early if toggling off
     }
-  
+
     try {
       const data = await fetchWatchItemResults(videoId);
       const resultsArray = data[Object.keys(data)[0]];
       console.debug('plot results raw data:', resultsArray);
-  
+
       if (resultsArray && Array.isArray(resultsArray) && resultsArray.length > 0) {
         const sortedData = resultsArray.sort((a, b) => a.video_time - b.video_time);
-  
+
         const labels = sortedData.map(item => (item.video_time / 60).toFixed(1)); // Use video_time for x-axis, rounded
         const values = sortedData.map(item => item.result * 100); // Use result for y-axis
-  
+
         setResultsChartData({
           labels,
           datasets: [
@@ -145,7 +213,7 @@ import {
       setShowResultsChart(false); // Hide the chart on error
     }
   };
-  
+
   // Function to handle language change
   export const handleLanguageChange = (
     language,

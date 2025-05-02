@@ -3,6 +3,7 @@ import YouTube from 'react-youtube';
 import { Bar } from 'react-chartjs-2';
 import '../styles/VideoPlayer.css';
 import '../styles/TriviaVideoPage.css'; // Add this import for button styles
+import '../styles/QuestionTimeline.css'; // Import the CSS for QuestionTimeline
 
 import {
   fetchLastWatchTime,
@@ -27,7 +28,11 @@ import {
   fetchQuestionsWithRetry,
   handleResetAnsweredQuestions as serviceResetAnsweredQuestions,
   handlePlotResults as servicePlotResults,
-  handleLanguageChange as serviceHandleLanguageChange
+  handleLanguageChange as serviceHandleLanguageChange,
+  parseTimeToSeconds,
+  shuffleAnswers,
+  getAvailableQuestions,
+  selectNextQuestion
 } from '../services/videoPlayerService';
 
 import {
@@ -39,14 +44,9 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import {
-  parseTimeToSeconds,
-  shuffleAnswers,
-  getAvailableQuestions,
-  selectNextQuestion,
-} from '../services/questionLogic';
 import { QuestionModal, DecisionModal } from './QuestionModals';
 import useFaceMesh from '../hooks/useFaceMesh';
+import QuestionTimeline from './QuestionTimeline'; // Import the new component
 
 import EyeDebugger from './EyeDebugger';
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
@@ -112,6 +112,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [retryCount, setRetryCount] = useState({ hebrew: 0, english: 0 });
 
   const [faceMeshReady, setFaceMeshReady] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0); // State for current video time
+  const [playerHeight, setPlayerHeight] = useState(390); // Default player height
+  const [showTimeline, setShowTimeline] = useState(true); // State for timeline visibility
 
   const [noClientPause, setNoClientPause] = useState(false);
 
@@ -164,6 +167,19 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   useEffect(() => {
     questionActiveRef.current = currentQuestion;
   }, [currentQuestion]);
+
+  useEffect(() => {
+    let intervalId = null;
+    if (isPlaying && playerRef.current) {
+      intervalId = setInterval(() => {
+        const time = playerRef.current?.getCurrentTime() || 0;
+        setCurrentTime(time);
+      }, 1000); // Update every second
+    } else {
+      clearInterval(intervalId);
+    }
+    return () => clearInterval(intervalId); // Cleanup interval on unmount or when isPlaying changes
+  }, [isPlaying]); // Rerun effect when isPlaying changes
 
   const handleNoClientPauseToggle = () => {
     window.noStop = !noClientPause;
@@ -380,12 +396,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const onPlayerReady = (event) => {
     playerRef.current = event.target;
     console.log("Player ready, starting video");
-  
+
+    // Get player dimensions if needed (might be fixed)
+    const iframe = playerRef.current.getIframe();
+    if (iframe) {
+      setPlayerHeight(iframe.offsetHeight);
+    }
+
     if (initialPlaybackTime > 0) {
       console.log(`🔄 Seeking video to ${initialPlaybackTime}s.`);
       playerRef.current.seekTo(initialPlaybackTime, true);
     }
-  
+
     playerRef.current.playVideo();
     
     setTimeout(() => {
@@ -482,6 +504,10 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     );
   }
 
+  const handleToggleTimeline = () => {
+    setShowTimeline(prev => !prev);
+  };
+
   const renderStatus = () => (
     <div className="status-info">
       <p>Mode: {mode}</p>
@@ -538,132 +564,153 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       >
         Plot results
       </button>
+      <button
+        className="debug-button"
+        onClick={handleToggleTimeline}
+      >
+        {showTimeline ? 'Hide' : 'Show'} Timeline
+      </button>
     </div>
   );
 
   return (
-    <div className="video-player">
-      <YouTube
-        videoId={lectureInfo.videoId}
-        opts={{
-          height: '390',
-          width: '640',
-          playerVars: { autoplay: 1, controls: 1, origin: window.location.origin },
-        }}
-        onReady={onPlayerReady}
-        onStateChange={onPlayerStateChange}
-      />
-      {renderStatus()}
-      {mode === 'question' && renderDebugTools()}
+    <div className="video-player-layout video-player-grid-layout"> {/* Main layout container */}
 
-      {showResultsChart && (
-        <div 
-          className="results-plot-chart" 
-          style={{ 
-            width: '90%',
-            height: '450px',
-            margin: '20px auto'
+      <div className="video-section"> {/* Wrapper for player and controls */}
+        <YouTube
+          videoId={lectureInfo.videoId}
+          opts={{
+            height: String(playerHeight),
+            width: '640',
+            playerVars: { autoplay: 1, controls: 1, origin: window.location.origin },
           }}
-        >
-          <h3>Focus Results Over Time</h3>
-          <Bar
-            data={resultsChartData}
-            options={{
-              maintainAspectRatio: false,
-              scales: {
-                x: { title: { display: true, text: 'Video Time (s)' } },
-                y: { title: { display: true, text: 'Concentration' }, min: 0 },
-              },
-              plugins: { legend: { display: true } },
-            }}
-          />
-        </div>
-      )}
+          onReady={onPlayerReady}
+          onStateChange={onPlayerStateChange}
+        />
+        {renderStatus()}
+        {mode === 'question' && renderDebugTools()}
 
-      {mode === 'question' && (
-        <div className="language-options" style={{ margin: '20px 0', direction: 'ltr' }}>
-          <button 
-            className={`lang-btn ${selectedLanguage === 'Hebrew' ? 'active' : ''} ${hebrewQuestions.length === 0 ? 'disabled' : ''}`}
-            onClick={() => handleLanguageChange('Hebrew')}
-            disabled={hebrewQuestions.length === 0 && !hebrewStatus?.includes('Building')}
-          >
-            Hebrew {hebrewStatus ? (
-              hebrewStatus.includes('Building') ? '⌛' : 
-              hebrewStatus.includes('No') ? '❌' : '⏳'
-            ) : (
-              hebrewQuestions.length > 0 ? '✓' : '❌'
-            )}
-            {hebrewStatus && hebrewStatus.includes('Building') && 
-              <span className="status-counter">#{retryCount.hebrew}</span>}
-          </button>
-          <button 
-            className={`lang-btn ${selectedLanguage === 'English' ? 'active' : ''} ${englishQuestions.length === 0 ? 'disabled' : ''}`}
-            onClick={() => handleLanguageChange('English')}
-            disabled={englishQuestions.length === 0 && !englishStatus?.includes('Building')}
-          >
-            English {englishStatus ? (
-              englishStatus.includes('Building') ? '⌛' : 
-              englishStatus.includes('No') ? '❌' : '⏳'
-            ) : (
-              englishQuestions.length > 0 ? '✓' : '❌'
-            )}
-            {englishStatus && englishStatus.includes('Building') && 
-              <span className="status-counter">#{retryCount.english}</span>}
-          </button>
-        </div>
-      )}
-      
-      {mode === 'question' && (hebrewStatus || englishStatus) && (
-        <div className="question-generation-status" style={{ margin: '10px 0 20px', textAlign: 'center' }}>
-          {selectedLanguage === 'Hebrew' && hebrewStatus && (
-            <div className="status-message">
-              {hebrewStatus.includes('No') ? (
-                <span className="error-icon">⚠️</span>
-              ) : (
-                <span className="spinner small"></span>
-              )}
-              {hebrewStatus}
-            </div>
-          )}
-          {selectedLanguage === 'English' && englishStatus && (
-            <div className="status-message">
-              {englishStatus.includes('No') ? (
-                <span className="error-icon">⚠️</span>
-              ) : (
-                <span className="spinner small"></span>
-              )}
-              {englishStatus}
-            </div>
-          )}
-        </div>
-      )}
-      
-      {mode === 'analytics' && (
-        <div className="focus-graph">
-          <Bar
-            data={chartData}
-            options={{
-              scales: {
-                x: { title: { display: true, text: 'Time (s)' } },
-                y: { title: { display: true, text: 'Focus' }, min: 0, max: 1 },
-              },
-              plugins: { legend: { display: false } },
+        {showResultsChart && (
+          <div 
+            className="results-plot-chart" 
+            style={{ 
+              width: '90%',
+              height: '450px',
+              margin: '20px auto'
             }}
-          />
-          {showResultsChart && (
+          >
+            <h3>Focus Results Over Time</h3>
             <Bar
               data={resultsChartData}
+              options={{
+                maintainAspectRatio: false,
+                scales: {
+                  x: { title: { display: true, text: 'Video Time (s)' } },
+                  y: { title: { display: true, text: 'Concentration' }, min: 0 },
+                },
+                plugins: { legend: { display: true } },
+              }}
+            />
+          </div>
+        )}
+
+        {mode === 'question' && (
+          <div className="language-options" style={{ margin: '20px 0', direction: 'ltr' }}>
+            <button 
+              className={`lang-btn ${selectedLanguage === 'Hebrew' ? 'active' : ''} ${hebrewQuestions.length === 0 ? 'disabled' : ''}`}
+              onClick={() => handleLanguageChange('Hebrew')}
+              disabled={hebrewQuestions.length === 0 && !hebrewStatus?.includes('Building')}
+            >
+              Hebrew {hebrewStatus ? (
+                hebrewStatus.includes('Building') ? '⌛' : 
+                hebrewStatus.includes('No') ? '❌' : '⏳'
+              ) : (
+                hebrewQuestions.length > 0 ? '✓' : '❌'
+              )}
+              {hebrewStatus && hebrewStatus.includes('Building') && 
+                <span className="status-counter">#{retryCount.hebrew}</span>}
+            </button>
+            <button 
+              className={`lang-btn ${selectedLanguage === 'English' ? 'active' : ''} ${englishQuestions.length === 0 ? 'disabled' : ''}`}
+              onClick={() => handleLanguageChange('English')}
+              disabled={englishQuestions.length === 0 && !englishStatus?.includes('Building')}
+            >
+              English {englishStatus ? (
+                englishStatus.includes('Building') ? '⌛' : 
+                englishStatus.includes('No') ? '❌' : '⏳'
+              ) : (
+                englishQuestions.length > 0 ? '✓' : '❌'
+              )}
+              {englishStatus && englishStatus.includes('Building') && 
+                <span className="status-counter">#{retryCount.english}</span>}
+            </button>
+          </div>
+        )}
+        
+        {mode === 'question' && (hebrewStatus || englishStatus) && (
+          <div className="question-generation-status" style={{ margin: '10px 0 20px', textAlign: 'center' }}>
+            {selectedLanguage === 'Hebrew' && hebrewStatus && (
+              <div className="status-message">
+                {hebrewStatus.includes('No') ? (
+                  <span className="error-icon">⚠️</span>
+                ) : (
+                  <span className="spinner small"></span>
+                )}
+                {hebrewStatus}
+              </div>
+            )}
+            {selectedLanguage === 'English' && englishStatus && (
+              <div className="status-message">
+                {englishStatus.includes('No') ? (
+                  <span className="error-icon">⚠️</span>
+                ) : (
+                  <span className="spinner small"></span>
+                )}
+                {englishStatus}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {mode === 'analytics' && (
+          <div className="focus-graph">
+            <Bar
+              data={chartData}
               options={{
                 scales: {
                   x: { title: { display: true, text: 'Time (s)' } },
                   y: { title: { display: true, text: 'Focus' }, min: 0, max: 1 },
                 },
-                plugins: { legend: { display: true } },
+                plugins: { legend: { display: false } },
               }}
             />
-          )}
+            {showResultsChart && (
+              <Bar
+                data={resultsChartData}
+                options={{
+                  scales: {
+                    x: { title: { display: true, text: 'Time (s)' } },
+                    y: { title: { display: true, text: 'Focus' }, min: 0, max: 1 },
+                  },
+                  plugins: { legend: { display: true } },
+                }}
+              />
+            )}
+          </div>
+        )}
+      </div> {/* End of video-section */}
+
+      {mode === 'question' && showTimeline && (
+        <div className="timeline-section"> {/* Wrapper for the timeline */}
+          <QuestionTimeline
+            questions={questions}
+            currentTime={currentTime}
+            language={selectedLanguage}
+            playerHeight={playerHeight}
+          />
         </div>
       )}
+
       <video 
         ref={webcamRef}
         style={{ display: 'none' }}
