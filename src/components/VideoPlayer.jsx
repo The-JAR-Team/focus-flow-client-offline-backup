@@ -14,20 +14,6 @@ import {
   fetchTranscriptQuestions,
   fetchWatchItemResults
 } from '../services/videos';
-
-// Import the new services
-import { 
-  fetchQuestionsWithRetry,
-  selectQuestionForCurrentTime 
-} from '../services/questionService';
-
-import { 
-  initializeVideoPlayer,
-  handlePlayerStateChange,
-  fetchAndProcessResults,
-  PLAYER_STATES
-} from '../services/videoPlayerService';
-
 import {
   setEngagementDetectionEnabled,
   getEngagementDetectionEnabled,
@@ -204,32 +190,173 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     setEngagementDetectionEnabled(!newState); // Opposite of disable state
   }, [disableEngagementLogic]);
 
-  // Replace fetchQuestionsWithRetry with the service version
+  // Function to fetch questions with retry logic
+  const fetchQuestionsWithRetry = async (videoId, language, maxRetries = 15) => {
+    const statusSetter = language === 'Hebrew' ? setHebrewStatus : setEnglishStatus;
+    const loadingSetter = language === 'Hebrew' ? setIsHebrewLoading : setIsEnglishLoading;
+    const questionsSetter = language === 'Hebrew' ? setHebrewQuestions : setEnglishQuestions;
+    const retryCountKey = language.toLowerCase();
+    
+    loadingSetter(true);
+    statusSetter(`Starting ${language} question generation...`);
+    
+    try {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (attempt > 0) {
+          setRetryCount(prev => ({ ...prev, [retryCountKey]: attempt }));
+        }
+        
+        const data = await fetchTranscriptQuestions(videoId, language);
+        
+        // Check for transcript not available error
+        if (data.status === 'failed' && 
+            data.reason && 
+            data.reason.includes('Could not retrieve a transcript')) {
+          statusSetter(`No ${language} subtitles`);
+          loadingSetter(false);
+          return [];
+        }
+        
+        // Check for pending status
+        if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
+          statusSetter(`Building questions... (${attempt + 1})`);
+          await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds before retrying
+          continue;
+        }
+        
+        // Extract questions from response
+        const questionsArray = [
+          ...(data.video_questions?.questions || []),
+          ...(data.generic_questions?.questions || []),
+          ...(data.subject_questions?.questions || [])
+        ];
+        
+        if (questionsArray.length > 0) {
+          const sortedQuestions = questionsArray.sort((a, b) => {
+            return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
+          });
+          
+          questionsSetter(sortedQuestions);
+          statusSetter(null);
+          
+          // If this is the current language, update the main questions state too
+          if (selectedLanguage === language) {
+            questionsRef.current = sortedQuestions;
+            setQuestions(sortedQuestions);
+          }
+          
+          loadingSetter(false);
+          return sortedQuestions;
+        } else {
+          statusSetter(`No questions available`);
+          loadingSetter(false);
+          return [];
+        }
+      }
+      
+      // If we've exhausted all retries
+      statusSetter(`Timed out waiting for questions`);
+      loadingSetter(false);
+      return [];
+      
+    } catch (err) {
+      console.error(`Error fetching ${language} questions:`, err);
+      statusSetter(`Error: ${err.message}`);
+      loadingSetter(false);
+      return [];
+    }
+  };
+
+  // Replace the question fetching logic in useEffect
   useEffect(() => {
     setTimeout(() => setLoaded(true), 1000);
     if (mode === 'question') {
       console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
       
       // Start fetch with retry for both languages
-      fetchQuestionsWithRetry(
-        lectureInfo.videoId, 
-        'Hebrew',
-        setHebrewStatus,
-        setIsHebrewLoading,
-        setHebrewQuestions,
-        setRetryCount
-      );
-      
-      fetchQuestionsWithRetry(
-        lectureInfo.videoId,
-        'English',
-        setEnglishStatus,
-        setIsEnglishLoading,
-        setEnglishQuestions,
-        setRetryCount
-      );
+      fetchQuestionsWithRetry(lectureInfo.videoId, 'Hebrew');
+      fetchQuestionsWithRetry(lectureInfo.videoId, 'English');
     }
   }, [lectureInfo.videoId, mode]);
+
+  // Set loaded after a short delay and fetch questions if in question mode.
+  useEffect(() => {
+    setTimeout(() => setLoaded(true), 1000);
+    if (mode === 'question') {
+      console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
+      // Fetch Hebrew questions
+      setIsHebrewLoading(true);
+      fetchTranscriptQuestionsForVideo(lectureInfo.videoId, 'Hebrew')
+        .then(questions => {
+          if (Array.isArray(questions) && questions.length > 0) {
+            const sortedQuestions = questions.sort((a, b) => {
+              return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
+            });
+            setHebrewQuestions(sortedQuestions);
+            if (selectedLanguage === 'Hebrew') {
+              questionsRef.current = sortedQuestions;
+              setQuestions(sortedQuestions);
+            }
+          }
+        })
+        .catch(error => console.error("[DEBUG] Error fetching Hebrew questions:", error))
+        .finally(() => setIsHebrewLoading(false));
+
+      // Fetch English questions
+      setIsEnglishLoading(true);
+      fetchTranscriptQuestionsForVideo(lectureInfo.videoId, 'English')
+        .then(questions => {
+          if (Array.isArray(questions) && questions.length > 0) {
+            const sortedQuestions = questions.sort((a, b) => {
+              return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
+            });
+            setEnglishQuestions(sortedQuestions);
+            if (selectedLanguage === 'English') {
+              questionsRef.current = sortedQuestions;
+              setQuestions(sortedQuestions);
+            }
+          }
+        })
+        .catch(error => console.error("[DEBUG] Error fetching English questions:", error))
+        .finally(() => setIsEnglishLoading(false));
+    }
+  }, [lectureInfo.videoId, mode, selectedLanguage]);
+
+  // Add effect to monitor questions state
+  useEffect(() => {
+    if (questions.length > 0) {
+      console.log("[DEBUG] Questions state updated. Length:", questions.length);
+      console.log("[DEBUG] First question in state:", questions[0]);
+    }
+  }, [questions]);
+
+  // Add this effect to monitor interval changes
+  useEffect(() => {
+    if (isPlaying && faceMeshReady && playerRef.current) {
+      handleVideoResume(
+        lectureInfo.videoId, 
+        'basic', 
+        sendIntervalSeconds,
+        () => playerRef.current?.getCurrentTime() || 0
+      );
+    }
+  }, [sendIntervalSeconds]);
+
+  // Add this useEffect to properly handle mode changes
+  useEffect(() => {
+    // When switching modes, ensure we properly set up tracking
+    if (playerRef.current && faceMeshReady) {
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        handleVideoResume(
+          lectureInfo.videoId,
+          'basic',
+          sendIntervalSeconds,
+          () => playerRef.current?.getCurrentTime() || 0
+        );
+      }, 500);
+    }
+  }, [noClientPause]);
 
   // new: track when both question sets have loaded
   const [questionsLoaded, setQuestionsLoaded] = useState(false);
@@ -239,7 +366,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [isHebrewLoading, isEnglishLoading]);
 
-  // Define handleLowEngagement using the question service
+  // Define handleLowEngagement first since it's used in other function dependencies
   const handleLowEngagement = useCallback(() => {
     if (!isPlaying || currentQuestion || !questionsLoaded) return;
     
@@ -251,22 +378,33 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
     if (mode === 'question' && canAskQuestion()) {
       const currentVideoTime = playerRef.current?.getCurrentTime() || 0;
-      
-      const nextQuestionData = selectQuestionForCurrentTime(
+      const availableQuestions = getAvailableQuestions(
         currentVideoTime,
         questionsRef.current,
-        answeredQIDs,
-        selectedLanguage
+        answeredQIDs
       );
       
-      if (!nextQuestionData) {
+      console.log('debugg: availableQuestions:', availableQuestions);
+
+      // no questions → attention check
+      if (availableQuestions.length === 0) {
         console.log('debugg: no questions available for this segment');
         setCurrentQuestion({ text: '', answers: [] });
         return;
       }
-      
-      markQuestionAsked();
-      setCurrentQuestion(nextQuestionData);
+
+      const nextQuestion = selectNextQuestion(availableQuestions);
+      console.log('debugg: nextQuestion to ask:', nextQuestion);
+      if (nextQuestion) {
+        markQuestionAsked();
+        setCurrentQuestion({
+          q_id: nextQuestion.q_id,
+          text: nextQuestion.question,
+          answers: shuffleAnswers(nextQuestion, selectedLanguage),
+          originalTime: parseTimeToSeconds(nextQuestion.question_origin),
+          endTime: parseTimeToSeconds(nextQuestion.question_explanation_end)
+        });
+      }
     }
   }, [
     isPlaying, currentQuestion, mode, selectedLanguage,
@@ -414,39 +552,67 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     setVideoPlaying(true);
   };
 
-  // Update onPlayerReady to use the videoPlayerService
   const onPlayerReady = (event) => {
     playerRef.current = event.target;
     console.log("Player ready, starting video");
+  
+    if (initialPlaybackTime > 0) {
+      console.log(`🔄 Seeking video to ${initialPlaybackTime}s.`);
+      playerRef.current.seekTo(initialPlaybackTime, true);
+    }
+  
+    // Start playing and initialize tracking
+    playerRef.current.playVideo();
     
-    initializeVideoPlayer(
-      playerRef,
-      initialPlaybackTime, 
-      lectureInfo.videoId,
-      sendIntervalSeconds,
-      setIsPlaying,
-      setPauseStatus
-    );
-    
+    // Small delay to ensure player state is updated
+    setTimeout(() => {
+      handleVideoResume(
+        lectureInfo.videoId,
+        'basic',
+        sendIntervalSeconds,
+        () => playerRef.current?.getCurrentTime() || 0
+      );
+      setIsPlaying(true);
+      setPauseStatus('Playing');
+    }, 1000);
+
     if (onVideoPlayerReady) onVideoPlayerReady();
   };
   
-  // Update onPlayerStateChange to use the videoPlayerService
   const onPlayerStateChange = (event) => {
-    handlePlayerStateChange(
-      event,
-      playerRef,
-      lectureInfo.videoId, 
-      sendIntervalSeconds,
-      systemPauseRef,
-      setIsPlaying,
-      setPauseStatus,
-      setUserPaused,
-      setIsVideoPaused,
-      setVideoPlaying
-    );
+    const playerState = event.data;
+  
+    switch (playerState) {
+      case 1: // Playing
+        setIsPlaying(true);
+        setPauseStatus('Playing');
+        setUserPaused(false);
+        setIsVideoPaused(false);
+        setVideoPlaying(true); // Add this line
+        handleVideoResume(
+          lectureInfo.videoId, 
+          'basic', 
+          sendIntervalSeconds,
+          () => playerRef.current?.getCurrentTime() || 0
+        );
+        break;
+      case 2: // Paused
+        if (systemPauseRef.current) {
+          setPauseStatus('Paused (Not Engaged)');
+        } else {
+          setPauseStatus('Paused Manually');
+          setUserPaused(true);
+        }
+        setIsPlaying(false);
+        setIsVideoPaused(true);
+        setVideoPlaying(false); // Add this line
+        handleVideoPause();
+        break;
+      default:
+        break;
+    }
   };
-
+  
   // Update the interval change handler
   const handleIntervalChange = (newValue) => {
     setSendIntervalSeconds(Number(newValue));
@@ -490,20 +656,48 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     console.log(`debugg: Answered questions reset for video ${lectureInfo.videoId}`);
   };
 
-  // Update handlePlotResults to use the service
+  // Function to plot results
   const handlePlotResults = async() => {
     // Toggle visibility if chart is already shown
     if (showResultsChart) {
       setShowResultsChart(false);
-      return;
     }
-    
-    fetchAndProcessResults(
-      lectureInfo.videoId, 
-      setResultsChartData, 
-      setShowResultsChart
-    );
-  };
+
+    fetchWatchItemResults(lectureInfo.videoId).then((data) => {
+      const resultsArray = data[Object.keys(data)[0]];
+      console.debug('plot results raw data:', data[Object.keys(data)[0]]); 
+      
+      if (resultsArray && Array.isArray(resultsArray) && resultsArray.length > 0) {
+        const sortedData = resultsArray.sort((a, b) => a.video_time - b.video_time);
+
+        const labels = sortedData.map(item => (item.video_time/60).toFixed(1)); // Use video_time for x-axis, rounded
+        const values = sortedData.map(item => item.result*100); // Use result for y-axis
+
+        setResultsChartData({
+          labels,
+          datasets: [
+            {
+              label: 'Focus over Time',
+              data: values,
+              backgroundColor: 'rgba(153, 102, 255, 0.6)', // Different color
+              borderColor: 'rgba(153, 102, 255, 1)',
+              borderWidth: 1,
+            },
+          ],
+        });
+        setShowResultsChart(true); // Show the chart
+        console.log('Results chart data updated:', { labels, values });
+      } else {
+        console.error('No data available for plotting results or data is not in the expected array format.');
+        setResultsChartData({ labels: [], datasets: [] });
+        setShowResultsChart(false); // Hide the chart if no data
+      }
+    }).catch(error => {
+      console.error('Error fetching or processing watch item results:', error);
+      setResultsChartData({ labels: [], datasets: [] });
+      setShowResultsChart(false); // Hide the chart on error
+    });
+  }
 
   const renderStatus = () => (
     <div className="status-info">
