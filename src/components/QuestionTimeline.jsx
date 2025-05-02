@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-// Import functions from the new service file
 import {
   formatTime,
   processQuestionsForTimeline,
@@ -12,94 +11,106 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight }) =>
   const questionRefs = useRef({});
   const [processedQuestions, setProcessedQuestions] = useState([]);
   const [nextQuestionIndex, setNextQuestionIndex] = useState(-1);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
+  const lastScrollRef = useRef({ idx: -1, time: 0 }); // Track last scroll target and time
 
-  // Process questions using the service function
+  // Process questions when they change
   useEffect(() => {
     const sorted = processQuestionsForTimeline(questions);
+    console.log(`📋 Processed ${sorted.length} questions`);
     setProcessedQuestions(sorted);
-    // Initialize refs
     questionRefs.current = sorted.reduce((acc, q) => {
       acc[q.q_id] = React.createRef();
       return acc;
     }, {});
-  }, [questions]); // Only re-process when the main questions array changes
+  }, [questions]);
 
-  // Find the next question index using the service function
+  // Update indices based on current time
   useEffect(() => {
-    const foundIndex = findNextQuestionIndex(processedQuestions, currentTime);
-    if (foundIndex !== nextQuestionIndex) {
-      setNextQuestionIndex(foundIndex);
-    }
-  }, [currentTime, processedQuestions, nextQuestionIndex]);
+    const nextIdx = findNextQuestionIndex(processedQuestions, currentTime);
+    const currentIdx = processedQuestions.findIndex(q => currentTime >= q.startTime && currentTime < q.endTime);
 
-  // Effect to scroll the timeline (remains the same)
+    if (nextIdx !== nextQuestionIndex) {
+      console.log(`🔄 Next question index changed to ${nextIdx}`);
+      setNextQuestionIndex(nextIdx);
+    }
+    if (currentIdx !== currentQuestionIndex) {
+      console.log(`🔄 Current question index changed to ${currentIdx}`);
+      setCurrentQuestionIndex(currentIdx);
+    }
+  }, [currentTime, processedQuestions, nextQuestionIndex, currentQuestionIndex]);
+
+  // Basic, fixed interval scrolling approach
   useEffect(() => {
-    if (nextQuestionIndex >= 0 && nextQuestionIndex < processedQuestions.length && timelineRef.current) {
-      const questionIdToScroll = processedQuestions[nextQuestionIndex].q_id;
-      const elementRef = questionRefs.current[questionIdToScroll];
+    // Skip if no container or no questions
+    if (!timelineRef.current || processedQuestions.length === 0) return;
+    
+    // Get container scroll info
+    const container = timelineRef.current;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    const maxScroll = scrollHeight - clientHeight;
+    
+    // Which question index to target
+    const targetIdx = currentQuestionIndex !== -1 ? currentQuestionIndex : nextQuestionIndex;
+    if (targetIdx < 0 || targetIdx >= processedQuestions.length) return;
+    
+    // Basic throttle to avoid too many scrolls
+    const now = Date.now();
+    if (now - lastScrollRef.current.time < 500 && targetIdx === lastScrollRef.current.idx) return;
+    
+    console.log(`🎯 Focusing on question index ${targetIdx}/${processedQuestions.length-1}`);
+    
+    // The key idea: divide the timeline into fixed segments
+    // Use the target index / total questions to determine scroll position
+    const scrollRatio = targetIdx / (processedQuestions.length - 1);
+    const scrollTarget = Math.floor(scrollRatio * maxScroll);
 
-      if (elementRef && elementRef.current) {
-         // Determine the scroll position: aim to center the 'next' question
-         const container = timelineRef.current;
-         const element = elementRef.current;
-         const containerHeight = container.offsetHeight;
-         const elementTop = element.offsetTop - container.offsetTop; // Position relative to container top
-         const elementHeight = element.offsetHeight;
+    // Ensure bounds
+    const clampedTarget = Math.max(0, Math.min(scrollTarget, maxScroll));
+    
+    console.log(`📜 Scrolling to position ${clampedTarget}/${maxScroll} (${Math.round(scrollRatio*100)}%)`);
+    
+    // Record this scroll to avoid duplicates
+    lastScrollRef.current = {
+      idx: targetIdx,
+      time: now
+    };
+    
+    // Execute scroll
+    container.scrollTo({
+      top: clampedTarget,
+      behavior: 'smooth'
+    });
+  }, [currentQuestionIndex, nextQuestionIndex, processedQuestions]);
 
-         // Calculate the desired scroll position to center the element
-         const scrollTo = elementTop - (containerHeight / 2) + (elementHeight / 2);
-
-         container.scrollTo({
-             top: Math.max(0, scrollTo), // Ensure not scrolling to negative values
-             behavior: 'smooth',
-         });
-      }
-    } else if (nextQuestionIndex === 0 && timelineRef.current) {
-        // Scroll to top if the first question becomes next
-         timelineRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (nextQuestionIndex === processedQuestions.length && processedQuestions.length > 0 && timelineRef.current) {
-        // Scroll towards the last item if we are past all questions
-        const lastQuestionId = processedQuestions[processedQuestions.length - 1].q_id;
-        const lastElementRef = questionRefs.current[lastQuestionId];
-        if (lastElementRef && lastElementRef.current) {
-             lastElementRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest', // Scroll just enough to bring it into view
-             });
-        }
-    }
-  }, [nextQuestionIndex, processedQuestions]); // Scroll when the next question index changes
-
-
-  // formatTime is now imported
-
-  // getDisplayRange logic is simplified as we show all questions now
-
+  // Render the timeline questions with styling
   return (
     <div
       className="timeline-container"
       ref={timelineRef}
-      style={{ height: `${playerHeight}px` }} // Set height dynamically
+      style={{ height: `${playerHeight}px` }}
     >
       <h3 className="timeline-header">{language} Questions Timeline</h3>
       {processedQuestions.length === 0 && <p className="no-questions">No questions loaded.</p>}
       {processedQuestions.map((q, index) => {
-        const isNext = index === nextQuestionIndex;
-        // Adjust logic slightly: current means the video time is between start and end
-        const isCurrent = currentTime >= q.startTime && currentTime < q.endTime;
-        // Past means the video time is at or after the end time
-        const isPast = currentTime >= q.endTime;
+        const isCurrent = index === currentQuestionIndex;
+        const isNext = !isCurrent && index === nextQuestionIndex;
+        const isPast = currentQuestionIndex === -1
+          ? (nextQuestionIndex === -1 || index < nextQuestionIndex)
+          : index < currentQuestionIndex;
 
         let itemClass = 'question-item';
-        if (isCurrent) itemClass += ' current-question'; // Current takes precedence visually
-        else if (isNext) itemClass += ' next-question'; // Then next
-        else if (isPast) itemClass += ' past-question'; // Then past
+        if (isCurrent) itemClass += ' current-question';
+        else if (isNext) itemClass += ' next-question';
+        else if (isPast) itemClass += ' past-question';
 
         return (
           <div
-            key={q.q_id}
+            key={`${q.q_id}-${q.startTime}`}
             ref={questionRefs.current[q.q_id]}
             className={itemClass}
+            id={`q${q.startTime}-${q.q_id}`}
           >
             <span className="question-time">[{formatTime(q.startTime)}]</span>
             <span className="question-text">{q.question}</span>

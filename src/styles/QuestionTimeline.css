@@ -1,105 +1,148 @@
 .timeline-container {
-    width: 300px; /* Adjust width as needed */
-    border-left: 1px solid #ccc; /* Changed back to border-left */
-    padding: 15px;
-    overflow-y: auto;
-    background-color: #f9f9f9;
-    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1); /* Changed back to negative x-offset */
-    /* Height is set dynamically via style prop */
-  }
-  
-  .timeline-header {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.1em;
-    color: #333;
-    text-align: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-  }
-  
-  .no-questions {
-    color: #888;
-    text-align: center;
-    margin-top: 20px;
-  }
-  
-  .question-item {
-    padding: 10px 8px;
-    margin-bottom: 8px;
-    border-radius: 4px;
-    background-color: #fff;
-    border: 1px solid #e0e0e0;
-    transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
-    font-size: 0.9em;
-    display: flex;
-    align-items: flex-start; /* Align items to the top */
-  }
-  
-  .question-time {
-    font-weight: bold;
-    color: #555;
-    margin-right: 8px;
-    white-space: nowrap; /* Prevent time from wrapping */
-    font-size: 0.85em;
-    flex-shrink: 0; /* Prevent time from shrinking */
-  }
-  
-  .question-text {
-    color: #444;
-    line-height: 1.4;
-    flex-grow: 1; /* Allow text to take remaining space */
-  }
-  
-  
-  /* Style for the question that is currently active based on video time */
-  .current-question {
-    background-color: #e6f7ff; /* Light blue background */
-    border-left: 4px solid #1890ff; /* Keep left border for emphasis */
-  }
-  
-  /* Style for the next upcoming question */
-  .next-question {
-    border: 1px solid #91d5ff; /* Lighter blue border */
-    box-shadow: 0 0 5px rgba(24, 144, 255, 0.2); /* Subtle glow */
-    font-style: italic;
-    color: #0056b3; /* Darker blue text for emphasis */
-  }
-  .next-question .question-text {
-      color: #0056b3;
-  }
-  
-  
-  /* Style for questions whose time has passed */
-  .past-question {
-    background-color: #f0f0f0; /* Grey out past questions slightly */
-    opacity: 0.7;
-  }
-  .past-question .question-text {
-      color: #777; /* Dim the text */
-  }
-  
-  /* Hover effect for interactivity */
-  .question-item:hover {
-    background-color: #f0f8ff; /* Very light blue on hover */
-    transform: translateY(-1px);
-  }
-  
-  /* Scrollbar styling (optional, browser-dependent) */
-  .timeline-container::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  .timeline-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-  }
-  
-  .timeline-container::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 4px;
-  }
-  
-  .timeline-container::-webkit-scrollbar-thumb:hover {
-    background: #aaa;
-  }
+  width: 300px; /* Adjust width as needed */
+  border-left: 1px solid #ccc; /* Changed back to border-left */
+  padding: 15px;
+  overflow-y: auto;
+  background-color: #f9f9f9;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1); /* Changed back to negative x-offset */
+  /* Height is set dynamically via style prop */
+  scroll-snap-type: y proximity;  /* Enable vertical scroll snapping with proximity */
+  scroll-behavior: smooth;        /* Ensure smooth scrolling */
+  overscroll-behavior: contain;   /* Prevent scrolling parent when reaching the end */
+}
+
+.timeline-header {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.1em;
+  color: #333;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  position: sticky;               /* Make header stick to top */
+  top: 0;                        /* Position at top */
+  background-color: #f9f9f9;     /* Match container background */
+  z-index: 10;                   /* Ensure it stays on top */
+}
+
+.no-questions {
+  color: #888;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.question-item {
+  padding: 10px 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
+  font-size: 0.9em;
+  display: flex;
+  align-items: flex-start; /* Align items to the top */
+  scroll-snap-align: start;       /* Snap items to start of container */
+  scroll-margin-top: 50px;        /* Add margin for header when snapping */
+  position: relative;             /* For timeline connector */
+  padding-left: 15px;             /* Space for timeline connector */
+}
+
+.question-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #ddd;
+}
+
+.question-item::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 15px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #aaa;
+}
+
+.question-time {
+  font-weight: bold;
+  color: #555;
+  margin-right: 8px;
+  white-space: nowrap; /* Prevent time from wrapping */
+  font-size: 0.85em;
+  flex-shrink: 0; /* Prevent time from shrinking */
+}
+
+.question-text {
+  color: #444;
+  line-height: 1.4;
+  flex-grow: 1; /* Allow text to take remaining space */
+}
+
+/* Style for the question that is currently active based on video time */
+.current-question {
+  background-color: #e6f7ff; /* Light blue background */
+  border-left: 4px solid #1890ff; /* Keep left border for emphasis */
+}
+
+.current-question::after {
+  background-color: #1890ff;
+  width: 10px;
+  height: 10px;
+  left: -4px;
+}
+
+/* Style for the next upcoming question */
+.next-question {
+  border: 1px solid #91d5ff; /* Lighter blue border */
+  box-shadow: 0 0 5px rgba(24, 144, 255, 0.2); /* Subtle glow */
+  font-style: italic;
+  color: #0056b3; /* Darker blue text for emphasis */
+}
+
+.next-question .question-text {
+  color: #0056b3;
+}
+
+.next-question::after {
+  background-color: #91d5ff;
+}
+
+/* Style for questions whose time has passed */
+.past-question {
+  background-color: #f0f0f0; /* Grey out past questions slightly */
+  opacity: 0.7;
+}
+
+.past-question .question-text {
+  color: #777; /* Dim the text */
+}
+
+/* Hover effect for interactivity */
+.question-item:hover {
+  background-color: #f0f8ff; /* Very light blue on hover */
+  transform: translateY(-1px);
+}
+
+/* Scrollbar styling (optional, browser-dependent) */
+.timeline-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.timeline-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.timeline-container::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.timeline-container::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
+}
