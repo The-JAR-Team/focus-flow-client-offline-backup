@@ -138,7 +138,8 @@ export const getAvailableQuestions = (currentTime, allQuestions, answeredQIDs) =
   const timeWindowEnd = currentTime + 60; // 1 minute ahead
   
   return allQuestions.filter(q => {
-    const questionTime = parseTimeToSeconds(q.question_origin);
+    //const questionTime = parseTimeToSeconds(q.question_explanation_end);
+    const questionTime = parseTimeToSeconds(q.question_explanation_end);
     return (
       !answeredQIDs.includes(q.q_id) && // Not already answered
       questionTime >= timeWindowStart && 
