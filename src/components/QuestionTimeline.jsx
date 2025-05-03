@@ -31,58 +31,50 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight, onQu
     const currentIdx = processedQuestions.findIndex(q => currentTime >= q.startTime && currentTime < q.endTime);
 
     if (nextIdx !== nextQuestionIndex) {
-      //console.log(`🔄 Next question index changed to ${nextIdx}`);
       setNextQuestionIndex(nextIdx);
     }
     if (currentIdx !== currentQuestionIndex) {
-      //console.log(`🔄 Current question index changed to ${currentIdx}`);
       setCurrentQuestionIndex(currentIdx);
     }
   }, [currentTime, processedQuestions, nextQuestionIndex, currentQuestionIndex]);
 
-  // Basic, fixed interval scrolling approach
+  // Basic, fixed interval scrolling approach with backward indentation
   useEffect(() => {
-    // Skip if no container or no questions
     if (!timelineRef.current || processedQuestions.length === 0) return;
     
-    // Get container scroll info
     const container = timelineRef.current;
     const scrollHeight = container.scrollHeight;
     const clientHeight = container.clientHeight;
     const maxScroll = scrollHeight - clientHeight;
     
-    // Which question index to target
     let targetIdx = currentQuestionIndex !== -1 ? currentQuestionIndex : nextQuestionIndex;
     if (targetIdx < 0 || targetIdx >= processedQuestions.length) return;
     
-    // Create backward indentation by scrolling to one question before the target
-    const displayIdx = Math.max(0, targetIdx - 1); // Show one question before target (with lower bound of 0)
+    // Adjust index to show one question before the target (backward indentation)
+    const displayIdx = Math.max(0, targetIdx - 1);
     
-    // Basic throttle to avoid too many scrolls
+    // Throttle scrolling to avoid unnecessary updates
     const now = Date.now();
-    //if (now - lastScrollRef.current.time < 500 && displayIdx === lastScrollRef.current.idx) return;
+    if (now - lastScrollRef.current.time < 500 && displayIdx === lastScrollRef.current.idx) return;
     
-    // The key idea: divide the timeline into fixed segments based on adjusted index
+    // Calculate target scroll position based on the adjusted index's position in the list
     const scrollRatio = displayIdx / (processedQuestions.length - 1);
     const scrollTarget = Math.floor(scrollRatio * maxScroll);
-
-    // Ensure bounds
     const clampedTarget = Math.max(0, Math.min(scrollTarget, maxScroll));
     
-    // Record this scroll to avoid duplicates (store the display index, not the target)
+    console.log(`Scrolling to index ${displayIdx} (${Math.round(scrollRatio*100)}% of timeline)`);
+    
     lastScrollRef.current = {
       idx: displayIdx,
       time: now
     };
     
-    // Execute scroll
     container.scrollTo({
       top: clampedTarget,
       behavior: 'smooth'
     });
   }, [currentQuestionIndex, nextQuestionIndex, processedQuestions]);
 
-  // Render the timeline questions with styling
   return (
     <div
       className="timeline-container"
@@ -91,6 +83,12 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight, onQu
     >
       <h3 className="timeline-header">{language} Questions Timeline</h3>
       {processedQuestions.length === 0 && <p className="no-questions">No questions loaded.</p>}
+      {processedQuestions.length > 0 && (
+        <div className="timeline-stats">
+          {processedQuestions.length} questions available
+        </div>
+      )}
+      
       {processedQuestions.map((q, index) => {
         const isCurrent = index === currentQuestionIndex;
         const isNext = !isCurrent && index === nextQuestionIndex;
@@ -110,8 +108,7 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight, onQu
             className={itemClass}
             id={`q${q.startTime}-${q.q_id}`}
             onClick={() => onQuestionClick && onQuestionClick(q.startTime-2)}
-            title={`Click to seek to ${formatTime(q.startTime)}`} // Add tooltip
-            style={{ cursor: 'pointer' }} // Show pointer cursor on hover
+            title={`Click to seek to ${formatTime(q.startTime)}`}
           >
             <span className="question-time">[{formatTime(q.startTime)}]</span>
             <span className="question-text">{q.question}</span>
