@@ -1,5 +1,5 @@
 .timeline-container {
-  width: 300px; /* Adjust width as needed */
+  width: 550px; /* Adjust width as needed */
   border-left: 1px solid #ccc; /* Changed back to border-left */
   padding: 15px;
   overflow-y: auto;

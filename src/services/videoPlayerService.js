@@ -110,7 +110,7 @@ import {
         // Check for pending status
         if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
           statusSetter(`Building questions... (${attempt + 1})`);
-          await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds before retrying
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 4 seconds before retrying
           continue;
         }
 
