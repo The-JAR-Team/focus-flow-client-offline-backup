@@ -430,9 +430,15 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
     if (mode === 'question' && canAskQuestion()) {
       const currentVideoTime = playerRef.current?.getCurrentTime() || 0;
+      // Use fallback to Hebrew questions if English selection yields no questions
+      let questionPool = questionsRef.current;
+      if (selectedLanguage === 'English' && questionPool.length === 0 && hebrewQuestions.length > 0) {
+        console.log('[DEBUGQ] English questions empty, falling back to Hebrew questions');
+        questionPool = hebrewQuestions;
+      }
       const availableQuestions = getAvailableQuestions(
         currentVideoTime,
-        questionsRef.current,
+        questionPool,
         answeredQIDs
       );
       
