@@ -15,6 +15,7 @@ export const fetchTranscriptQuestions = async (videoId, language) => {
     // Add timestamp to prevent caching and set timeout
     const timestamp = Date.now();
     const response = await axios.get(
+      //`${config.baseURL}/videos/${videoId}/questions?lang=${language}&_t=${timestamp}`, 
       `${config.baseURL}/videos/${videoId}/questions?lang=${language}&_t=${timestamp}`, 
       { 
         withCredentials: true,
