@@ -42,22 +42,19 @@ export function QuestionModal({ question, onAnswer, language }) {
 export function DecisionModal({ isCorrect, onDecision, language }) {
   const [timer, setTimer] = useState(2);
 
+  // Countdown timer when answer is correct
   useEffect(() => {
-    let interval;
-    if (isCorrect) {
-      interval = setInterval(() => {
-        setTimer(prev => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            onDecision('continue');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (!isCorrect) return;
+    const id = setInterval(() => setTimer(prev => prev - 1), 1000);
+    return () => clearInterval(id);
+  }, [isCorrect]);
+
+  // Trigger parent decision once timer reaches zero
+  useEffect(() => {
+    if (isCorrect && timer <= 0) {
+      onDecision('continue');
     }
-    return () => clearInterval(interval);
-  }, [isCorrect, onDecision]);
+  }, [isCorrect, timer, onDecision]);
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">

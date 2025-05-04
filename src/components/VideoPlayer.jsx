@@ -135,6 +135,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [lastModelResult, setLastModelResult] = useState(null);
 
   const [sensitivity, setSensitivity] = useState(7);
+  const [currentGaze, setCurrentGaze] = useState(''); // track current gaze
 
   const [hebrewFetchInterval, setHebrewFetchInterval] = useState(null);
   const [englishFetchInterval, setEnglishFetchInterval] = useState(null);
@@ -394,10 +395,34 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     };
   }, [lectureInfo.videoId, mode, selectedLanguage]);
 
+  // Function to check and exit fullscreen if active
+  const exitFullScreenIfActive = useCallback(() => {
+    if (document.fullscreenElement || 
+        document.webkitFullscreenElement || 
+        document.mozFullScreenElement ||
+        document.msFullscreenElement) {
+      console.log('🖥️ Exiting fullscreen mode for question');
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+      return true;
+    }
+    return false;
+  }, []);
+
   const handleLowEngagement = useCallback(() => {
     if (!isPlaying || currentQuestion || isHebrewLoading || isEnglishLoading) return;
     
     if (playerRef.current) {
+      // Exit fullscreen if active before showing the question
+      exitFullScreenIfActive();
+      
       playerRef.current.pauseVideo();
       setIsPlaying(false);
       systemPauseRef.current = true;
@@ -434,13 +459,17 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [
     isPlaying, currentQuestion, mode, selectedLanguage,
-    answeredQIDs, isHebrewLoading, isEnglishLoading
+    answeredQIDs, isHebrewLoading, isEnglishLoading, exitFullScreenIfActive
   ]);
 
   const handleVideoPlayback = useCallback((newGaze) => {
-    if (userPausedRef.current) return;
-    if (noClientPause) return;
+    // Log every gaze event
+    console.log('[DEBUGQ] handleVideoPlayback incoming gaze:', newGaze);
+    
+    // Skip only if engagement detection is disabled
+    if (!getEngagementDetectionEnabled()) return;
 
+    // Proceed with engagement detection
     handleEngagementDetection({
       newGaze,
       immediateGaze,
@@ -461,22 +490,50 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       setPauseStatus,
       setUserPaused
     });
-  }, [noClientPause, isPlaying, currentQuestion, mode, handleLowEngagement]);
+  }, [isPlaying, currentQuestion, mode, handleLowEngagement]);
 
   const handleFaceMeshResults = useCallback((results) => {
-    if (!noClientPause && mode === 'question' && questionActiveRef.current) return;
+    // First update the latest landmark regardless of errors
     updateLatestLandmark(results);
-    if (!noClientPause && results?.multiFaceLandmarks?.length > 0) {
+    
+    // Debug gaze detection and engagement state
+    console.log('[DEBUGQ] FaceMesh processing frame, questionActive:', !!questionActiveRef.current, 'noClientPause:', noClientPause);
+    
+    // Proceed only if we're not in server mode and have landmarks
+    if (!noClientPause && 
+        results && 
+        results.multiFaceLandmarks && 
+        Array.isArray(results.multiFaceLandmarks) && 
+        results.multiFaceLandmarks.length > 0 && 
+        results.multiFaceLandmarks[0]) {
+      
       try {
+        // Try to estimate gaze from the landmarks
         const gaze = estimateGaze(results.multiFaceLandmarks[0]);
-        setFaceMeshStatus('Working');
+        setCurrentGaze(gaze); // update current gaze state
+        // Display status with current gaze
+        setFaceMeshStatus(`Working (current gaze: ${gaze})`);
+        
+        // Always process the gaze detection - the engagement logic inside 
+        // handleVideoPlayback will check if there's an active question
+        console.log('[DEBUGQ] Gaze detected:', gaze);
         handleVideoPlayback(gaze);
       } catch (error) {
-        console.error('Gaze estimation error:', error);
-        setFaceMeshStatus('Error estimating gaze');
+        // Log error but don't break the application flow
+        console.log('Gaze estimation error, will retry on next frame:', error.message);
+        // Still show status but don't set error state
+        setCurrentGaze('Looking center');
+        setFaceMeshStatus('Waiting for clearer face detection');
+        
+        // Return to looking center as fallback
+        handleVideoPlayback('Looking center');
       }
+    } else if (!noClientPause) {
+      // No landmarks but not an error - just waiting
+      setCurrentGaze('');
+      setFaceMeshStatus('Searching for face');
     }
-  }, [mode, noClientPause, handleVideoPlayback]);
+  }, [mode, noClientPause, handleVideoPlayback, questionActiveRef]);
 
   const handleFaceMeshStatus = useCallback((status) => {
     setFaceMeshStatus(status);
@@ -495,7 +552,8 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [lectureInfo.videoId, sendIntervalSeconds]);
 
-  useFaceMesh(loaded && isPlaying, webcamRef, handleFaceMeshResults, handleFaceMeshStatus);
+  // Always run FaceMesh once loaded to maintain gaze detection across pauses
+  useFaceMesh(loaded, webcamRef, handleFaceMeshResults, handleFaceMeshStatus);
 
   useEffect(() => {
     if (!playerRef.current || !faceMeshReady) return;
@@ -513,12 +571,31 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   }, [faceMeshReady, playerRef.current, sendIntervalSeconds, lectureInfo.videoId, isVideoPaused]);
 
   const handleAnswer = (selectedKey) => {
+    console.log('[DEBUGQ] Answer selected:', selectedKey);
+    
     if (selectedKey === 'continue') {
       setCurrentQuestion(null);
       playerRef.current.playVideo();
       setIsPlaying(true);
       setPauseStatus('Playing');
       setVideoPlaying(true);
+      
+      // Reset gaze timers to start fresh detection
+      immediateGaze.current = 'Looking center';
+      stableGaze.current = 'Looking center';
+      immediateGazeChangeTime.current = Date.now();
+      stableGazeChangeTime.current = Date.now();
+      
+      // Make sure to reset the system pause flag
+      systemPauseRef.current = false;
+      
+      // Reset the cooldown timer and make sure engagement detection is enabled
+      markQuestionAsked();
+      setEngagementDetectionEnabled(true);
+      // Reset gaze display and status to restart detection UI
+      setCurrentGaze('');
+      setFaceMeshStatus('Searching for face');
+      console.log('[DEBUGQ] Continue selected, resetting cooldown timer and gaze. Engagement detection enabled:', getEngagementDetectionEnabled());
       return;
     }
 
@@ -528,6 +605,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         wrong: prev.wrong + 1
       }));
       setDecisionPending(false);
+      // Reset the cooldown timer even for "don't know"
+      markQuestionAsked();
+      console.log('[DEBUGQ] "Don\'t know" selected, resetting cooldown timer');
       return;
     }
 
@@ -538,24 +618,53 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       [isCorrect ? 'correct' : 'wrong']: prev[isCorrect ? 'correct' : 'wrong'] + 1
     }));
     setDecisionPending(isCorrect);
+    // Reset the cooldown timer
+    markQuestionAsked();
+    console.log('[DEBUGQ] Answer processed, correctness:', isCorrect);
   };
 
   const handleDecision = (action) => {
+    console.log('[DEBUGQ] Decision action received:', action);
+    
     if (action === 'rewind') {
       const rewindTime = Math.max(0, currentQuestion.originalTime - 4); 
       if (typeof rewindTime === 'number' && !isNaN(rewindTime)) {
+        console.log(`[DEBUGQ] Rewinding video to ${rewindTime}s`);
         playerRef.current.seekTo(rewindTime, true);
       }
     }
+
     if (decisionPending === true) {
       setQuestions(prev => {
         const updated = prev.filter(q => q.q_id !== currentQuestion.q_id);
         return updated;
       });
       setAnsweredQIDs(prev => [...prev, currentQuestion.q_id]);
+      console.log('[DEBUGQ] Question marked as correctly answered');
     }
+
+    // Reset question states
     setCurrentQuestion(null);
     setDecisionPending(null);
+    
+    // Reset system state
+    systemPauseRef.current = false;
+    
+    // Reset gaze timers to restart engagement detection
+    immediateGaze.current = 'Looking center';
+    stableGaze.current = 'Looking center';
+    immediateGazeChangeTime.current = Date.now();
+    stableGazeChangeTime.current = Date.now();
+    
+    // Reset cooldown timer and explicitly re-enable engagement detection
+    markQuestionAsked();
+    setEngagementDetectionEnabled(true);
+    // Reset gaze display and status to restart detection UI
+    setCurrentGaze('');
+    setFaceMeshStatus('Searching for face');
+    console.log('[DEBUGQ] Decision handled, resetting cooldown timer and gaze. Engagement detection enabled:', getEngagementDetectionEnabled());
+    
+    // Resume playback
     playerRef.current.playVideo();
     setIsPlaying(true);
     setPauseStatus('Playing');
@@ -690,12 +799,49 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
   }, [isPlaying]);
 
+  // Enhanced manual trigger handler for more reliable question triggering
+  const handleManualTrigger = useCallback(() => {
+    console.log('[DEBUGQ] Manual trigger button clicked');
+    
+    if (currentQuestion) {
+      console.log('[DEBUGQ] Cannot trigger new question while one is active');
+      return;
+    }
+    
+    // First make sure video playing state is correct
+    setVideoPlaying(true);
+    
+    // Call the startManualTrigger function from videoLogic.js
+    // This now sets forceQuestionTrigger to true
+    startManualTrigger();
+    
+    // For immediate trigger, directly call handleLowEngagement
+    console.log('[DEBUGQ] Directly calling handleLowEngagement from manual trigger');
+    
+    // Exit fullscreen if active
+    exitFullScreenIfActive();
+    
+    // Pause the video first if it's playing
+    if (isPlaying && playerRef.current) {
+      console.log('[DEBUGQ] Pausing video for manual question');
+      playerRef.current.pauseVideo();
+      setIsPlaying(false);
+      systemPauseRef.current = true;
+    }
+    
+    // Short timeout to ensure pause has taken effect
+    setTimeout(() => {
+      // This will trigger the question since forceQuestionTrigger is now true
+      handleLowEngagement();
+    }, 50);
+  }, [handleLowEngagement, exitFullScreenIfActive, currentQuestion, isPlaying]);
+
   const renderStatus = () => (
     <div className="status-info">
       <p>Mode: {mode}</p>
       <p>Status: {pauseStatus}</p>
       <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
-      {noClientPause && <p>Model Result: {lastModelResult?.toFixed(2) || 'N/A'}</p>}
+      {!noClientPause && <p>Current Gaze: {currentGaze || 'N/A'}</p>}
       <button 
         className={`control-button ${noClientPause ? 'active' : ''}`}
         onClick={handleNoClientPauseToggle}
@@ -730,7 +876,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       </div>
       <button 
         className="debug-button trigger"
-        onClick={() => startManualTrigger()}
+        onClick={handleManualTrigger}
       >
         🎯 Trigger Question
       </button>
