@@ -50,8 +50,7 @@ const QuestionTimeline = ({ questions, currentTime, language, playerHeight, onQu
     let targetIdx = currentQuestionIndex !== -1 ? currentQuestionIndex : nextQuestionIndex;
     if (targetIdx < 0 || targetIdx >= processedQuestions.length) return;
     
-    // Adjust index to show one question before the target (backward indentation)
-    const displayIdx = Math.max(0, targetIdx - 1);
+    const displayIdx = Math.max(0, targetIdx );
     
     // Throttle scrolling to avoid unnecessary updates
     const now = Date.now();
