@@ -32,7 +32,8 @@ import {
   parseTimeToSeconds,
   shuffleAnswers,
   getAvailableQuestions,
-  selectNextQuestion
+  selectNextQuestion,
+  cancelAllQuestionFetches
 } from '../services/videoPlayerService';
 import {
   formatTime
@@ -140,8 +141,15 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   }, [sensitivity]);
 
   useEffect(() => {
+    console.log('🔄 Setting up video tracking');
+    
     return () => {
+      console.log('🛑 Cleaning up video tracking and intervals');
       resetTracking();
+      handleVideoPause(); // Ensure any active session is paused
+      setModelResultCallback(null); // Remove model result callback
+      setVideoPlaying(false); // Set video state to not playing
+      cancelAllQuestionFetches(); // Cancel any ongoing question fetches
     };
   }, []);
 
@@ -226,6 +234,11 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         setQuestions
       );
     }
+    
+    return () => {
+      // Cancel any ongoing fetches when dependencies change
+      cancelAllQuestionFetches();
+    };
   }, [lectureInfo.videoId, mode, selectedLanguage]);
 
   const handleLowEngagement = useCallback(() => {
@@ -484,7 +497,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       }
     });
 
-    return () => setModelResultCallback(null);
+    return () => setModelResultCallback(null); // Ensure callback is removed on unmount or dependency change
   }, [noClientPause, handleLowEngagement]);
 
   useEffect(() => {

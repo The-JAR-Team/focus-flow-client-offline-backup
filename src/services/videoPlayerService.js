@@ -72,6 +72,9 @@ import {
 
   // --- End of moved functions ---
 
+  // Track active fetch operations by video/language
+  const activeQuestionFetches = {};
+
   // Function to fetch questions with retry logic
   export const fetchQuestionsWithRetry = async (
     videoId,
@@ -83,15 +86,30 @@ import {
     retryCountSetter,
     selectedLanguage,
     questionsRef,
-    setQuestions // Add setQuestions callback
+    setQuestions,
+    abortSignal // New parameter to support cancellation
   ) => {
     const retryCountKey = language.toLowerCase();
-
+    const fetchKey = `${videoId}_${language}`;
+    
+    // Create abort controller if not provided
+    const controller = activeQuestionFetches[fetchKey]?.controller || new AbortController();
+    const signal = abortSignal || controller.signal;
+    
+    // Store reference to this fetch operation
+    activeQuestionFetches[fetchKey] = { controller };
+    
     loadingSetter(true);
     statusSetter(`Starting ${language} question generation...`);
 
     try {
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        // Check if we should abort
+        if (signal.aborted) {
+          console.log(`🛑 Fetch questions ${language} aborted`);
+          break;
+        }
+        
         if (attempt > 0) {
           retryCountSetter(prev => ({ ...prev, [retryCountKey]: attempt }));
         }
@@ -104,13 +122,30 @@ import {
             data.reason.includes('Could not retrieve a transcript')) {
           statusSetter(`No ${language} subtitles`);
           loadingSetter(false);
+          delete activeQuestionFetches[fetchKey];
           return [];
         }
 
         // Check for pending status
         if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
           statusSetter(`Building questions... (${attempt + 1})`);
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 4 seconds before retrying
+          
+          try {
+            // Use an abortable timeout instead of await delay
+            await new Promise((resolve, reject) => {
+              const timeoutId = setTimeout(resolve, 5000);
+              signal.addEventListener('abort', () => {
+                clearTimeout(timeoutId);
+                reject(new DOMException('Aborted', 'AbortError'));
+              });
+            });
+          } catch (err) {
+            if (err.name === 'AbortError') {
+              console.log(`🛑 Question fetch timeout aborted for ${language}`);
+              break;
+            }
+            throw err;
+          }
           continue;
         }
 
@@ -134,27 +169,43 @@ import {
             questionsRef.current = sortedQuestions;
             setQuestions(sortedQuestions); // Update the main 'questions' state
           }
-
+          
+          delete activeQuestionFetches[fetchKey];
           loadingSetter(false);
           return sortedQuestions;
         } else {
           statusSetter(`No questions available`);
+          delete activeQuestionFetches[fetchKey];
           loadingSetter(false);
           return [];
         }
       }
 
-      // If we've exhausted all retries
-      statusSetter(`Timed out waiting for questions`);
+      // If we've exhausted all retries or were aborted
+      if (!signal.aborted) {
+        statusSetter(`Timed out waiting for questions`);
+      }
+      delete activeQuestionFetches[fetchKey];
       loadingSetter(false);
       return [];
 
     } catch (err) {
       console.error(`Error fetching ${language} questions:`, err);
       statusSetter(`Error: ${err.message}`);
+      delete activeQuestionFetches[fetchKey];
       loadingSetter(false);
       return [];
     }
+  };
+
+  // Function to cancel all active question fetches
+  export const cancelAllQuestionFetches = () => {
+    console.log('🛑 Canceling all active question fetches');
+    Object.values(activeQuestionFetches).forEach(({ controller }) => {
+      if (controller) {
+        controller.abort();
+      }
+    });
   };
 
   // Function to reset answered questions
