@@ -32,8 +32,7 @@ import {
   parseTimeToSeconds,
   shuffleAnswers,
   getAvailableQuestions,
-  selectNextQuestion,
-  cancelAllQuestionFetches
+  selectNextQuestion
 } from '../services/videoPlayerService';
 import {
   formatTime
@@ -136,6 +135,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   const [sensitivity, setSensitivity] = useState(7);
 
+  const [hebrewFetchInterval, setHebrewFetchInterval] = useState(null);
+  const [englishFetchInterval, setEnglishFetchInterval] = useState(null);
+
   useEffect(() => {
     setGazeSensitivity(sensitivity);
   }, [sensitivity]);
@@ -149,9 +151,12 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       handleVideoPause(); // Ensure any active session is paused
       setModelResultCallback(null); // Remove model result callback
       setVideoPlaying(false); // Set video state to not playing
-      cancelAllQuestionFetches(); // Cancel any ongoing question fetches
+      
+      // Clear question fetch intervals
+      if (hebrewFetchInterval) clearInterval(hebrewFetchInterval);
+      if (englishFetchInterval) clearInterval(englishFetchInterval);
     };
-  }, []);
+  }, [hebrewFetchInterval, englishFetchInterval]);
 
   useEffect(() => {
     let mounted = true;
@@ -207,37 +212,121 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   useEffect(() => {
     setTimeout(() => setLoaded(true), 1000);
+    
+    // Clear existing intervals before creating new ones
+    if (hebrewFetchInterval) clearInterval(hebrewFetchInterval);
+    if (englishFetchInterval) clearInterval(englishFetchInterval);
+    
     if (mode === 'question') {
       console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
+      
+      // Initial fetch for Hebrew
       fetchQuestionsWithRetry(
         lectureInfo.videoId,
         'Hebrew',
-        15,
         setHebrewStatus,
         setIsHebrewLoading,
         setHebrewQuestions,
-        setRetryCount,
         selectedLanguage,
         questionsRef,
         setQuestions
-      );
+      ).then(result => {
+        if (result.pending) {
+          // Setup retry interval for Hebrew
+          setRetryCount(prev => ({ ...prev, hebrew: 1 }));
+          let attempt = 1;
+          const intervalId = setInterval(() => {
+            attempt++;
+            setRetryCount(prev => ({ ...prev, hebrew: attempt }));
+            setHebrewStatus(`Building questions... (${attempt})`);
+            
+            fetchQuestionsWithRetry(
+              lectureInfo.videoId,
+              'Hebrew',
+              setHebrewStatus,
+              setIsHebrewLoading,
+              setHebrewQuestions,
+              selectedLanguage,
+              questionsRef,
+              setQuestions
+            ).then(result => {
+              if (result.success || !result.pending) {
+                clearInterval(intervalId);
+                setHebrewFetchInterval(null);
+              }
+            });
+            
+            // Stop after 15 attempts
+            if (attempt >= 15) {
+              clearInterval(intervalId);
+              setHebrewFetchInterval(null);
+              setHebrewStatus(`Timed out waiting for questions`);
+            }
+          }, 5000);
+          
+          setHebrewFetchInterval(intervalId);
+        }
+      });
+      
+      // Initial fetch for English
       fetchQuestionsWithRetry(
         lectureInfo.videoId,
         'English',
-        15,
         setEnglishStatus,
         setIsEnglishLoading,
         setEnglishQuestions,
-        setRetryCount,
         selectedLanguage,
         questionsRef,
         setQuestions
-      );
+      ).then(result => {
+        if (result.pending) {
+          // Setup retry interval for English
+          setRetryCount(prev => ({ ...prev, english: 1 }));
+          let attempt = 1;
+          const intervalId = setInterval(() => {
+            attempt++;
+            setRetryCount(prev => ({ ...prev, english: attempt }));
+            setEnglishStatus(`Building questions... (${attempt})`);
+            
+            fetchQuestionsWithRetry(
+              lectureInfo.videoId,
+              'English',
+              setEnglishStatus,
+              setIsEnglishLoading,
+              setEnglishQuestions,
+              selectedLanguage,
+              questionsRef,
+              setQuestions
+            ).then(result => {
+              if (result.success || !result.pending) {
+                clearInterval(intervalId);
+                setEnglishFetchInterval(null);
+              }
+            });
+            
+            // Stop after 15 attempts
+            if (attempt >= 15) {
+              clearInterval(intervalId);
+              setEnglishFetchInterval(null);
+              setEnglishStatus(`Timed out waiting for questions`);
+            }
+          }, 5000);
+          
+          setEnglishFetchInterval(intervalId);
+        }
+      });
     }
     
     return () => {
-      // Cancel any ongoing fetches when dependencies change
-      cancelAllQuestionFetches();
+      // Clear intervals when dependencies change
+      if (hebrewFetchInterval) {
+        clearInterval(hebrewFetchInterval);
+        setHebrewFetchInterval(null);
+      }
+      if (englishFetchInterval) {
+        clearInterval(englishFetchInterval);
+        setEnglishFetchInterval(null);
+      }
     };
   }, [lectureInfo.videoId, mode, selectedLanguage]);
 

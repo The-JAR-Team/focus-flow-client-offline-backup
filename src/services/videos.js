@@ -12,10 +12,19 @@ export const fetchVideoMetadata = async () => {
 
 export const fetchTranscriptQuestions = async (videoId, language) => {
   try {
-    const response = await axios.get(`${config.baseURL}/videos/${videoId}/questions?lang=${language}`, { withCredentials: true });
+    // Add timestamp to prevent caching and set timeout
+    const timestamp = Date.now();
+    const response = await axios.get(
+      `${config.baseURL}/videos/${videoId}/questions?lang=${language}&_t=${timestamp}`, 
+      { 
+        withCredentials: true,
+        timeout: 15000 // 15 second timeout
+      }
+    );
+    console.log(`📝 Fetched ${language} questions:`, response.data?.status || 'unknown status');
     return response.data;
   } catch (error) {
-    console.error(`Error fetching ${language} questions:`, error);
+    console.error(`❌ Error fetching ${language} questions:`, error);
     return { video_questions: { questions: [] } };
   }
 };

@@ -72,140 +72,75 @@ import {
 
   // --- End of moved functions ---
 
-  // Track active fetch operations by video/language
-  const activeQuestionFetches = {};
-
   // Function to fetch questions with retry logic
   export const fetchQuestionsWithRetry = async (
     videoId,
     language,
-    maxRetries = 15,
     statusSetter,
     loadingSetter,
     questionsSetter,
-    retryCountSetter,
     selectedLanguage,
     questionsRef,
-    setQuestions,
-    abortSignal // New parameter to support cancellation
+    setQuestions
   ) => {
-    const retryCountKey = language.toLowerCase();
-    const fetchKey = `${videoId}_${language}`;
-    
-    // Create abort controller if not provided
-    const controller = activeQuestionFetches[fetchKey]?.controller || new AbortController();
-    const signal = abortSignal || controller.signal;
-    
-    // Store reference to this fetch operation
-    activeQuestionFetches[fetchKey] = { controller };
-    
-    loadingSetter(true);
-    statusSetter(`Starting ${language} question generation...`);
-
     try {
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        // Check if we should abort
-        if (signal.aborted) {
-          console.log(`🛑 Fetch questions ${language} aborted`);
-          break;
+      loadingSetter(true);
+      
+      const data = await fetchTranscriptQuestions(videoId, language);
+      console.log(`📊 ${language} questions status:`, data?.status || 'unknown');
+
+      // Check for transcript not available error
+      if (data.status === 'failed' &&
+          data.reason &&
+          data.reason.includes('Could not retrieve a transcript')) {
+        statusSetter(`No ${language} subtitles`);
+        loadingSetter(false);
+        return { success: false, pending: false, data: [] };
+      }
+
+      // Check for pending status
+      if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
+        statusSetter(`Building questions...`);
+        loadingSetter(false);
+        return { success: false, pending: true, data: [] };
+      }
+
+      // Process questions if available
+      const questionsArray = [
+        ...(data.video_questions?.questions || []),
+        ...(data.generic_questions?.questions || []),
+        ...(data.subject_questions?.questions || [])
+      ];
+
+      if (questionsArray.length > 0) {
+        console.log(`✅ Received ${questionsArray.length} ${language} questions`);
+        const sortedQuestions = questionsArray.sort((a, b) => {
+          return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
+        });
+
+        questionsSetter(sortedQuestions); // Set specific language questions
+        statusSetter(null);
+
+        // If this is the current language, update the main questions state too
+        if (selectedLanguage === language) {
+          questionsRef.current = sortedQuestions;
+          setQuestions(sortedQuestions);
         }
         
-        if (attempt > 0) {
-          retryCountSetter(prev => ({ ...prev, [retryCountKey]: attempt }));
-        }
-
-        const data = await fetchTranscriptQuestions(videoId, language);
-
-        // Check for transcript not available error
-        if (data.status === 'failed' &&
-            data.reason &&
-            data.reason.includes('Could not retrieve a transcript')) {
-          statusSetter(`No ${language} subtitles`);
-          loadingSetter(false);
-          delete activeQuestionFetches[fetchKey];
-          return [];
-        }
-
-        // Check for pending status
-        if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
-          statusSetter(`Building questions... (${attempt + 1})`);
-          
-          try {
-            // Use an abortable timeout instead of await delay
-            await new Promise((resolve, reject) => {
-              const timeoutId = setTimeout(resolve, 5000);
-              signal.addEventListener('abort', () => {
-                clearTimeout(timeoutId);
-                reject(new DOMException('Aborted', 'AbortError'));
-              });
-            });
-          } catch (err) {
-            if (err.name === 'AbortError') {
-              console.log(`🛑 Question fetch timeout aborted for ${language}`);
-              break;
-            }
-            throw err;
-          }
-          continue;
-        }
-
-        // Extract questions from response
-        const questionsArray = [
-          ...(data.video_questions?.questions || []),
-          ...(data.generic_questions?.questions || []),
-          ...(data.subject_questions?.questions || [])
-        ];
-
-        if (questionsArray.length > 0) {
-          const sortedQuestions = questionsArray.sort((a, b) => {
-            return (parseTimeToSeconds(a.question_origin) || 0) - (parseTimeToSeconds(b.question_origin) || 0);
-          });
-
-          questionsSetter(sortedQuestions); // Set specific language questions (e.g., setHebrewQuestions)
-          statusSetter(null);
-
-          // If this is the current language, update the main questions state too
-          if (selectedLanguage === language) {
-            questionsRef.current = sortedQuestions;
-            setQuestions(sortedQuestions); // Update the main 'questions' state
-          }
-          
-          delete activeQuestionFetches[fetchKey];
-          loadingSetter(false);
-          return sortedQuestions;
-        } else {
-          statusSetter(`No questions available`);
-          delete activeQuestionFetches[fetchKey];
-          loadingSetter(false);
-          return [];
-        }
-      }
-
-      // If we've exhausted all retries or were aborted
-      if (!signal.aborted) {
-        statusSetter(`Timed out waiting for questions`);
-      }
-      delete activeQuestionFetches[fetchKey];
+        loadingSetter(false);
+        return { success: true, pending: false, data: sortedQuestions };
+      } 
+      
+      // No questions available
+      statusSetter(`No questions available`);
       loadingSetter(false);
-      return [];
-
+      return { success: false, pending: false, data: [] };
     } catch (err) {
       console.error(`Error fetching ${language} questions:`, err);
       statusSetter(`Error: ${err.message}`);
-      delete activeQuestionFetches[fetchKey];
       loadingSetter(false);
-      return [];
+      return { success: false, pending: false, data: [] };
     }
-  };
-
-  // Function to cancel all active question fetches
-  export const cancelAllQuestionFetches = () => {
-    console.log('🛑 Canceling all active question fetches');
-    Object.values(activeQuestionFetches).forEach(({ controller }) => {
-      if (controller) {
-        controller.abort();
-      }
-    });
   };
 
   // Function to reset answered questions
