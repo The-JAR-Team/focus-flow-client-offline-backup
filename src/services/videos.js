@@ -10,24 +10,62 @@ export const fetchVideoMetadata = async () => {
   return response.data;
 };
 
-export const fetchTranscriptQuestions = async (videoId, language) => {
+// Track active requests to allow cancellation
+export const activeRequests = {};
+
+export const fetchTranscriptQuestions = async (videoId, language, abortSignal) => {
   try {
-    // Add timestamp to prevent caching and set timeout
+    // Add timestamp to prevent caching
     const timestamp = Date.now();
+    const requestKey = `${videoId}_${language}_${timestamp}`;
+    
+    // Create a request-specific abort controller if none provided
+    const controller = abortSignal?.signal ? undefined : new AbortController();
+    const signal = abortSignal?.signal || controller?.signal;
+    
+    // Track this request for potential cancellation
+    if (controller) {
+      activeRequests[requestKey] = controller;
+    }
+    
     const response = await axios.get(
       //`${config.baseURL}/videos/${videoId}/questions?lang=${language}&_t=${timestamp}`, 
-      `${config.baseURL}/videos/${videoId}/questions?lang=${language}&_t=${timestamp}`, 
+      `${config.baseURL}/videos/${videoId}/questions?lang=${language}`, 
+
       { 
         withCredentials: true,
-        timeout: 15000 // 15 second timeout
+        timeout: 15000, // 15 second timeout
+        signal // Use the abort signal
       }
     );
+    
+    // Clean up tracking for completed request
+    if (controller) {
+      delete activeRequests[requestKey];
+    }
+    
     console.log(`📝 Fetched ${language} questions:`, response.data?.status || 'unknown status');
     return response.data;
   } catch (error) {
+    if (axios.isCancel(error)) {
+      console.log(`🛑 Request cancelled for ${language} questions`);
+      return { status: 'cancelled' };
+    }
     console.error(`❌ Error fetching ${language} questions:`, error);
     return { video_questions: { questions: [] } };
   }
+};
+
+// Function to cancel all active requests
+export const cancelAllRequests = () => {
+  console.log(`🧹 Cancelling all ${Object.keys(activeRequests).length} active requests`);
+  Object.values(activeRequests).forEach(controller => {
+    try {
+      controller.abort();
+    } catch (e) {
+      console.error('Error aborting request:', e);
+    }
+  });
 };
 
 export const fetchTranscriptQuestionsForVideo = async (externalId, lang = 'Hebrew') => {

@@ -12,6 +12,7 @@ import {
   handleVideoPause,
   handleVideoResume,
   setModelResultCallback,
+  cancelAllRequests,
 } from '../services/videos';
 import {
   setEngagementDetectionEnabled,
@@ -138,6 +139,10 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [hebrewFetchInterval, setHebrewFetchInterval] = useState(null);
   const [englishFetchInterval, setEnglishFetchInterval] = useState(null);
 
+  // Add AbortController refs
+  const hebrewAbortController = useRef(new AbortController());
+  const englishAbortController = useRef(new AbortController());
+
   useEffect(() => {
     setGazeSensitivity(sensitivity);
   }, [sensitivity]);
@@ -145,16 +150,39 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   useEffect(() => {
     console.log('🔄 Setting up video tracking');
     
+    // Create new abort controllers when the component mounts
+    hebrewAbortController.current = new AbortController();
+    englishAbortController.current = new AbortController();
+    
     return () => {
-      console.log('🛑 Cleaning up video tracking and intervals');
+      console.log('🛑 Cleaning up ALL video resources');
+      
+      // Cancel all pending network requests
+      try {
+        hebrewAbortController.current.abort();
+        englishAbortController.current.abort();
+        cancelAllRequests(); // Cancel any other pending requests
+      } catch (e) {
+        console.error('Error during request cancellation:', e);
+      }
+      
+      // Stop tracking and intervals
       resetTracking();
-      handleVideoPause(); // Ensure any active session is paused
-      setModelResultCallback(null); // Remove model result callback
-      setVideoPlaying(false); // Set video state to not playing
+      handleVideoPause();
+      setModelResultCallback(null);
+      setVideoPlaying(false);
       
       // Clear question fetch intervals
-      if (hebrewFetchInterval) clearInterval(hebrewFetchInterval);
-      if (englishFetchInterval) clearInterval(englishFetchInterval);
+      if (hebrewFetchInterval) {
+        clearInterval(hebrewFetchInterval);
+        setHebrewFetchInterval(null);
+      }
+      if (englishFetchInterval) {
+        clearInterval(englishFetchInterval);
+        setEnglishFetchInterval(null);
+      }
+      
+      console.log('🧹 Video player cleanup complete');
     };
   }, [hebrewFetchInterval, englishFetchInterval]);
 
@@ -213,14 +241,20 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   useEffect(() => {
     setTimeout(() => setLoaded(true), 1000);
     
-    // Clear existing intervals before creating new ones
+    // Clear existing resources before creating new ones
     if (hebrewFetchInterval) clearInterval(hebrewFetchInterval);
     if (englishFetchInterval) clearInterval(englishFetchInterval);
+    
+    // Cancel any in-flight requests
+    hebrewAbortController.current.abort();
+    englishAbortController.current.abort();
+    hebrewAbortController.current = new AbortController();
+    englishAbortController.current = new AbortController();
     
     if (mode === 'question') {
       console.log("[DEBUG] Starting questions fetch for:", lectureInfo.videoId);
       
-      // Initial fetch for Hebrew
+      // Initial fetch for Hebrew with abort signal
       fetchQuestionsWithRetry(
         lectureInfo.videoId,
         'Hebrew',
@@ -229,13 +263,21 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         setHebrewQuestions,
         selectedLanguage,
         questionsRef,
-        setQuestions
+        setQuestions,
+        hebrewAbortController.current
       ).then(result => {
-        if (result.pending) {
+        // Only setup interval if not cancelled and pending
+        if (result.pending && !result.cancelled) {
           // Setup retry interval for Hebrew
           setRetryCount(prev => ({ ...prev, hebrew: 1 }));
           let attempt = 1;
           const intervalId = setInterval(() => {
+            // Check if component is still mounted via abort signal
+            if (hebrewAbortController.current.signal.aborted) {
+              clearInterval(intervalId);
+              return;
+            }
+            
             attempt++;
             setRetryCount(prev => ({ ...prev, hebrew: attempt }));
             setHebrewStatus(`Building questions... (${attempt})`);
@@ -248,12 +290,16 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
               setHebrewQuestions,
               selectedLanguage,
               questionsRef,
-              setQuestions
+              setQuestions,
+              hebrewAbortController.current
             ).then(result => {
-              if (result.success || !result.pending) {
+              if (result.success || !result.pending || result.cancelled) {
                 clearInterval(intervalId);
                 setHebrewFetchInterval(null);
               }
+            }).catch(() => {
+              clearInterval(intervalId);
+              setHebrewFetchInterval(null);
             });
             
             // Stop after 15 attempts
@@ -266,9 +312,11 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           
           setHebrewFetchInterval(intervalId);
         }
+      }).catch(err => {
+        console.error("Error in Hebrew question fetch:", err);
       });
       
-      // Initial fetch for English
+      // Similar update for English with abort signal
       fetchQuestionsWithRetry(
         lectureInfo.videoId,
         'English',
@@ -277,13 +325,20 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         setEnglishQuestions,
         selectedLanguage,
         questionsRef,
-        setQuestions
+        setQuestions,
+        englishAbortController.current
       ).then(result => {
-        if (result.pending) {
+        if (result.pending && !result.cancelled) {
           // Setup retry interval for English
           setRetryCount(prev => ({ ...prev, english: 1 }));
           let attempt = 1;
           const intervalId = setInterval(() => {
+            // Check if component is still mounted via abort signal
+            if (englishAbortController.current.signal.aborted) {
+              clearInterval(intervalId);
+              return;
+            }
+            
             attempt++;
             setRetryCount(prev => ({ ...prev, english: attempt }));
             setEnglishStatus(`Building questions... (${attempt})`);
@@ -296,12 +351,16 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
               setEnglishQuestions,
               selectedLanguage,
               questionsRef,
-              setQuestions
+              setQuestions,
+              englishAbortController.current
             ).then(result => {
-              if (result.success || !result.pending) {
+              if (result.success || !result.pending || result.cancelled) {
                 clearInterval(intervalId);
                 setEnglishFetchInterval(null);
               }
+            }).catch(() => {
+              clearInterval(intervalId);
+              setEnglishFetchInterval(null);
             });
             
             // Stop after 15 attempts
@@ -314,11 +373,16 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           
           setEnglishFetchInterval(intervalId);
         }
+      }).catch(err => {
+        console.error("Error in English question fetch:", err);
       });
     }
     
     return () => {
-      // Clear intervals when dependencies change
+      // Cancel ongoing operations when dependencies change
+      hebrewAbortController.current.abort();
+      englishAbortController.current.abort();
+      
       if (hebrewFetchInterval) {
         clearInterval(hebrewFetchInterval);
         setHebrewFetchInterval(null);

@@ -81,12 +81,20 @@ import {
     questionsSetter,
     selectedLanguage,
     questionsRef,
-    setQuestions
+    setQuestions,
+    abortSignal // Add abort signal parameter
   ) => {
     try {
       loadingSetter(true);
       
-      const data = await fetchTranscriptQuestions(videoId, language);
+      const data = await fetchTranscriptQuestions(videoId, language, abortSignal);
+      
+      // Handle cancelled request
+      if (data.status === 'cancelled') {
+        console.log(`⚠️ ${language} question fetch was cancelled`);
+        return { success: false, pending: false, cancelled: true, data: [] };
+      }
+      
       console.log(`📊 ${language} questions status:`, data?.status || 'unknown');
 
       // Check for transcript not available error
