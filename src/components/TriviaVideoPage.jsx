@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import QuizMode from './QuizMode';
 import Navbar from './Navbar';
@@ -24,6 +24,26 @@ function TriviaVideoPage() {
   const [englishStatus, setEnglishStatus] = useState(null);
   const [retryCount, setRetryCount] = useState({ hebrew: 0, english: 0 });
 
+  const hebrewAbortController = useRef(new AbortController());
+  const englishAbortController = useRef(new AbortController());
+  const timeoutRefs = useRef([]);
+
+  const cleanupRequests = () => {
+    console.log('🧹 Cleaning up TriviaVideoPage requests and timeouts');
+    try {
+      hebrewAbortController.current.abort();
+      englishAbortController.current.abort();
+      timeoutRefs.current.forEach(clearTimeout);
+      timeoutRefs.current = [];
+    } catch (e) {
+      console.error('Error during cleanup:', e);
+    }
+  };
+
+  useEffect(() => {
+    return cleanupRequests;
+  }, []);
+
   const handleReset = () => {
     setShowLanguageSelection(true);
     setQuestions([]);
@@ -35,48 +55,69 @@ function TriviaVideoPage() {
     const statusSetter = language === 'Hebrew' ? setHebrewStatus : setEnglishStatus;
     const questionsSetter = language === 'Hebrew' ? setHebrewQuestions : setEnglishQuestions;
     const retryCountKey = language.toLowerCase();
-    
+    const abortController = language === 'Hebrew' ? hebrewAbortController.current : englishAbortController.current;
+
     try {
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (abortController.signal.aborted) {
+          console.log(`🛑 ${language} questions fetch aborted`);
+          return null;
+        }
+
         if (attempt > 0) {
           setRetryCount(prev => ({ ...prev, [retryCountKey]: attempt }));
         }
-        
-        const data = await fetchTranscriptQuestions(externalId, language);
-        
-        // Check for transcript not available error
+
+        const data = await fetchTranscriptQuestions(externalId, language, abortController);
+
+        if (data.status === 'cancelled') {
+          console.log(`⚠️ ${language} question fetch was cancelled`);
+          return null;
+        }
+
         if (data.status === 'failed' && 
             data.reason && 
             data.reason.includes('Could not retrieve a transcript')) {
           statusSetter(`No ${language} subtitles available for this video`);
-          return null; // Exit immediately, no need to retry
+          return null;
         }
-        
+
         if (data.status === 'pending' || data.reason === 'Generation already in progress by another request.') {
           statusSetter(`Building ${language} questions... (Check #${attempt + 1})`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          await new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(resolve, 2000);
+            timeoutRefs.current.push(timeoutId);
+
+            abortController.signal.addEventListener('abort', () => {
+              clearTimeout(timeoutId);
+              reject(new DOMException('Aborted', 'AbortError'));
+            });
+          });
+
           continue;
         }
-        
-        // If we got here, we either have questions or a different error
+
         const formattedQuestions = formatQuestions(data);
         questionsSetter(formattedQuestions);
-        
+
         if (formattedQuestions.length === 0) {
-          //statusSetter(`No questions available for ${language}`);
           statusSetter(`No questions available`);
         } else {
           statusSetter(null);
         }
-        
+
         return data;
       }
-      
-      // If we exhausted all retries
+
       statusSetter(`Timed out waiting for ${language} questions generation.`);
       return null;
-      
+
     } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log(`🛑 ${language} question fetch operation aborted`);
+        return null;
+      }
       console.error(`Error fetching ${language} questions:`, err);
       statusSetter(`Error: ${err.message}`);
       return null;
@@ -84,7 +125,6 @@ function TriviaVideoPage() {
   };
 
   const formatQuestions = (data) => {
-    // Check if data exists and has any type of questions
     const questionsData = data?.video_questions?.questions || 
                         data?.subject_questions?.questions || 
                         data?.generic_questions?.questions || [];
@@ -98,7 +138,7 @@ function TriviaVideoPage() {
         q.answer2 || '', 
         q.answer3 || '', 
         q.answer4 || ''
-      ].filter(Boolean), // Remove empty answers
+      ].filter(Boolean),
       correct_answer: q.answer1 || '',
       difficulty: q.difficulty || 1,
       explanation: q.explanation_snippet || ''
@@ -108,15 +148,18 @@ function TriviaVideoPage() {
   useEffect(() => {
     const fetchVideoAndQuestions = async () => {
       try {
+        hebrewAbortController.current = new AbortController();
+        englishAbortController.current = new AbortController();
+
         const allVideos = JSON.parse(localStorage.getItem('triviaVideos') || '[]');
         console.log('Searching for video:', videoId);
         console.log('Available videos:', allVideos);
-        
+
         const videoData = allVideos.find(v => 
           String(v.video_id) === String(videoId) || 
           String(v.external_id) === String(videoId)
         );
-        
+
         if (!videoData) {
           throw new Error('Video not found in storage');
         }
@@ -125,17 +168,15 @@ function TriviaVideoPage() {
         setLoadingQuestions(true);
         setHebrewStatus('Starting question generation...');
         setEnglishStatus('Starting question generation...');
-        
-        // Use external_id for fetching questions with retry
+
         const [hebrewResult, englishResult] = await Promise.all([
           fetchQuestionsWithRetry(videoData.external_id, 'Hebrew'),
           fetchQuestionsWithRetry(videoData.external_id, 'English')
         ]);
 
-        // If both languages failed with no subtitles, set appropriate error
         const hebrewFailed = hebrewStatus && hebrewStatus.includes('No Hebrew subtitles available');
         const englishFailed = englishStatus && englishStatus.includes('No English subtitles available');
-        
+
         if (hebrewFailed && englishFailed) {
           setError('No subtitles available for this video in any language. Cannot generate questions.');
         }
@@ -150,6 +191,8 @@ function TriviaVideoPage() {
     };
 
     fetchVideoAndQuestions();
+
+    return cleanupRequests;
   }, [videoId]);
 
   const handleStartQuiz = () => {
@@ -157,7 +200,7 @@ function TriviaVideoPage() {
     const finalQuestions = quizMode === 'random' 
       ? [...selectedQuestions].sort(() => Math.random() - 0.5)
       : selectedQuestions;
-    
+
     setQuestions(finalQuestions);
     setShowLanguageSelection(false);
   };
@@ -166,7 +209,7 @@ function TriviaVideoPage() {
     const currentQuestions = selectedLanguage === 'Hebrew' ? hebrewQuestions : englishQuestions;
     const currentStatus = selectedLanguage === 'Hebrew' ? hebrewStatus : englishStatus;
     const currentRetry = selectedLanguage === 'Hebrew' ? retryCount.hebrew : retryCount.english;
-    
+
     return (
       <button 
         className={`start-quiz-btn ${loadingQuestions || currentStatus ? 'loading' : ''}`}
@@ -256,11 +299,10 @@ function TriviaVideoPage() {
     const currentQuestions = selectedLanguage === 'Hebrew' ? hebrewQuestions : englishQuestions;
     const currentStatus = selectedLanguage === 'Hebrew' ? hebrewStatus : englishStatus;
     const currentRetry = selectedLanguage === 'Hebrew' ? retryCount.hebrew : retryCount.english;
-    
-    // Check if status indicates no subtitles
+
     const hebrewNoSubtitles = hebrewStatus && hebrewStatus.includes('No Hebrew subtitles available');
     const englishNoSubtitles = englishStatus && englishStatus.includes('No English subtitles available');
-    
+
     return (
       <div style={{ padding: '20px' }}>
         <Navbar />

@@ -29,9 +29,7 @@ export const fetchTranscriptQuestions = async (videoId, language, abortSignal) =
     }
     
     const response = await axios.get(
-      //`${config.baseURL}/videos/${videoId}/questions?lang=${language}&_t=${timestamp}`, 
       `${config.baseURL}/videos/${videoId}/questions?lang=${language}`, 
-
       { 
         withCredentials: true,
         timeout: 15000, // 15 second timeout
@@ -56,6 +54,48 @@ export const fetchTranscriptQuestions = async (videoId, language, abortSignal) =
   }
 };
 
+export const fetchTranscriptQuestionsForVideo = async (externalId, lang = 'Hebrew', abortSignal) => {
+  try {
+    const requestKey = `transcriptFor_${externalId}_${lang}`;
+    
+    // Create a request-specific abort controller if none provided
+    const controller = abortSignal?.signal ? undefined : new AbortController();
+    const signal = abortSignal?.signal || controller?.signal;
+    
+    // Track this request for potential cancellation
+    if (controller) {
+      activeRequests[requestKey] = controller;
+    }
+    
+    const response = await axios.get(
+      `${config.baseURL}/videos/${externalId}/questions?lang=${lang}`,
+      { 
+        withCredentials: true,
+        signal // Use the abort signal
+      }
+    );
+    
+    // Clean up tracking for completed request
+    if (controller) {
+      delete activeRequests[requestKey];
+    }
+    
+    const data = response.data;
+    return [
+      ...(data.video_questions?.questions || []),
+      ...(data.generic_questions?.questions || []),
+      ...(data.subject_questions?.questions || [])
+    ];
+  } catch (error) {
+    if (axios.isCancel(error)) {
+      console.log(`🛑 Request cancelled for transcript ${lang}`);
+      return [];
+    }
+    console.error('Error fetching questions:', error);
+    return [];
+  }
+};
+
 // Function to cancel all active requests
 export const cancelAllRequests = () => {
   console.log(`🧹 Cancelling all ${Object.keys(activeRequests).length} active requests`);
@@ -66,21 +106,6 @@ export const cancelAllRequests = () => {
       console.error('Error aborting request:', e);
     }
   });
-};
-
-export const fetchTranscriptQuestionsForVideo = async (externalId, lang = 'Hebrew') => {
-  try {
-    const response = await axios.get(`${config.baseURL}/videos/${externalId}/questions?lang=${lang}`);
-    const data = response.data;
-    return [
-      ...(data.video_questions?.questions || []),
-      ...(data.generic_questions?.questions || []),
-      ...(data.subject_questions?.questions || [])
-    ];
-  } catch (error) {
-    console.error('Error fetching questions:', error);
-    return [];
-  }
 };
 
 // Tracking constants
