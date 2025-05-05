@@ -213,7 +213,6 @@ import {
         sessionGroups.sort((a, b) => b.length - a.length); // Sort by size
         const selectedSession = sessionGroups[0];
         console.log('Selected session for plotting:', selectedSession);
-
         
         const sortedData = selectedSession.sort((a, b) => a.video_time - b.video_time);
 
@@ -257,7 +256,7 @@ import {
         });
 
         setShowResultsChart(true); // Show the chart
-        // console.log('Results chart data updated:', { labels, values });
+        console.log('Results chart data updated:');
       } else {
         console.error('No data available for plotting results or data is not in the expected array format.');
         toast.error('No data available for plotting results.');
