@@ -6,10 +6,10 @@ import VideoPlayer from './VideoPlayer';
 import { getSubscriberCount } from '../services/subscriptionService';
 import SubscribeModal from './SubscribeModal';
 import UnsubscribeModal from './UnsubscribeModal'; // added import
-import { removeVideoFromPlaylist, getPlaylistById, updatePlaylist } from '../services/playlistService';
+import { removeVideoFromPlaylist, updatePlaylistName, updatePlaylistPermission } from '../services/playlistService';
 import { removeVideo, updatePlaylistData } from '../redux/dashboardSlice';
 import { useDispatch } from 'react-redux';
-import { setSelectedPlaylist, clearPlaylist, removeVideoFromSelectedPlaylist, editSelectedPlaylist } from '../redux/playlistSlice';
+import { setSelectedPlaylist, clearPlaylist, removeVideoFromSelectedPlaylist, editSelectedPlaylistName, editSelectedPlaylistPermission } from '../redux/playlistSlice';
 import { toast } from 'react-toastify';
 import '../styles/PlaylistView.css';
 
@@ -84,26 +84,45 @@ function PlaylistView() {
     }
   };
 
-  const savePlaylistChanges = async () => {
+  const savePlaylistName = async () => {
     try {
-      await updatePlaylist(playlist.playlist_id, playlist.playlist_name, editedName, editedPermission);
+      await updatePlaylistName(playlist.playlist_name, editedName);
 
-      dispatch(editSelectedPlaylist({
-        name: editedName, 
-        permission: editedPermission
-      }));
+      dispatch(editSelectedPlaylistName(editedName));
 
       dispatch(updatePlaylistData({
         playlist_name: playlist.playlist_name,
         name: editedName, 
-        permission: editedPermission
+        permission: null
       }));
 
       // Exit edit mode
       setIsEditingName(false);
-      setIsEditingPermission(false);
 
       toast.success('Playlist updated successfully!');
+    } catch (error) {
+      const errorMessage = error.message;
+      toast.error(errorMessage);
+      console.error(errorMessage);
+    }
+  };
+
+  const savePlaylistPermission = async () => {
+    try {
+      await updatePlaylistPermission(playlist.playlist_id, editedPermission);
+
+      dispatch(editSelectedPlaylistPermission(editedPermission));
+
+      dispatch(updatePlaylistData({
+        playlist_name: playlist.playlist_name,
+        name: null,
+        permission: editedPermission
+      }));
+
+      // Exit edit mode
+      setIsEditingPermission(false);
+
+      toast.success('Playlist permission updated successfully!');
     } catch (error) {
       const errorMessage = error.message;
       toast.error(errorMessage);
@@ -133,7 +152,7 @@ function PlaylistView() {
               />
               <div className="edit-actions">
                 <button 
-                  onClick={savePlaylistChanges}
+                  onClick={savePlaylistName}
                   disabled={!editedName.trim() || editedName === playlist.playlist_name}
                   className="save-btn"
                 >
@@ -197,7 +216,7 @@ function PlaylistView() {
                 </div>
                 <div className="permission-edit-actions">
                   <button
-                    onClick={savePlaylistChanges}
+                    onClick={savePlaylistPermission}
                     disabled={editedPermission === playlist.playlist_permission}
                     className="save-btn"
                   >

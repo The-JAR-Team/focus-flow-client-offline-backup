@@ -78,16 +78,3 @@ export async function updatePlaylistName(old_name, new_name) {
         throw new Error(errorMessage);
     }
 }
-
-export async function updatePlaylist(playlistId, old_name, name, permission) {
-    // try{
-        if (name) {
-            await updatePlaylistName(old_name, name);
-        }
-        if (permission) {
-            await updatePlaylistPermission(playlistId, permission );
-        }
-    // } catch (error) {
-    //     throw error;
-    // }
-}
