@@ -15,7 +15,7 @@ function TriviaVideoPage() {
   const [error, setError] = useState(null);
   const [hebrewQuestions, setHebrewQuestions] = useState([]);
   const [englishQuestions, setEnglishQuestions] = useState([]);
-  const [selectedLanguage, setSelectedLanguage] = useState('Hebrew');
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showLanguageSelection, setShowLanguageSelection] = useState(true);
   const [quizMode, setQuizMode] = useState('chronological'); // or 'random'
   const [isQuestionsHidden, setIsQuestionsHidden] = useState(false);
@@ -47,7 +47,7 @@ function TriviaVideoPage() {
   const handleReset = () => {
     setShowLanguageSelection(true);
     setQuestions([]);
-    setSelectedLanguage('Hebrew');
+    setSelectedLanguage('English');
     setQuizMode('chronological');
   };
 

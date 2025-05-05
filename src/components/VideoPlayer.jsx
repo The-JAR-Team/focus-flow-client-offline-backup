@@ -105,7 +105,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }, 1000);
   };
 
-  const [selectedLanguage, setSelectedLanguage] = useState('Hebrew');
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [hebrewQuestions, setHebrewQuestions] = useState([]);
   const [englishQuestions, setEnglishQuestions] = useState([]);
   const [isHebrewLoading, setIsHebrewLoading] = useState(true);
