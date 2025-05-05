@@ -178,7 +178,44 @@ import {
       console.debug('plot results raw data:', resultsArray);
 
       if (resultsArray && Array.isArray(resultsArray) && resultsArray.length > 0) {
-        const sortedData = resultsArray.sort((a, b) => a.video_time - b.video_time);
+        const resultsByDate = resultsArray.sort((a, b) => Date(a.timestamp) - Date(b.timestamp));
+
+        // Group by timestamp proximity (5-minute intervals)
+        const sessionGroups = [];
+        let currentGroup = [resultsByDate[0]];
+
+        const timeIntervalValue = 300; // 5 minutes
+
+        for (let i = 1; i < resultsByDate.length; i++) {
+          const currentTime = new Date(resultsByDate[i].timestamp);
+          const prevTime = new Date(currentGroup[currentGroup.length - 1].timestamp);
+
+          // Calculate time difference in minutes
+          const timeDiffMinutes = (currentTime - prevTime) / (1000);
+
+          if (timeDiffMinutes <= timeIntervalValue) {
+            currentGroup.push(resultsByDate[i]);
+          } else {
+            sessionGroups.push(currentGroup);
+            currentGroup = [resultsByDate[i]];
+          }
+        }
+
+        // Add the last group
+        if (currentGroup.length > 0) {
+          sessionGroups.push(currentGroup);
+        }
+
+        console.log(`Found ${sessionGroups.length} distinct viewing sessions`);
+        console.log(sessionGroups);
+
+        // Choose the largest session for plotting
+        sessionGroups.sort((a, b) => b.length - a.length); // Sort by size
+        const selectedSession = sessionGroups[0];
+        console.log('Selected session for plotting:', selectedSession);
+
+        
+        const sortedData = selectedSession.sort((a, b) => a.video_time - b.video_time);
 
         // Extract video duration in seconds
         const [hours, minutes, seconds] = videoDuration.split(':').map(Number);
@@ -205,7 +242,7 @@ import {
             value: closestData ? closestData.result * 100 : 0 // Use 0 or null for no data
           };
         });
-        
+
         setResultsChartData({
           labels: chartData.map(item => item.label),
           datasets: [
