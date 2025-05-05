@@ -16,17 +16,14 @@ const playlistSlice = createSlice({
             const { playlist_item_id } = action.payload;
             state.playlist.playlist_items = state.playlist.playlist_items.filter(item => item.playlist_item_id !== playlist_item_id);
         },
-        editSelectedPlaylist: (state, action) => {
-            const { name, permission } = action.payload;
-            if (name) {
-                state.playlist.playlist_name = name;
-            }
-            if (permission) {
-                state.playlist.playlist_permission = permission;
-            }
+        editSelectedPlaylistName: (state, action) => {
+            state.playlist.playlist_name = action.payload;
+        },
+        editSelectedPlaylistPermission: (state, action) => {
+            state.playlist.playlist_permission = action.payload;
         }
     }
 });
 
-export const { setSelectedPlaylist, clearPlaylist, removeVideoFromSelectedPlaylist, editSelectedPlaylist } = playlistSlice.actions;
+export const { setSelectedPlaylist, clearPlaylist, removeVideoFromSelectedPlaylist, editSelectedPlaylistName, editSelectedPlaylistPermission } = playlistSlice.actions;
 export default playlistSlice.reducer;
