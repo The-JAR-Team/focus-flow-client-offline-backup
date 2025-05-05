@@ -1,3 +1,4 @@
+import { toast } from 'react-toastify';
 import {
     fetchTranscriptQuestions,
     fetchWatchItemResults
@@ -163,12 +164,12 @@ import {
     videoId,
     showResultsChart,
     setShowResultsChart,
-    setResultsChartData
+    setResultsChartData,
+    videoDuration
   ) => {
     // Toggle visibility if chart is already shown
     if (showResultsChart) {
       setShowResultsChart(false);
-      return; // Exit early if toggling off
     }
 
     try {
@@ -179,25 +180,50 @@ import {
       if (resultsArray && Array.isArray(resultsArray) && resultsArray.length > 0) {
         const sortedData = resultsArray.sort((a, b) => a.video_time - b.video_time);
 
-        const labels = sortedData.map(item => (item.video_time / 60).toFixed(1)); // Use video_time for x-axis, rounded
-        const values = sortedData.map(item => item.result * 100); // Use result for y-axis
+        // Extract video duration in seconds
+        const [hours, minutes, seconds] = videoDuration.split(':').map(Number);
+        const totalDurationSeconds = hours * 3600 + minutes * 60 + seconds;
+        const timeInterval = 5; 
+        const completeTimeRange = [];
+        for (let time = 0; time <= totalDurationSeconds; time += timeInterval) {
+          completeTimeRange.push(time);
+        }
 
+        const chartData = completeTimeRange.map(timePoint => {
+          // Find the closest data point (if any)
+          const closestData = sortedData.find(item =>
+            Math.abs(item.video_time - timePoint) < timeInterval /2
+          );
+
+          // Format time for label
+          const minutes = Math.floor(timePoint / 60);
+          const secs = Math.round(timePoint % 60);
+          const timeLabel = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+
+          return {
+            label: timeLabel,
+            value: closestData ? closestData.result * 100 : 0 // Use 0 or null for no data
+          };
+        });
+        
         setResultsChartData({
-          labels,
+          labels: chartData.map(item => item.label),
           datasets: [
             {
               label: 'Focus over Time',
-              data: values,
-              backgroundColor: 'rgba(153, 102, 255, 0.6)', // Different color
-              borderColor: 'rgba(153, 102, 255, 1)',
+              data: chartData.map(item => item.value),
+              backgroundColor: 'rgb(8, 83, 181)',
+              borderColor: 'rgb(8, 83, 181)',
               borderWidth: 1,
             },
           ],
         });
+
         setShowResultsChart(true); // Show the chart
-        console.log('Results chart data updated:', { labels, values });
+        // console.log('Results chart data updated:', { labels, values });
       } else {
         console.error('No data available for plotting results or data is not in the expected array format.');
+        toast.error('No data available for plotting results.');
         setResultsChartData({ labels: [], datasets: [] });
         setShowResultsChart(false); // Hide the chart if no data
       }

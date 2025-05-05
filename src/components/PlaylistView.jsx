@@ -302,7 +302,8 @@ function PlaylistView() {
               mode={mode}
               lectureInfo={{
                 videoId: selectedVideo.external_id,
-                subject: selectedVideo.subject
+                subject: selectedVideo.subject,
+                videoDuration: selectedVideo.length,
               }}
               userInfo={{ name: 'Test User', profile: 'default' }}
             />

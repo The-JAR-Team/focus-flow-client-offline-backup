@@ -44,6 +44,7 @@ import {
   BarElement,
   CategoryScale,
   LinearScale,
+  TimeScale,
   Title,
   Tooltip,
   Legend,
@@ -53,7 +54,7 @@ import useFaceMesh from '../hooks/useFaceMesh';
 import QuestionTimeline from './QuestionTimeline'; // Import the new component
 
 import EyeDebugger from './EyeDebugger';
-ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
+ChartJS.register(BarElement, CategoryScale, LinearScale, TimeScale, Title, Tooltip, Legend);
 
 window.noStop = false;
 
@@ -784,7 +785,8 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       lectureInfo.videoId,
       showResultsChart,
       setShowResultsChart,
-      setResultsChartData
+      setResultsChartData,
+      lectureInfo.videoDuration
     );
   }
 
@@ -939,7 +941,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
               options={{
                 maintainAspectRatio: false,
                 scales: {
-                  x: { title: { display: true, text: 'Video Time (s)' } },
+                  x: { 
+                    title: { display: true, text: 'Video Time (s)' },
+                  },
                   y: { title: { display: true, text: 'Concentration' }, min: 0 },
                 },
                 plugins: { legend: { display: true } },
