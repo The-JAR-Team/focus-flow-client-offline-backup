@@ -264,7 +264,7 @@ function PlaylistView() {
           )}
         </div>
         {!selectedVideo ? (
-          <div className="content-grid">
+          <div className="content-grid-playlist">
             {playlist.playlist_items.map(video => (
               <div 
                 className="video-card" 
