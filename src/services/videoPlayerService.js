@@ -159,6 +159,78 @@ import {
     console.log(`debugg: Answered questions reset for video ${videoId}`);
   };
 
+export const handleAllPlotResults = async (
+  videoId,
+  showResultsChart,
+  setShowResultsChart,
+  setResultsChartData,
+  videoDuration) => {
+  if (showResultsChart){
+    setShowResultsChart(false);
+    return;
+  }
+  try {
+    const data = await fetchWatchItemResults(videoId, 'all');
+    console.debug('plot all results raw data:', data);
+    if (data && Object.keys(data).length > 0) {
+
+      // Create graph
+      const timeInterval = 5;
+      const completeTimeRange = getVideoDurationTimeRange(videoDuration, timeInterval);
+      const chartData = {
+        labels: getChartLabels(completeTimeRange),
+        datasets: []
+      };
+
+      // Add each user to chart
+      const colors = [
+        'rgb(8, 165, 181)','rgb(8, 83, 181)', 'rgb(181, 8, 42)', 'rgb(8, 181, 75)',
+        'rgb(181, 152, 8)', 'rgb(181, 8, 165)',
+      ];
+
+      Object.entries(data).forEach(([userId, userResults], index) => {
+        const resultsByDate = userResults.sort((a, b) => Date(a.timestamp) - Date(b.timestamp));
+        const sessionGroups = groupResultsBySession(resultsByDate);
+
+        // Choose the largest session for plotting
+        sessionGroups.sort((a, b) => b.length - a.length);
+        const selectedSession = sessionGroups[0];
+        const sortedData = selectedSession.sort((a, b) => a.video_time - b.video_time);
+
+        const userData = getChartData(completeTimeRange, sortedData, timeInterval);
+
+        // Generate random color for this user (or use predefined colors)
+        const color = colors[index % colors.length];
+
+        // Add user dataset
+        chartData.datasets.push({
+          label: `User ${userId}`, 
+          data: userData,
+          backgroundColor: color,
+          borderColor: color,
+          borderWidth: 1,
+          fill: false,
+          pointRadius: 2,
+        });
+      });
+
+      // plot graph
+      if (chartData.datasets.length > 0) {
+        setResultsChartData(chartData);
+        setShowResultsChart(true);
+        console.log(`Results chart created with ${chartData.datasets.length} users`);
+      } else {
+        toast.error('No valid data available for plotting results.');
+        setResultsChartData({ labels: [], datasets: [] });
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching or processing watch item results:', error);
+    setResultsChartData({ labels: [], datasets: [] });
+    setShowResultsChart(false); 
+  }
+  };
+
   // Function to plot results
   export const handlePlotResults = async (
     videoId,
@@ -170,6 +242,7 @@ import {
     // Toggle visibility if chart is already shown
     if (showResultsChart) {
       setShowResultsChart(false);
+      return;
     }
 
     try {
@@ -179,75 +252,26 @@ import {
 
       if (resultsArray && Array.isArray(resultsArray) && resultsArray.length > 0) {
         const resultsByDate = resultsArray.sort((a, b) => Date(a.timestamp) - Date(b.timestamp));
-
-        // Group by timestamp proximity (5-minute intervals)
-        const sessionGroups = [];
-        let currentGroup = [resultsByDate[0]];
-
-        const timeIntervalValue = 300; // 5 minutes
-
-        for (let i = 1; i < resultsByDate.length; i++) {
-          const currentTime = new Date(resultsByDate[i].timestamp);
-          const prevTime = new Date(currentGroup[currentGroup.length - 1].timestamp);
-
-          // Calculate time difference in minutes
-          const timeDiffMinutes = (currentTime - prevTime) / (1000);
-
-          if (timeDiffMinutes <= timeIntervalValue) {
-            currentGroup.push(resultsByDate[i]);
-          } else {
-            sessionGroups.push(currentGroup);
-            currentGroup = [resultsByDate[i]];
-          }
-        }
-
-        // Add the last group
-        if (currentGroup.length > 0) {
-          sessionGroups.push(currentGroup);
-        }
-
-        console.log(`Found ${sessionGroups.length} distinct viewing sessions`);
-        console.log(sessionGroups);
+        const sessionGroups = groupResultsBySession(resultsByDate);
 
         // Choose the largest session for plotting
-        sessionGroups.sort((a, b) => b.length - a.length); // Sort by size
+        sessionGroups.sort((a, b) => b.length - a.length);
         const selectedSession = sessionGroups[0];
         console.log('Selected session for plotting:', selectedSession);
         
         const sortedData = selectedSession.sort((a, b) => a.video_time - b.video_time);
 
-        // Extract video duration in seconds
-        const [hours, minutes, seconds] = videoDuration.split(':').map(Number);
-        const totalDurationSeconds = hours * 3600 + minutes * 60 + seconds;
-        const timeInterval = 5; 
-        const completeTimeRange = [];
-        for (let time = 0; time <= totalDurationSeconds; time += timeInterval) {
-          completeTimeRange.push(time);
-        }
-
-        const chartData = completeTimeRange.map(timePoint => {
-          // Find the closest data point (if any)
-          const closestData = sortedData.find(item =>
-            Math.abs(item.video_time - timePoint) < timeInterval /2
-          );
-
-          // Format time for label
-          const minutes = Math.floor(timePoint / 60);
-          const secs = Math.round(timePoint % 60);
-          const timeLabel = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
-
-          return {
-            label: timeLabel,
-            value: closestData ? closestData.result * 100 : 0 // Use 0 or null for no data
-          };
-        });
+        const timeInterval = 5;
+        const completeTimeRange = getVideoDurationTimeRange(videoDuration, timeInterval);
+        const chartLabels = getChartLabels(completeTimeRange);
+        const chartData = getChartData(completeTimeRange, sortedData, timeInterval);
 
         setResultsChartData({
-          labels: chartData.map(item => item.label),
+          labels: chartLabels,
           datasets: [
             {
               label: 'Focus over Time',
-              data: chartData.map(item => item.value),
+              data: chartData,
               backgroundColor: 'rgb(8, 83, 181)',
               borderColor: 'rgb(8, 83, 181)',
               borderWidth: 1,
@@ -256,7 +280,7 @@ import {
         });
 
         setShowResultsChart(true); // Show the chart
-        console.log('Results chart data updated:');
+        console.log('Results chart data updated');
       } else {
         console.error('No data available for plotting results or data is not in the expected array format.');
         toast.error('No data available for plotting results.');
@@ -269,6 +293,70 @@ import {
       setShowResultsChart(false); // Hide the chart on error
     }
   };
+
+// Extract video duration in seconds
+function getVideoDurationTimeRange(videoDuration, timeInterval = 5) {
+  const [hours, minutes, seconds] = videoDuration.split(':').map(Number);
+  const totalDurationSeconds = hours * 3600 + minutes * 60 + seconds;
+  const completeTimeRange = [];
+  for (let time = 0; time <= totalDurationSeconds; time += timeInterval) {
+    completeTimeRange.push(time);
+  }
+  return completeTimeRange;
+}
+
+function getChartLabels(completeTimeRange) {
+  return completeTimeRange.map(timePoint => {
+    const minutes = Math.floor(timePoint / 60);
+    const secs = Math.round(timePoint % 60);
+    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+  });
+}
+
+function getChartData(completeTimeRange, sortedData, timeInterval = 5) {
+  const chartData = completeTimeRange.map(timePoint => {
+    // Find the closest data point (if any)
+    const closestData = sortedData.find(item =>
+      Math.abs(item.video_time - timePoint) < timeInterval / 2
+    );
+
+    return closestData ? closestData.result * 100 : 0;
+  });
+
+  return chartData;
+}
+
+function groupResultsBySession(resultsByDate) {
+    // Group by timestamp proximity (5-minute intervals)
+    const sessionGroups = [];
+    let currentGroup = [resultsByDate[0]];
+
+    const timeIntervalValue = 300; // 5 minutes
+
+    for (let i = 1; i < resultsByDate.length; i++) {
+      const currentTime = new Date(resultsByDate[i].timestamp);
+      const prevTime = new Date(currentGroup[currentGroup.length - 1].timestamp);
+
+      // Calculate time difference in minutes
+      const timeDiffMinutes = (currentTime - prevTime) / (1000);
+
+      if (timeDiffMinutes <= timeIntervalValue) {
+        currentGroup.push(resultsByDate[i]);
+      } else {
+        sessionGroups.push(currentGroup);
+        currentGroup = [resultsByDate[i]];
+      }
+    }
+
+    // Add the last group
+    if (currentGroup.length > 0) {
+      sessionGroups.push(currentGroup);
+    }
+
+    console.log(sessionGroups);
+
+    return sessionGroups;
+  }
 
   // Function to handle language change
   export const handleLanguageChange = (
