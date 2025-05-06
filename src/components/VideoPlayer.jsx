@@ -1042,33 +1042,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
             )}
           </div>
         )}
-        
-        {mode === 'analytics' && (
-          <div className="focus-graph">
-            <Bar
-              data={chartData}
-              options={{
-                scales: {
-                  x: { title: { display: true, text: 'Time (s)' } },
-                  y: { title: { display: true, text: 'Focus' }, min: 0, max: 1 },
-                },
-                plugins: { legend: { display: false } },
-              }}
-            />
-            {showResultsChart && (
-              <Bar
-                data={resultsChartData}
-                options={{
-                  scales: {
-                    x: { title: { display: true, text: 'Time (s)' } },
-                    y: { title: { display: true, text: 'Focus' }, min: 0, max: 1 },
-                  },
-                  plugins: { legend: { display: true } },
-                }}
-              />
-            )}
-          </div>
-        )}
       </div> {/* End of video-section */}
 
       {mode === 'question' && showTimeline && (
