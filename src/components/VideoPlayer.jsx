@@ -508,7 +508,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     updateLatestLandmark(results);
     
     // Debug gaze detection and engagement state
-    console.log('[DEBUGQ] FaceMesh processing frame, questionActive:', !!questionActiveRef.current, 'noClientPause:', noClientPause);
+    //console.log('[DEBUGQ] FaceMesh processing frame, questionActive:', !!questionActiveRef.current, 'noClientPause:', noClientPause);
     
     // Proceed only if we're not in server mode and have landmarks
     if (!noClientPause && 
@@ -527,7 +527,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         
         // Always process the gaze detection - the engagement logic inside 
         // handleVideoPlayback will check if there's an active question
-        console.log('[DEBUGQ] Gaze detected:', gaze);
+        //console.log('[DEBUGQ] Gaze detected:', gaze);
         handleVideoPlayback(gaze);
       } catch (error) {
         // Log error but don't break the application flow

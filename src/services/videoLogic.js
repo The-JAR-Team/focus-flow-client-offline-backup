@@ -123,7 +123,7 @@ export const handleEngagementDetection = ({
   }
 
   // Log gaze for debugging
-  console.log('[DEBUGQ] Processing gaze:', newGaze, 'current gaze:', immediateGaze.current);
+  //console.log('[DEBUGQ] Processing gaze:', newGaze, 'current gaze:', immediateGaze.current);
 
   // Regular gaze handling
   if (newGaze !== immediateGaze.current) {
