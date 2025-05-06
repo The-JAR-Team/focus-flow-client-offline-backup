@@ -175,7 +175,7 @@ export const handleAllPlotResults = async (
     if (data && Object.keys(data).length > 0) {
 
       // Create graph
-      const timeInterval = 5;
+      const timeInterval = 1;
       const completeTimeRange = getVideoDurationTimeRange(videoDuration, timeInterval);
       const chartData = {
         labels: getChartLabels(completeTimeRange),
@@ -189,15 +189,7 @@ export const handleAllPlotResults = async (
       ];
 
       Object.entries(data).forEach(([userId, userResults], index) => {
-        const resultsByDate = userResults.sort((a, b) => Date(a.timestamp) - Date(b.timestamp));
-        const sessionGroups = groupResultsBySession(resultsByDate);
-
-        // Choose the largest session for plotting
-        sessionGroups.sort((a, b) => b.length - a.length);
-        const selectedSession = sessionGroups[0];
-        const sortedData = selectedSession.sort((a, b) => a.video_time - b.video_time);
-
-        const userData = getChartData(completeTimeRange, sortedData, timeInterval);
+        const userData = getChartData(completeTimeRange, userResults, timeInterval);
 
         // Generate random color for this user (or use predefined colors)
         const color = colors[index % colors.length];
@@ -251,20 +243,14 @@ export const handleAllPlotResults = async (
       console.debug('plot results raw data:', resultsArray);
 
       if (resultsArray && Array.isArray(resultsArray) && resultsArray.length > 0) {
-        const resultsByDate = resultsArray.sort((a, b) => Date(a.timestamp) - Date(b.timestamp));
-        const sessionGroups = groupResultsBySession(resultsByDate);
-
-        // Choose the largest session for plotting
-        sessionGroups.sort((a, b) => b.length - a.length);
-        const selectedSession = sessionGroups[0];
-        console.log('Selected session for plotting:', selectedSession);
-        
-        const sortedData = selectedSession.sort((a, b) => a.video_time - b.video_time);
-
-        const timeInterval = 5;
+        // Create graph time range
+        const timeInterval = 1;
         const completeTimeRange = getVideoDurationTimeRange(videoDuration, timeInterval);
+
+        // Get chart ticks lables
         const chartLabels = getChartLabels(completeTimeRange);
-        const chartData = getChartData(completeTimeRange, sortedData, timeInterval);
+
+        const chartData = getChartData(completeTimeRange, resultsArray, timeInterval);
 
         setResultsChartData({
           labels: chartLabels,
@@ -313,11 +299,22 @@ function getChartLabels(completeTimeRange) {
   });
 }
 
-function getChartData(completeTimeRange, sortedData, timeInterval = 5) {
+function getChartData(completeTimeRange, resultsArray, timeInterval = 1) {
+  // Sort by watch date
+  const resultsByDate = resultsArray.sort((a, b) => Date(a.timestamp) - Date(b.timestamp));
+  const sessionGroups = groupResultsBySession(resultsByDate);
+
+  // Choose the largest session for plotting
+  sessionGroups.sort((a, b) => b.length - a.length);
+  const selectedSession = sessionGroups[0];
+
+  // Sort by video timestamp
+  const sortedData = selectedSession.sort((a, b) => a.video_time - b.video_time);
+
   const chartData = completeTimeRange.map(timePoint => {
     // Find the closest data point (if any)
     const closestData = sortedData.find(item =>
-      Math.abs(item.video_time - timePoint) < timeInterval / 2
+      Math.abs(item.video_time - timePoint) < timeInterval 
     );
 
     return closestData ? closestData.result * 100 : 0;
