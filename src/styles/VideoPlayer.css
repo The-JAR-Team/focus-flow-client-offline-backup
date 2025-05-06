@@ -111,6 +111,9 @@
 
 .results-plot-chart {
     margin: 20px 0; /* Adjust margin */
+    width: 90%;
+    height: 450px;
+    margin: 20px auto;
 }
 
 /* Modal Styles */

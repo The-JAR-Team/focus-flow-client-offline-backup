@@ -264,7 +264,7 @@ function PlaylistView() {
           )}
         </div>
         {!selectedVideo ? (
-          <div className="content-grid">
+          <div className="content-grid-playlist">
             {playlist.playlist_items.map(video => (
               <div 
                 className="video-card" 
@@ -302,7 +302,8 @@ function PlaylistView() {
               mode={mode}
               lectureInfo={{
                 videoId: selectedVideo.external_id,
-                subject: selectedVideo.subject
+                subject: selectedVideo.subject,
+                videoDuration: selectedVideo.length,
               }}
               userInfo={{ name: 'Test User', profile: 'default' }}
             />

@@ -25,5 +25,11 @@ const playlistSlice = createSlice({
     }
 });
 
-export const { setSelectedPlaylist, clearPlaylist, removeVideoFromSelectedPlaylist, editSelectedPlaylistName, editSelectedPlaylistPermission } = playlistSlice.actions;
+export const { 
+    setSelectedPlaylist, 
+    clearPlaylist, 
+    removeVideoFromSelectedPlaylist, 
+    editSelectedPlaylistName,
+     editSelectedPlaylistPermission
+} = playlistSlice.actions;
 export default playlistSlice.reducer;

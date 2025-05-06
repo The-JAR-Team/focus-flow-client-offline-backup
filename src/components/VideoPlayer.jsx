@@ -29,6 +29,7 @@ import {
   fetchQuestionsWithRetry,
   handleResetAnsweredQuestions as serviceResetAnsweredQuestions,
   handlePlotResults as servicePlotResults,
+  handleAllPlotResults as serviceAllPlotResults,
   handleLanguageChange as serviceHandleLanguageChange,
   parseTimeToSeconds,
   shuffleAnswers,
@@ -44,6 +45,7 @@ import {
   BarElement,
   CategoryScale,
   LinearScale,
+  TimeScale,
   Title,
   Tooltip,
   Legend,
@@ -53,7 +55,7 @@ import useFaceMesh from '../hooks/useFaceMesh';
 import QuestionTimeline from './QuestionTimeline'; // Import the new component
 
 import EyeDebugger from './EyeDebugger';
-ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
+ChartJS.register(BarElement, CategoryScale, LinearScale, TimeScale, Title, Tooltip, Legend);
 
 window.noStop = false;
 
@@ -77,6 +79,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
   const [resultsChartData, setResultsChartData] = useState({ labels: [], datasets: [] });
   const [showResultsChart, setShowResultsChart] = useState(false);
+
+  const [resultsAllChartData, setAllResultsChartData] = useState({ labels: [], datasets: [] });
+  const [showAllResultsChart, setAllShowResultsChart] = useState(false);
 
   const [loaded, setLoaded] = useState(false);
 
@@ -784,7 +789,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       lectureInfo.videoId,
       showResultsChart,
       setShowResultsChart,
-      setResultsChartData
+      setResultsChartData,
+      lectureInfo.videoDuration
+    );
+  }
+
+  const handleAllPlotResults = async () => {
+    serviceAllPlotResults(
+      lectureInfo.videoId,
+      showAllResultsChart,
+      setAllShowResultsChart,
+      setAllResultsChartData,
+      lectureInfo.videoDuration
     );
   }
 
@@ -904,6 +920,12 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       >
         {showTimeline ? 'Hide' : 'Show'} Timeline
       </button>
+      <button
+        className="debug-button"
+        onClick={handleAllPlotResults}
+      >
+        Plot all watchers' results
+      </button>
     </div>
   );
 
@@ -923,30 +945,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         />
         {renderStatus()}
         {mode === 'question' && renderDebugTools()}
-
-        {showResultsChart && (
-          <div 
-            className="results-plot-chart" 
-            style={{ 
-              width: '90%',
-              height: '450px',
-              margin: '20px auto'
-            }}
-          >
-            <h3>Focus Results Over Time</h3>
-            <Bar
-              data={resultsChartData}
-              options={{
-                maintainAspectRatio: false,
-                scales: {
-                  x: { title: { display: true, text: 'Video Time (s)' } },
-                  y: { title: { display: true, text: 'Concentration' }, min: 0 },
-                },
-                plugins: { legend: { display: true } },
-              }}
-            />
-          </div>
-        )}
 
         {mode === 'question' && (
           <div className="language-options" style={{ margin: '20px 0', direction: 'ltr' }}>
@@ -978,6 +976,49 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
               {englishStatus && englishStatus.includes('Building') && 
                 <span className="status-counter">#{retryCount.english}</span>}
             </button>
+          </div>
+        )}
+
+
+        {showResultsChart && (
+          <div
+            className="results-plot-chart"
+          >
+            <h3>Focus Results Over Time</h3>
+            <Bar
+              data={resultsChartData}
+              options={{
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    title: { display: true, text: 'Video Time (s)' },
+                  },
+                  y: { title: { display: true, text: 'Concentration' }, min: 0 },
+                },
+                plugins: { legend: { display: true } },
+              }}
+            />
+          </div>
+        )}
+
+        {showAllResultsChart && (
+          <div
+            className="results-plot-chart"
+          >
+            <h3>Focus Results All Watchers</h3>
+            <Bar
+              data={resultsAllChartData}
+              options={{
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    title: { display: true, text: 'Video Time (s)' },
+                  },
+                  y: { title: { display: true, text: 'Concentration' }, min: 0 },
+                },
+                plugins: { legend: { display: true } },
+              }}
+            />
           </div>
         )}
         
