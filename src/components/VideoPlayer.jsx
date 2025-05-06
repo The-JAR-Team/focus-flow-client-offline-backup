@@ -990,7 +990,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
               options={{
                 maintainAspectRatio: false,
                 scales: {
-                  x: {title: { display: true, text: 'Video Time (s)' },},
+                  x: {title: { display: true, text: 'Video Time' },},
                   y: { title: { display: true, text: 'Concentration' }, min: 0 },
                 },
                 plugins: { legend: { display: true } },
@@ -1009,7 +1009,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
               options={{
                 maintainAspectRatio: false,
                 scales: {
-                  x: { title: { display: true, text: 'Video Time (s)' }, },
+                  x: { title: { display: true, text: 'Video Time' }, },
                   y: { title: { display: true, text: 'Concentration' }, min: 0 },
                 },
                 plugins: { legend: { display: true } },

@@ -171,7 +171,6 @@ export const handleAllPlotResults = async (
   }
   try {
     const data = await fetchWatchItemResults(videoId, 'all');
-    console.debug('plot all results raw data:', data);
     if (data && Object.keys(data).length > 0) {
 
       // Create graph
@@ -240,7 +239,6 @@ export const handleAllPlotResults = async (
     try {
       const data = await fetchWatchItemResults(videoId);
       const resultsArray = data[Object.keys(data)[0]];
-      console.debug('plot results raw data:', resultsArray);
 
       if (resultsArray && Array.isArray(resultsArray) && resultsArray.length > 0) {
         // Create graph time range
@@ -299,9 +297,9 @@ function getChartLabels(completeTimeRange) {
   });
 }
 
-function getChartData(completeTimeRange, resultsArray, timeInterval = 1) {
+function getChartData1(completeTimeRange, resultsArray, timeInterval = 1) {
   // Sort by watch date
-  const resultsByDate = resultsArray.sort((a, b) => Date(a.timestamp) - Date(b.timestamp));
+  const resultsByDate = resultsArray.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   const sessionGroups = groupResultsBySession(resultsByDate);
 
   // Choose the largest session for plotting
@@ -309,7 +307,8 @@ function getChartData(completeTimeRange, resultsArray, timeInterval = 1) {
   const selectedSession = sessionGroups[0];
 
   // Sort by video timestamp
-  const sortedData = selectedSession.sort((a, b) => a.video_time - b.video_time);
+  // const sortedData = selectedSession.sort((a, b) => a.video_time - b.video_time);
+  const sortedData = resultsArray.sort((a, b) => a.video_time - b.video_time);
 
   const chartData = completeTimeRange.map(timePoint => {
     // Find the closest data point (if any)
@@ -344,15 +343,40 @@ function groupResultsBySession(resultsByDate) {
         currentGroup = [resultsByDate[i]];
       }
     }
-
     // Add the last group
     if (currentGroup.length > 0) {
       sessionGroups.push(currentGroup);
     }
-
     console.log(sessionGroups);
 
     return sessionGroups;
+  }
+
+function getChartData(completeTimeRange, dataPoints, timeInterval = 1) {
+    dataPoints.forEach(point => {
+      point.video_time = point.video_time.toFixed(2);
+    });
+    
+    // First sort by rounded video timestamp
+    // For points with same timestamp, sort by actual timestamp date
+    const sortedData = dataPoints.sort((a, b) => {
+      const timeComparison = a.video_time - b.video_time;
+      if (timeComparison === 0) {
+        return new Date(b.timestamp) - new Date(a.timestamp);
+      }
+      return timeComparison;
+    });
+
+    const chartData = completeTimeRange.map(timePoint => {
+      // Find the closest data point (if any)
+      const closestData = sortedData.find(item =>
+        Math.abs(item.video_time - timePoint) <timeInterval/2
+      );
+
+      return closestData ? closestData.result * 100 : 0;
+    });
+    
+    return chartData;
   }
 
   // Function to handle language change
