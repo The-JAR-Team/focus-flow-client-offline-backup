@@ -912,7 +912,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         className="debug-button"
         onClick={handlePlotResults}
       >
-        Plot results
+        {showResultsChart ? 'Hide Results' : 'Plot Results'}
       </button>
       <button
         className="debug-button"
@@ -924,7 +924,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         className="debug-button"
         onClick={handleAllPlotResults}
       >
-        Plot all watchers' results
+        {showAllResultsChart ? 'Hide all watcher\'s results' : 'Plot all watchers\' results'}
       </button>
     </div>
   );
@@ -990,9 +990,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
               options={{
                 maintainAspectRatio: false,
                 scales: {
-                  x: {
-                    title: { display: true, text: 'Video Time (s)' },
-                  },
+                  x: {title: { display: true, text: 'Video Time' },},
                   y: { title: { display: true, text: 'Concentration' }, min: 0 },
                 },
                 plugins: { legend: { display: true } },
@@ -1011,9 +1009,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
               options={{
                 maintainAspectRatio: false,
                 scales: {
-                  x: {
-                    title: { display: true, text: 'Video Time (s)' },
-                  },
+                  x: { title: { display: true, text: 'Video Time' }, },
                   y: { title: { display: true, text: 'Concentration' }, min: 0 },
                 },
                 plugins: { legend: { display: true } },
@@ -1043,33 +1039,6 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
                 )}
                 {englishStatus}
               </div>
-            )}
-          </div>
-        )}
-        
-        {mode === 'analytics' && (
-          <div className="focus-graph">
-            <Bar
-              data={chartData}
-              options={{
-                scales: {
-                  x: { title: { display: true, text: 'Time (s)' } },
-                  y: { title: { display: true, text: 'Focus' }, min: 0, max: 1 },
-                },
-                plugins: { legend: { display: false } },
-              }}
-            />
-            {showResultsChart && (
-              <Bar
-                data={resultsChartData}
-                options={{
-                  scales: {
-                    x: { title: { display: true, text: 'Time (s)' } },
-                    y: { title: { display: true, text: 'Focus' }, min: 0, max: 1 },
-                  },
-                  plugins: { legend: { display: true } },
-                }}
-              />
             )}
           </div>
         )}
