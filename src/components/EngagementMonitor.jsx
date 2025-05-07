@@ -168,19 +168,20 @@ const EngagementMonitor = () => {
       
       // Create background for engagement score
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(minX, minY - 36, boxWidth, 36);
+      // Increase background height for larger font sizes
+      ctx.fillRect(minX, minY - 48, boxWidth, 48);
       
-      // Display label on top
-      const labelFontSize = Math.min(16, Math.max(12, boxWidth / 14));
+      // Display label on top with larger dynamic font
+      const labelFontSize = Math.max(18, Math.min(24, boxWidth / 14));
       ctx.font = `bold ${labelFontSize}px Arial`;
       ctx.fillStyle = boxColor;
       ctx.textAlign = "center";
-      ctx.fillText(`${shortLabel}`, minX + (boxWidth / 2), minY - 20);
+      ctx.fillText(`${shortLabel}`, minX + (boxWidth / 2), minY - 32);
       
-      // Display score underneath with larger font
-      const scoreFontSize = Math.min(16, Math.max(15, boxWidth / 14)); // Increased from min 10 to min 12, max 14 to max 16
-      ctx.font = `bold ${scoreFontSize}px Arial`; // Added bold to make it stand out more
-      ctx.fillText(`${engagementScore.toFixed(2)}`, minX + (boxWidth / 2), minY - 6);
+      // Display score underneath with even larger font
+      const scoreFontSize = Math.max(20, Math.min(28, boxWidth / 18));
+      ctx.font = `bold ${scoreFontSize}px Arial`;
+      ctx.fillText(`${engagementScore.toFixed(2)}`, minX + (boxWidth / 2), minY - 12);
     }
 
     ctx.restore();
