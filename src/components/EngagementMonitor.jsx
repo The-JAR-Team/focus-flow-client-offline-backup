@@ -257,7 +257,7 @@ const EngagementMonitor = () => {
             return;
           }
           
-          const modelResult = response.data?.model_result+0.07;
+          const modelResult = response.data?.model_result;
           const modelClass = response.data?.model_result_class_name;
           
           setEngagementScore(modelResult);
