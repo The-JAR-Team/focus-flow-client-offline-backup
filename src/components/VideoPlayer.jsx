@@ -785,6 +785,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   };
 
   const handlePlotResults = async () => {
+    console.debug('lecture info: ', lectureInfo);
     servicePlotResults(
       lectureInfo.videoId,
       showResultsChart,
