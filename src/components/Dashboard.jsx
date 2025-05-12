@@ -249,7 +249,8 @@ function Dashboard() {
               mode={mode}
               lectureInfo={{
                 videoId: selectedVideo.external_id,
-                subject: selectedVideo.subject
+                subject: selectedVideo.subject,
+                videoDuration: selectedVideo.length,
               }}
                 userInfo={{ name: `${currentUser.first_name} ${currentUser.last_name}`, profile: currentUser.profile }}
             />
