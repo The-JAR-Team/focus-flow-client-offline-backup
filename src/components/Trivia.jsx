@@ -160,21 +160,35 @@ function Trivia() {
           </select>
         </div>
 
-        <div className="videos-grid">
-          {filteredVideos.map(video => (
+        <div className="videos-grid">          {filteredVideos.map(video => (
             <div 
               key={video?.video_id || Math.random()} 
               className="video-card"
-              onClick={() => handleVideoSelect(video)}
             >
               <img 
                 src={video?.external_id ? `https://img.youtube.com/vi/${video.external_id}/hqdefault.jpg` : ''} 
                 alt={video?.video_name || 'Untitled'} 
+                onClick={() => handleVideoSelect(video)}
               />
               <div className="video-info">
                 <h3>{video?.video_name || 'Untitled'}</h3>
                 <p>Subject: {video?.subject || 'Unknown'}</p>
                 <p>By: {video?.upload_by || 'Unknown'}</p>
+                
+                <div className="video-actions">
+                  <button 
+                    className="quiz-btn"
+                    onClick={() => handleVideoSelect(video)}
+                  >
+                    <span role="img" aria-label="quiz">❓</span> Quiz
+                  </button>
+                  <button 
+                    className="summary-btn"
+                    onClick={() => navigate(`/trivia/${video.video_id}/summary`)}
+                  >
+                    <span role="img" aria-label="summary">📝</span> Summary
+                  </button>
+                </div>
               </div>
             </div>
           ))}

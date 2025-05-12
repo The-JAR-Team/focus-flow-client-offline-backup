@@ -24,13 +24,12 @@ function Navbar() {
   };
 
   return (
-    <nav className="navbar">
-      <div className="navbar-left">
+    <nav className="navbar">      <div className="navbar-left">
         <Link to="/dashboard" className="navbar-brand">Focus Flow</Link>
         <button className="nav-button" onClick={() => navigate('/dashboard')}>Dashboard</button>
         <button className="nav-button" onClick={() => navigate('/add-video')}>Add Video</button>
         <button className="nav-button" onClick={() => navigate('/create-playlist')}>Create Playlist</button>
-        <button className="nav-button" onClick={() => navigate('/trivia')}>Trivia</button>
+        <button className="nav-button" onClick={() => navigate('/trivia')}>Trivia/Summaries</button>
       </div>
       <button className="logout-button" onClick={handleLogout}>Logout</button>
     </nav>

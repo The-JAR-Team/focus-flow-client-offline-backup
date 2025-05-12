@@ -9,3 +9,46 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Spinner styles */
+.spinner-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.spinner {
+  border: 5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 5px solid #3498db;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-small {
+  width: 20px;
+  height: 20px;
+}
+
+.spinner-medium {
+  width: 50px;
+  height: 50px;
+}
+
+.spinner-large {
+  width: 80px;
+  height: 80px;
+}
+
+.spinner-message {
+  margin-top: 10px;
+  color: #666;
+  font-size: 16px;
+  text-align: center;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

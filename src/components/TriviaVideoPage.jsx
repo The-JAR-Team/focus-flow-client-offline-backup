@@ -346,9 +346,7 @@ function TriviaVideoPage() {
                   Random
                 </button>
               </div>
-            </div>
-
-            <div className="action-buttons">
+            </div>            <div className="action-buttons">
               {renderStartQuizButton()}
               <button 
                 className={`toggle-questions-btn ${isQuestionsHidden ? 'questions-hidden' : ''}`}
@@ -358,6 +356,10 @@ function TriviaVideoPage() {
                 <span className="btn-icon">{isQuestionsHidden ? '👁️' : '👁️‍🗨️'}</span>
                 {isQuestionsHidden ? 'Show Questions' : 'Hide Questions'}
               </button>
+              <Link to={`/trivia/${videoId}/summary`} className="view-summary-btn">
+                <span className="btn-icon">📝</span>
+                View Summary
+              </Link>
             </div>
 
             {currentStatus && (
