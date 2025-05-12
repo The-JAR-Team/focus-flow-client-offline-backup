@@ -7,6 +7,7 @@ import AddVideo from './components/AddVideo';
 import PlaylistView from './components/PlaylistView';
 import Trivia from './components/Trivia';
 import TriviaVideoPage from './components/TriviaVideoPage';
+import SummaryView from './components/SummaryView';
 import CreatePlaylist from './components/CreatePlaylist';
 import EngagementMonitor from './components/EngagementMonitor';
 import './styles/App.css';
@@ -23,9 +24,9 @@ function App() {
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/add-video" element={<PrivateRoute><AddVideo /></PrivateRoute>} />
         <Route path="/create-playlist" element={<PrivateRoute><CreatePlaylist /></PrivateRoute>} />
-        <Route path="/playlist/:playlistId" element={<PrivateRoute><PlaylistView /></PrivateRoute>} />
-        <Route path="/trivia" element={<PrivateRoute><Trivia /></PrivateRoute>} />
+        <Route path="/playlist/:playlistId" element={<PrivateRoute><PlaylistView /></PrivateRoute>} />        <Route path="/trivia" element={<PrivateRoute><Trivia /></PrivateRoute>} />
         <Route path="/trivia/:videoId" element={<PrivateRoute><TriviaVideoPage /></PrivateRoute>} />
+        <Route path="/trivia/:videoId/summary" element={<PrivateRoute><SummaryView /></PrivateRoute>} />
         <Route path="/engagement-monitor" element={<PrivateRoute><EngagementMonitor /></PrivateRoute>} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />
