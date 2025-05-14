@@ -46,7 +46,7 @@ function Dashboard() {
   } = useSelector(state => state.dashboard);
 
   useEffect(() => {
-    setTimeout(() => setEyeDebuggerOn(true), 5000);
+    setTimeout(() => setEyeDebuggerOn(false), 5000);
   }, []);
 
   useEffect(() => {
