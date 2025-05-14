@@ -49,6 +49,39 @@ function Login() {
     setLoading(false);
   };
 
+  const handleGuestLogin = async () => {
+    setLoading(true);
+    // Set the guest credentials
+    const guestEmail = 'g@g.g';
+    const guestPassword = '1';
+    
+    try {
+      const response = await loginUser({ email: guestEmail, password: guestPassword });
+      if (response.status === "success") {
+        // After successful login, load dashboard data
+        const userData = await fetchUserInfo();
+        const dashboardData = await initializeDashboardData(userData);
+
+        // Update Redux store
+        dispatch(setUserData(userData));
+        dispatch(setDashboardData({
+          myGenericVideos: dashboardData.myGenericVideos,
+          otherGenericVideos: dashboardData.otherGenericVideos,
+          myPlaylists: dashboardData.myPlaylists,
+          otherPlaylists: dashboardData.otherPlaylists
+        }));
+
+        navigate('/dashboard');
+      } else {
+        setErrorMsg(response.reason);
+      }
+    } catch (error) {
+      const errMsg = error.reason || error.message || 'An error occurred during guest login.';
+      setErrorMsg(errMsg);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="login-container">
       <h2>Login</h2>
@@ -86,9 +119,19 @@ function Login() {
           ) : 'Log In'}
         </button>
       </form>
-      <p>
-        Don't have an account? <Link to="/register">Register Here</Link>
-      </p>
+      <div className="login-options">
+        <p>
+          Don't have an account? <Link to="/register">Register Here</Link>
+        </p>
+        <button 
+          type="button"
+          onClick={handleGuestLogin}
+          disabled={loading}
+          className="guest-login-button"
+        >
+          Continue as Guest
+        </button>
+      </div>
     </div>
   );
 }
