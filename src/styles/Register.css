@@ -33,3 +33,89 @@
   border-radius: 4px;
   margin-bottom: 15px;
 }
+
+/* Success message style */
+.success {
+  color: #4F8A10;
+  background-color: #DFF2BF;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  line-height: 1.4;
+}
+
+/* Loading message style */
+.loading {
+  color: #00529B;
+  background-color: #BDE5F8;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+/* Confirmation form styling */
+.confirmation-form {
+  margin-top: 10px;
+}
+
+.confirmation-form label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.confirmation-form input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  margin-bottom: 15px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  font-size: 16px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.confirmation-form button {
+  padding: 10px 20px;
+  border: none;
+  background: #4285f4;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+  width: 100%;
+}
+
+.confirmation-form button:hover {
+  background: #3367d6;
+}
+
+.confirmation-form button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Verification info text */
+.verification-info {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-left: 4px solid #4285f4;
+  line-height: 1.5;
+}
+
+/* Text link button styling */
+.text-link {
+  background: none;
+  border: none;
+  color: #4285f4;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.text-link:hover {
+  color: #3367d6;
+}
