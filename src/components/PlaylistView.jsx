@@ -271,11 +271,22 @@ function PlaylistView() {
                 key={video.video_id || video.external_id}
                 onClick={() => setSelectedVideo(video)}
               >
-                <h4>{video.video_name}</h4>
-                <img 
-                  src={`https://img.youtube.com/vi/${video.external_id}/hqdefault.jpg`} 
-                  alt={video.subject}
-                />
+                <h4>{video.video_name}</h4>                <div className="thumbnail-container">
+                  <img 
+                    src={`https://img.youtube.com/vi/${video.external_id}/hqdefault.jpg`} 
+                    alt={video.subject}
+                  />
+                  <div 
+                    className="summary-link"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/trivia/${video.video_id}/summary`);
+                    }}
+                  >
+                    <span className="summary-icon">📝</span>
+                    <span className="summary-text">View Summary</span>
+                  </div>
+                </div>
                 <div className="video-info">
                   <h5>Subject: {video.subject}</h5>
                   <small>Length: {video.length}</small>
