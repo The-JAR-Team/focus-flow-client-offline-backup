@@ -186,7 +186,8 @@ export const getAvailableQuestions = (currentTime, allQuestions, answeredQIDs) =
   
   const timeWindowStart = Math.max(0, currentTime - 400); 
   const timeWindowEnd = currentTime; // Only include questions up to the current time
-  
+  /// Optional windowEnd smaller for cerful.. (if gemini chose badly timing....)
+  ///const timeWindowEnd = currentTime-2; 
   return allQuestions.filter(q => {
     //const questionTime = parseTimeToSeconds(q.question_explanation_end);
     const questionTime = parseTimeToSeconds(q.question_explanation_end);
