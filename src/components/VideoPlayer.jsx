@@ -857,13 +857,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       handleLowEngagement();
     }, 50);
   }, [handleLowEngagement, exitFullScreenIfActive, currentQuestion, isPlaying]);
-
   const renderStatus = () => (
     <div className="status-info">
       <p>Mode: {mode}</p>
       <p>Status: {pauseStatus}</p>
       <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
       {!noClientPause && <p>Current Gaze: {currentGaze || 'N/A'}</p>}
+      {noClientPause && (
+        <p className={`model-result ${lastModelResult !== null && lastModelResult < MODEL_THRESHOLD ? 'low-engagement' : ''}`}>
+          Server Model Result: <span>{lastModelResult !== null ? lastModelResult.toFixed(3) : 'N/A'}</span>
+          {lastModelResult !== null && lastModelResult < MODEL_THRESHOLD && <span className="alert-indicator"> ⚠️ Low Engagement</span>}
+        </p>
+      )}
       <button 
         className={`control-button ${noClientPause ? 'active' : ''}`}
         onClick={handleNoClientPauseToggle}
