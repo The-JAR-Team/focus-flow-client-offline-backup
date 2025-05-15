@@ -121,10 +121,13 @@ let trackingInterval = null;
 let sendingInterval = null;
 let isVideoPaused = false;
 let requestsSentCount = 0;  // Counter for log_watch requests sent
+let hasFaceMeshError = false; // Track if FaceMesh is in error state
+let lastUsedLandmarks = null; // Store last landmarks sent to prevent duplicates
 
 let lastModelResult = null;
 let onModelResultCallback = null;
 let onBufferUpdateCallback = null;
+let onFaceMeshErrorCallback = null; // Callback for FaceMesh error notification
 
 export const setModelResultCallback = (callback) => {
   onModelResultCallback = callback;
@@ -134,6 +137,10 @@ export const setBufferUpdateCallback = (callback) => {
   onBufferUpdateCallback = callback;
 };
 
+export const setFaceMeshErrorCallback = (callback) => {
+  onFaceMeshErrorCallback = callback;
+};
+
 export const getRequestsSentCount = () => {
   return requestsSentCount;
 };
@@ -141,10 +148,24 @@ export const getRequestsSentCount = () => {
 export const resetTracking = () => {
   isVideoPaused = true;
   landmarkBuffer = [];
+  latestLandmark = null; // Clear the latest landmark too to prevent reusing old data
+  lastUsedLandmarks = null; // Also reset the last used landmarks
   clearInterval(trackingInterval);
   clearInterval(sendingInterval);
+  trackingInterval = null;
+  sendingInterval = null;
   // Don't reset requestsSentCount here to keep the total count
   console.log('🔄 Tracking reset, buffer cleared, and intervals stopped.');
+  
+  // Notify about empty buffer
+  if (onBufferUpdateCallback) {
+    onBufferUpdateCallback({
+      currentFrames: 0,
+      requiredFrames: REQUIRED_FRAMES,
+      requestsSent: requestsSentCount,
+      hasError: hasFaceMeshError
+    });
+  }
 };
 
 export const handleVideoPause = () => {
@@ -156,91 +177,133 @@ export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSe
   // Clear any existing intervals first
   clearInterval(trackingInterval);
   clearInterval(sendingInterval);
-  
-  // Reset state
+    // Reset state
   isVideoPaused = false;
   landmarkBuffer = [];
+  lastUsedLandmarks = null; // Reset last used landmarks to prevent duplication
+  
+  // Always collect frames regardless of mode
+  console.log(`▶️ Video tracking started: collecting frame every ${FRAME_INTERVAL}ms, sending every ${sendIntervalSeconds}s.`);
 
-  // Only start tracking if in server mode
-  if (window.noStop) {
-    console.log(`▶️ Video tracking started: collecting frame every ${FRAME_INTERVAL}ms, sending every ${sendIntervalSeconds}s.`);
-
-    // Start collecting frames
-    trackingInterval = setInterval(() => {
-      if (isVideoPaused) return;
-      // Only add to buffer if we have landmarks
-      if (latestLandmark) {
-        landmarkBuffer.push({
-          timestamp: Date.now(),
-          landmarks: latestLandmark
-        });
-
-        // Keep only the most recent frames needed
-        if (landmarkBuffer.length > REQUIRED_FRAMES) {
-          landmarkBuffer.shift();
-        }
+  // Start collecting frames (in both modes)
+  trackingInterval = setInterval(() => {
+    if (isVideoPaused) {
+      console.log('🛑 Tracking paused due to video pause');
+      return;
+    }
+    
+    // If FaceMesh is in error state, don't collect frames
+    if (hasFaceMeshError) {
+      // Clear buffer when in error state to avoid using corrupted data
+      if (landmarkBuffer.length > 0) {
+        landmarkBuffer = [];
+        console.warn('⚠️ FaceMesh error detected - buffer cleared');
         
-        // Notify buffer update
+        // Notify buffer update with empty buffer
         if (onBufferUpdateCallback) {
           onBufferUpdateCallback({
-            currentFrames: landmarkBuffer.length,
+            currentFrames: 0,
             requiredFrames: REQUIRED_FRAMES,
-            requestsSent: requestsSentCount
+            requestsSent: requestsSentCount,
+            hasError: true
           });
         }
       }
-    }, FRAME_INTERVAL);
+      return;
+    }
+    
+    // Only add to buffer if we have landmarks and they're different from previous
+    if (latestLandmark) {
+      landmarkBuffer.push({
+        timestamp: Date.now(),
+        landmarks: latestLandmark
+      });
 
-    // Initialize sending interval
-    sendingInterval = setInterval(async () => {
-      if (landmarkBuffer.length < REQUIRED_FRAMES) {
-        console.log(`⚠️ Not enough frames yet (${landmarkBuffer.length}/${REQUIRED_FRAMES})`);
+      // Keep only the most recent frames needed
+      if (landmarkBuffer.length > REQUIRED_FRAMES) {
+        landmarkBuffer.shift();
+      }
+      
+      // Notify buffer update (in both modes)
+      if (onBufferUpdateCallback) {
+        onBufferUpdateCallback({
+          currentFrames: landmarkBuffer.length,
+          requiredFrames: REQUIRED_FRAMES,
+          requestsSent: requestsSentCount,
+          hasError: false
+        });
+      }
+    }
+  }, FRAME_INTERVAL);
+  // Initialize sending interval in both client and server modes
+  sendingInterval = setInterval(async () => {
+    // Immediate checks to prevent unnecessary processing
+    if (isVideoPaused) {
+      console.log('🛑 Skipping log_watch - video paused');
+      return;
+    }
+    
+    // Don't send data if FaceMesh is in error state
+    if (hasFaceMeshError) {
+      console.warn('⚠️ FaceMesh error - skipping log_watch request');
+      return;
+    }
+    
+    if (landmarkBuffer.length < REQUIRED_FRAMES) {
+      console.log(`⚠️ Not enough frames yet (${landmarkBuffer.length}/${REQUIRED_FRAMES})`);
+      return;
+    }
+
+    try {
+      const relevantLandmarks = landmarkBuffer
+        .slice(-REQUIRED_FRAMES)
+        .map(item => item.landmarks);
+      
+      // Check if landmarks are the same as last request
+      const landmarksJSON = JSON.stringify(relevantLandmarks);
+      if (lastUsedLandmarks === landmarksJSON) {
+        console.log('⚠️ Same landmarks detected, skipping duplicate request');
         return;
       }
+      lastUsedLandmarks = landmarksJSON;
 
-      try {
-        const relevantLandmarks = landmarkBuffer
-          .slice(-REQUIRED_FRAMES)
-          .map(item => item.landmarks);
-
-        const payload = {
-          youtube_id: youtube_id,
-          current_time: getCurrentTime(),
-          extraction: "mediapipe",
-          extraction_payload: {
-            fps: 10,
-            interval: 10,
-            number_of_landmarks: 478,
-            landmarks: [relevantLandmarks]
-          },          model: "v1"
-        };
-        
-        const response = await axios.post(`${config.baseURL}/watch/log_watch`, payload, { withCredentials: true });
-        requestsSentCount++; // Increment counter for successful requests
-        const modelResult = response.data?.model_result;
-        lastModelResult = modelResult;
-        
-        if (onModelResultCallback) {
-          onModelResultCallback(modelResult);
-        }
-        console.log('current_time', getCurrentTime());
-        console.log(`✅ Sent ${REQUIRED_FRAMES} frames successfully (${requestsSentCount} total). Model result:`, modelResult);
-        
-        // Update buffer info after sending
-        if (onBufferUpdateCallback) {
-          onBufferUpdateCallback({
-            currentFrames: landmarkBuffer.length,
-            requiredFrames: REQUIRED_FRAMES,
-            requestsSent: requestsSentCount
-          });
-        }
-      } catch (error) {
-        console.error('❌ Error sending landmarks:', error);
+      const payload = {
+        youtube_id: youtube_id,
+        current_time: getCurrentTime(),
+        extraction: "mediapipe",
+        extraction_payload: {
+          fps: 10,
+          interval: 10,
+          number_of_landmarks: 478,
+          landmarks: [relevantLandmarks]
+        },          
+        model: "v1"
+      };
+      
+      const response = await axios.post(`${config.baseURL}/watch/log_watch`, payload, { withCredentials: true });
+      requestsSentCount++; // Increment counter for successful requests
+      const modelResult = response.data?.model_result;
+      lastModelResult = modelResult;
+      
+      if (onModelResultCallback) {
+        onModelResultCallback(modelResult);
       }
-    }, sendIntervalSeconds * 1000);
-  } else {
-    console.log('🚫 Client mode active - no frame collection needed');
-  }
+      console.log('current_time', getCurrentTime());
+      console.log(`✅ Sent ${REQUIRED_FRAMES} frames successfully (${requestsSentCount} total). Model result:`, modelResult);
+      
+      // Update buffer info after sending
+      if (onBufferUpdateCallback) {
+        onBufferUpdateCallback({
+          currentFrames: landmarkBuffer.length,
+          requiredFrames: REQUIRED_FRAMES,
+          requestsSent: requestsSentCount,
+          hasError: false
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error sending landmarks:', error);
+    }
+  }, sendIntervalSeconds * 1000);
 };
 
 export const updateLatestLandmark = (faceMeshResults) => {
@@ -251,6 +314,34 @@ export const updateLatestLandmark = (faceMeshResults) => {
   }
 };
 
+// Handle FaceMesh error state
+export const setFaceMeshErrorState = (isError) => {
+  const previousState = hasFaceMeshError;
+  hasFaceMeshError = isError;
+  
+  // If error state changes, notify callback
+  if (previousState !== isError && onFaceMeshErrorCallback) {
+    onFaceMeshErrorCallback(isError);
+    
+    // Clear buffer when entering error state
+    if (isError && landmarkBuffer.length > 0) {
+      landmarkBuffer = [];
+      console.warn('⚠️ FaceMesh error detected - buffer cleared');
+      
+      // Update buffer status
+      if (onBufferUpdateCallback) {
+        onBufferUpdateCallback({
+          currentFrames: 0,
+          requiredFrames: REQUIRED_FRAMES,
+          requestsSent: requestsSentCount,
+          hasError: true
+        });
+      }
+    }
+  }
+  
+  return isError;
+};
 
 export const fetchLastWatchTime = async (youtube_id) => {
   try {
@@ -265,7 +356,6 @@ export const fetchLastWatchTime = async (youtube_id) => {
     return 0;
   }
 };
-
 
 export const fetchWatchItemResults = async (youtube_id, option) => {
   try {

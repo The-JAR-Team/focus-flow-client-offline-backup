@@ -13,6 +13,7 @@ import {
   handleVideoResume,
   setModelResultCallback,
   setBufferUpdateCallback,
+  setFaceMeshErrorCallback,
   cancelAllRequests,
   REQUIRED_FRAMES,
 } from '../services/videos';
@@ -102,6 +103,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [faceMeshStatus, setFaceMeshStatus] = useState('Initializing');
   const [showRetryButton, setShowRetryButton] = useState(false);
   const [faceMeshEnabled, setFaceMeshEnabled] = useState(true);
+  const [faceMeshError, setFaceMeshError] = useState(false);
 
   const handleFaceMeshRetry = () => {
     setShowRetryButton(false);
@@ -111,6 +113,14 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       setFaceMeshEnabled(true);
     }, 1000);
   };
+
+  const handleFaceMeshErrorState = useCallback((isError) => {
+    setFaceMeshError(isError);
+    if (isError) {
+      setFaceMeshStatus('FaceMesh Error - Please refresh the page');
+      setShowRetryButton(true);
+    }
+  }, []);
 
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [hebrewQuestions, setHebrewQuestions] = useState([]);
@@ -168,6 +178,22 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     setBufferUpdateCallback((bufferInfo) => {
       setBufferFrames(bufferInfo.currentFrames);
       setRequestsSent(bufferInfo.requestsSent);
+
+      // Check for FaceMesh error flag from buffer update
+      if (bufferInfo.hasError && !faceMeshError) {
+        setFaceMeshError(true);
+        setFaceMeshStatus('FaceMesh Error - Please refresh the page');
+        setShowRetryButton(true);
+      }
+    });
+
+    // Set up FaceMesh error callback
+    setFaceMeshErrorCallback((isError) => {
+      setFaceMeshError(isError);
+      if (isError) {
+        setFaceMeshStatus('FaceMesh Error - Please refresh the page');
+        setShowRetryButton(true);
+      }
     });
     
     return () => {
@@ -186,6 +212,8 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       resetTracking();
       handleVideoPause();
       setModelResultCallback(null);
+      setBufferUpdateCallback(null);
+      setFaceMeshErrorCallback(null);
       setVideoPlaying(false);
       
       // Clear question fetch intervals
@@ -242,10 +270,25 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   }, [isPlaying]); // Rerun effect when isPlaying changes
 
   const handleNoClientPauseToggle = () => {
+    // First stop all existing tracking
+    resetTracking();
+    
+    // Then update the mode
     window.noStop = !noClientPause;
     setNoClientPause(prev => !prev);
     console.log(`🎮 No Client Pause ${!noClientPause ? 'Enabled' : 'Disabled'}`);
-    resetTracking();
+    
+    // Finally restart tracking with clean state
+    setTimeout(() => {
+      if (playerRef.current) {
+        handleVideoResume(
+          lectureInfo.videoId,
+          'basic',
+          sendIntervalSeconds,
+          () => playerRef.current?.getCurrentTime() || 0
+        );
+      }
+    }, 500);
   };
 
   const handleEngagementLogicToggle = useCallback(() => {
@@ -485,7 +528,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
   const handleVideoPlayback = useCallback((newGaze) => {
     // Log every gaze event
-    console.log('[DEBUGQ] handleVideoPlayback incoming gaze:', newGaze);
+    //console.log('[DEBUGQ] handleVideoPlayback incoming gaze:', newGaze);
     
     // Skip only if engagement detection is disabled
     if (!getEngagementDetectionEnabled()) return;
@@ -574,7 +617,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   }, [lectureInfo.videoId, sendIntervalSeconds]);
 
   // Always run FaceMesh once loaded to maintain gaze detection across pauses
-  useFaceMesh(loaded, webcamRef, handleFaceMeshResults, handleFaceMeshStatus);
+  useFaceMesh(loaded, webcamRef, handleFaceMeshResults, handleFaceMeshStatus, handleFaceMeshErrorState);
 
   useEffect(() => {
     if (!playerRef.current || !faceMeshReady) return;
@@ -868,30 +911,49 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }, 50);
   }, [handleLowEngagement, exitFullScreenIfActive, currentQuestion, isPlaying]);
   const renderStatus = () => (
-    <div className="status-info">      <p>Mode: {mode}</p>
+    <div className="status-info">
+      <p>Mode: {mode}</p>
       <p>Status: {pauseStatus}</p>
       <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
       {!noClientPause && <p>Current Gaze: {currentGaze || 'N/A'}</p>}
-      {noClientPause && (
-        <>
-          <p className={`model-result ${lastModelResult !== null && lastModelResult < MODEL_THRESHOLD ? 'low-engagement' : ''}`}>
-            Server Model Result: <span>{lastModelResult !== null ? lastModelResult.toFixed(3) : 'N/A'}</span>
-            {lastModelResult !== null && lastModelResult < MODEL_THRESHOLD && <span className="alert-indicator"> ⚠️ Low Engagement</span>}
-          </p>
-          <p className="buffer-status">
-            Buffer Frames: <span className="buffer-count">{bufferFrames}/{REQUIRED_FRAMES}</span>
-            <div className="buffer-progress">
-              <div 
-                className="buffer-bar" 
-                style={{ width: `${(bufferFrames / REQUIRED_FRAMES) * 100}%` }}
-              ></div>
-            </div>
-          </p>
-          <p className="requests-count">
-            Requests Sent: <span>{requestsSent}</span>
-          </p>
-        </>
+      <p>Server Model Result: <span>{lastModelResult !== null ? lastModelResult.toFixed(3) : 'N/A'}</span></p>
+
+      
+      {/* Display FaceMesh error message */}
+      {faceMeshError && (
+        <div className="facemesh-error">
+          <span className="error-icon">⚠️</span>
+          FaceMesh Error - Please refresh the page or click retry below
+          {showRetryButton && (
+            <button className="retry-button" onClick={handleFaceMeshRetry}>
+              Retry FaceMesh
+            </button>
+          )}
+        </div>
       )}
+        {/* Buffer and Requests info - shown in both modes */}
+      <div className="buffer-status">
+        <p>Buffer Frames: <span className="buffer-count">{bufferFrames}/{REQUIRED_FRAMES}</span></p>
+        <div className="buffer-progress">
+          <div 
+            className="buffer-bar" 
+            style={{ width: `${(bufferFrames / REQUIRED_FRAMES) * 100}%` }}
+          ></div>
+        </div>
+      </div>
+      
+      {/* Show requests info in both client and server modes */}
+      <div className="requests-count">
+        <p>Requests Sent: <span>{requestsSent}</span></p>
+      </div>
+        {/* Server specific info */}
+      {noClientPause && (
+        <div className={`model-result ${lastModelResult !== null && lastModelResult < MODEL_THRESHOLD ? 'low-engagement' : ''}`}>
+          <p>Server Model Result: <span>{lastModelResult !== null ? lastModelResult.toFixed(3) : 'N/A'}</span>
+          {lastModelResult !== null && lastModelResult < MODEL_THRESHOLD && <span className="alert-indicator"> ⚠️ Low Engagement</span>}</p>
+        </div>
+      )}
+      
       <button 
         className={`control-button ${noClientPause ? 'active' : ''}`}
         onClick={handleNoClientPauseToggle}
@@ -904,6 +966,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           type="range"
           min="0.5"
           max="10"
+          step="0.5"
           value={sendIntervalSeconds}
           onChange={(e) => handleIntervalChange(e.target.value)}
         />

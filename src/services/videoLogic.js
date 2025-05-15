@@ -67,7 +67,7 @@ export const canAskQuestion = () => {
 export const markQuestionAsked = () => {
   const previousTime = lastQuestionTime;
   lastQuestionTime = Date.now();
-  console.log(`[DEBUGQ] Question cooldown timer reset at ${new Date(lastQuestionTime).toLocaleTimeString()}, was ${Date.now() - previousTime}ms old`);
+  //console.log(`[DEBUGQ] Question cooldown timer reset at ${new Date(lastQuestionTime).toLocaleTimeString()}, was ${Date.now() - previousTime}ms old`);
 };
 
 export const startManualTrigger = () => {
@@ -129,7 +129,7 @@ export const handleEngagementDetection = ({
   if (newGaze !== immediateGaze.current) {
     immediateGaze.current = newGaze;
     immediateGazeChangeTime.current = now;
-    console.log('[DEBUGQ] Gaze changed to', newGaze, 'at', new Date(now).toLocaleTimeString());
+    //console.log('[DEBUGQ] Gaze changed to', newGaze, 'at', new Date(now).toLocaleTimeString());
   }
 
   const timeSinceImmediateChange = now - immediateGazeChangeTime.current;
@@ -171,7 +171,7 @@ export const handleEngagementDetection = ({
     if (isPlaying && stableDuration >= AWAY_THRESHOLD_MS) {
       console.log('[DEBUGQ] Looking away (', stableGaze.current, ') for', stableDuration, 'ms, checking if can ask question');
       if (canAskQuestion()) {
-        console.log('[DEBUGQ] Not looking center for', stableDuration, 'ms, triggering question');
+        //console.log('[DEBUGQ] Not looking center for', stableDuration, 'ms, triggering question');
         handleLowEngagement();
         markQuestionAsked();
       } else {

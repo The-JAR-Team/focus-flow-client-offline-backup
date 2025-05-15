@@ -19,19 +19,21 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange) {
+export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange, onErrorState) {
   const errorCount = useRef(0);
   const streamRef = useRef(null);
   const initializedRef = useRef(false);
   const resultCallbackRef = useRef(onResults);
   const statusCallbackRef = useRef(onStatusChange);
+  const errorStateCallbackRef = useRef(onErrorState);
   const MAX_ERRORS = 10;
 
   // Update refs when callbacks change
   useEffect(() => {
     resultCallbackRef.current = onResults;
     statusCallbackRef.current = onStatusChange;
-  }, [onResults, onStatusChange]);
+    errorStateCallbackRef.current = onErrorState;
+  }, [onResults, onStatusChange, onErrorState]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -149,6 +151,11 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
                 resultCallbackRef.current(results);
               }
               errorCount.current = 0;
+              
+              // Notify about error state being cleared
+              if (errorStateCallbackRef.current) {
+                errorStateCallbackRef.current(false);
+              }
             });
             
             // Start camera with existing FaceMesh
@@ -162,6 +169,11 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
                   } catch (error) {
                     errorCount.current++;
                     console.error('FaceMesh send error:', error);
+                    
+                    // Notify about error state
+                    if (errorStateCallbackRef.current) {
+                      errorStateCallbackRef.current(errorCount.current > MAX_ERRORS);
+                    }
                     
                     if (errorCount.current > MAX_ERRORS) {
                       updateStatus('Too many errors - Click Retry');
@@ -217,6 +229,11 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
                 resultCallbackRef.current(results);
               }
               errorCount.current = 0;
+              
+              // Notify about error state being cleared
+              if (errorStateCallbackRef.current) {
+                errorStateCallbackRef.current(false);
+              }
             });
             
             // Initialize FaceMesh (this loads the model)
@@ -240,6 +257,11 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
                 resultCallbackRef.current(results);
               }
               errorCount.current = 0;
+              
+              // Notify about error state being cleared
+              if (errorStateCallbackRef.current) {
+                errorStateCallbackRef.current(false);
+              }
             });
           }
           
@@ -254,6 +276,11 @@ export default function useFaceMesh(enabled, videoRef, onResults, onStatusChange
                 } catch (error) {
                   errorCount.current++;
                   console.error('FaceMesh send error:', error);
+                  
+                  // Notify about error state
+                  if (errorStateCallbackRef.current) {
+                    errorStateCallbackRef.current(errorCount.current > MAX_ERRORS);
+                  }
                   
                   if (errorCount.current > MAX_ERRORS) {
                     updateStatus('Too many errors - Click Retry');
