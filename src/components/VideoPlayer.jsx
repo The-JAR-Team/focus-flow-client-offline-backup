@@ -12,7 +12,9 @@ import {
   handleVideoPause,
   handleVideoResume,
   setModelResultCallback,
+  setBufferUpdateCallback,
   cancelAllRequests,
+  REQUIRED_FRAMES,
 } from '../services/videos';
 import {
   setEngagementDetectionEnabled,
@@ -136,8 +138,11 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const CENTER_THRESHOLD_MS = 100;
   const AWAY_THRESHOLD_MS = 400;
 
-  const MODEL_THRESHOLD = -1.0;
-  const [lastModelResult, setLastModelResult] = useState(null);
+  const MODEL_THRESHOLD = -1.0;  const [lastModelResult, setLastModelResult] = useState(null);
+  
+  // Buffer tracking state
+  const [bufferFrames, setBufferFrames] = useState(0);
+  const [requestsSent, setRequestsSent] = useState(0);
 
   const [sensitivity, setSensitivity] = useState(7);
   const [currentGaze, setCurrentGaze] = useState(''); // track current gaze
@@ -152,13 +157,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   useEffect(() => {
     setGazeSensitivity(sensitivity);
   }, [sensitivity]);
-
   useEffect(() => {
     console.log('🔄 Setting up video tracking');
     
     // Create new abort controllers when the component mounts
     hebrewAbortController.current = new AbortController();
     englishAbortController.current = new AbortController();
+
+    // Set up buffer update callback
+    setBufferUpdateCallback((bufferInfo) => {
+      setBufferFrames(bufferInfo.currentFrames);
+      setRequestsSent(bufferInfo.requestsSent);
+    });
     
     return () => {
       console.log('🛑 Cleaning up ALL video resources');
@@ -858,16 +868,29 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }, 50);
   }, [handleLowEngagement, exitFullScreenIfActive, currentQuestion, isPlaying]);
   const renderStatus = () => (
-    <div className="status-info">
-      <p>Mode: {mode}</p>
+    <div className="status-info">      <p>Mode: {mode}</p>
       <p>Status: {pauseStatus}</p>
       <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
       {!noClientPause && <p>Current Gaze: {currentGaze || 'N/A'}</p>}
       {noClientPause && (
-        <p className={`model-result ${lastModelResult !== null && lastModelResult < MODEL_THRESHOLD ? 'low-engagement' : ''}`}>
-          Server Model Result: <span>{lastModelResult !== null ? lastModelResult.toFixed(3) : 'N/A'}</span>
-          {lastModelResult !== null && lastModelResult < MODEL_THRESHOLD && <span className="alert-indicator"> ⚠️ Low Engagement</span>}
-        </p>
+        <>
+          <p className={`model-result ${lastModelResult !== null && lastModelResult < MODEL_THRESHOLD ? 'low-engagement' : ''}`}>
+            Server Model Result: <span>{lastModelResult !== null ? lastModelResult.toFixed(3) : 'N/A'}</span>
+            {lastModelResult !== null && lastModelResult < MODEL_THRESHOLD && <span className="alert-indicator"> ⚠️ Low Engagement</span>}
+          </p>
+          <p className="buffer-status">
+            Buffer Frames: <span className="buffer-count">{bufferFrames}/{REQUIRED_FRAMES}</span>
+            <div className="buffer-progress">
+              <div 
+                className="buffer-bar" 
+                style={{ width: `${(bufferFrames / REQUIRED_FRAMES) * 100}%` }}
+              ></div>
+            </div>
+          </p>
+          <p className="requests-count">
+            Requests Sent: <span>{requestsSent}</span>
+          </p>
+        </>
       )}
       <button 
         className={`control-button ${noClientPause ? 'active' : ''}`}

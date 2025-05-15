@@ -120,12 +120,22 @@ let latestLandmark = null;
 let trackingInterval = null;
 let sendingInterval = null;
 let isVideoPaused = false;
+let requestsSentCount = 0;  // Counter for log_watch requests sent
 
 let lastModelResult = null;
 let onModelResultCallback = null;
+let onBufferUpdateCallback = null;
 
 export const setModelResultCallback = (callback) => {
   onModelResultCallback = callback;
+};
+
+export const setBufferUpdateCallback = (callback) => {
+  onBufferUpdateCallback = callback;
+};
+
+export const getRequestsSentCount = () => {
+  return requestsSentCount;
 };
 
 export const resetTracking = () => {
@@ -133,6 +143,7 @@ export const resetTracking = () => {
   landmarkBuffer = [];
   clearInterval(trackingInterval);
   clearInterval(sendingInterval);
+  // Don't reset requestsSentCount here to keep the total count
   console.log('🔄 Tracking reset, buffer cleared, and intervals stopped.');
 };
 
@@ -168,6 +179,15 @@ export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSe
         if (landmarkBuffer.length > REQUIRED_FRAMES) {
           landmarkBuffer.shift();
         }
+        
+        // Notify buffer update
+        if (onBufferUpdateCallback) {
+          onBufferUpdateCallback({
+            currentFrames: landmarkBuffer.length,
+            requiredFrames: REQUIRED_FRAMES,
+            requestsSent: requestsSentCount
+          });
+        }
       }
     }, FRAME_INTERVAL);
 
@@ -192,11 +212,11 @@ export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSe
             interval: 10,
             number_of_landmarks: 478,
             landmarks: [relevantLandmarks]
-          },
-          model: "v1"
+          },          model: "v1"
         };
-
+        
         const response = await axios.post(`${config.baseURL}/watch/log_watch`, payload, { withCredentials: true });
+        requestsSentCount++; // Increment counter for successful requests
         const modelResult = response.data?.model_result;
         lastModelResult = modelResult;
         
@@ -204,7 +224,16 @@ export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSe
           onModelResultCallback(modelResult);
         }
         console.log('current_time', getCurrentTime());
-        console.log(`✅ Sent ${REQUIRED_FRAMES} frames successfully. Model result:`, modelResult);
+        console.log(`✅ Sent ${REQUIRED_FRAMES} frames successfully (${requestsSentCount} total). Model result:`, modelResult);
+        
+        // Update buffer info after sending
+        if (onBufferUpdateCallback) {
+          onBufferUpdateCallback({
+            currentFrames: landmarkBuffer.length,
+            requiredFrames: REQUIRED_FRAMES,
+            requestsSent: requestsSentCount
+          });
+        }
       } catch (error) {
         console.error('❌ Error sending landmarks:', error);
       }
