@@ -1,25 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { fetchUserStats } from '../services/userService';
 import Navbar from './Navbar';
 import Spinner from './Spinner';
 import PasswordChangeModal from './PasswordChangeModal';
 import '../styles/MyAccount.css';
 
-function MyAccount() {
-  const [userStats, setUserStats] = useState(null);
+function MyAccount() {  const [userStats, setUserStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  // Get user information from Redux store
-  const user = useSelector(state => state.user.user);
-
+  // We'll use userStats instead of Redux
   useEffect(() => {
     const loadUserStats = async () => {
       try {
         setIsLoading(true);
         const stats = await fetchUserStats();
         setUserStats(stats);
+        console.log('User statistics:', stats);
       } catch (err) {
         console.error('Error loading user statistics:', err);
         setError('Failed to load user statistics. Please try again later.');
@@ -64,26 +61,21 @@ function MyAccount() {
           </div>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
-
-        <div className="user-profile-card">
-          <div className="profile-header">
-            <div className="profile-avatar">
-              {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
+        {error && <div className="error-message">{error}</div>}        <div className="user-profile-card">
+          <div className="profile-header">              <div className="profile-avatar">
+              {userStats?.userName ? userStats.userName.split(' ').map(name => name.charAt(0)).join('') : ''}
             </div>
-            <div className="profile-info">
-              <h2>{user?.first_name} {user?.last_name}</h2>
-              <p className="user-email">{user?.email}</p>
-              <p className="user-details">Age: {user?.age}</p>
-              <p className="user-details">User ID: {user?.user_id}</p>
+            <div className="profile-info">              
+              <h2>{userStats?.userName}</h2>
+              <p className="user-email">{userStats?.userEmail}</p>
+              <p className="user-details">Age: {userStats?.userAge}</p>
+              <p className="user-details">User ID: {userStats?.userId}</p>
               <p className="user-role">
-                Role: {user?.permission === 2 ? 'Admin' : user?.permission === 1 ? 'Teacher' : 'Student'}
+                Role: {userStats?.userPermission === 2 ? 'Admin' : userStats?.userPermission === 1 ? 'Teacher' : 'Student'}
               </p>
             </div>
           </div>
-        </div>
-
-        <div className="stats-section">
+        </div><div className="stats-section">
           <h2>Your Activity Statistics</h2>
           
           {userStats && (
@@ -111,11 +103,21 @@ function MyAccount() {
                 <div className="stat-value">{userStats.quizzesCompleted || 0}</div>
                 <div className="stat-label">Quizzes Completed</div>
               </div>
+              
+              <div className="stat-card">
+                <div className="stat-icon">🎬</div>
+                <div className="stat-value">{userStats.userUploadedVideosCount || 0}</div>
+                <div className="stat-label">Uploaded Videos</div>
+              </div>
+              
+              <div className="stat-card">
+                <div className="stat-icon">📋</div>
+                <div className="stat-value">{userStats.userCreatedPlaylistsCount || 0}</div>
+                <div className="stat-label">Created Playlists</div>
+              </div>
             </div>
           )}
-        </div>
-
-        {userStats?.recentPlaylists && userStats.recentPlaylists.length > 0 && (
+        </div>        {userStats?.recentPlaylists && userStats.recentPlaylists.length > 0 && (
           <div className="recent-activity">
             <h2>Recent Playlists</h2>
             <div className="recent-playlists">
@@ -132,12 +134,29 @@ function MyAccount() {
           </div>
         )}
 
+        {userStats?.userCreatedPlaylists && userStats.userCreatedPlaylists.length > 0 && (
+          <div className="recent-activity">
+            <h2>Your Created Playlists</h2>
+            <div className="recent-playlists">
+              {userStats.userCreatedPlaylists.map(playlist => (
+                <div className="playlist-card" key={playlist.playlist_id}>
+                  <h3>{playlist.playlist_name}</h3>
+                  <p>{playlist.playlist_items.length} videos</p>
+                  <div className="playlist-stats">
+                    <span>{playlist.playlist_permission}</span>
+                    <span className="owner-badge">Owner</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {userStats?.recentVideos && userStats.recentVideos.length > 0 && (
           <div className="recent-activity">
             <h2>Recently Watched</h2>
             <div className="recent-videos">
-              {userStats.recentVideos.map(video => (
-                <div className="video-card" key={video.video_id}>
+              {userStats.recentVideos.map(video => (                <div className="video-card" key={video.video_id}>
                   <div className="video-thumbnail">
                     <img 
                       src={`https://img.youtube.com/vi/${video.external_id}/mqdefault.jpg`} 
@@ -152,14 +171,35 @@ function MyAccount() {
                         }}
                       ></div>
                     </div>
+                    {video.is_users_playlist && <div className="user-playlist-badge">Your Playlist</div>}
                   </div>
                   <div className="video-info">
                     <h3>{video.video_name}</h3>
                     <p>{video.subject}</p>
                     <p className="video-length">{video.length}</p>
+                    <p className="playlist-name">From: {video.playlist_name}</p>
                   </div>
                 </div>
-              ))}
+              ))}            </div>
+          </div>
+        )}
+
+        {userStats && (
+          <div className="recent-activity">
+            <h2>Activity Trends</h2>
+            <div className="trends-container">
+              <div className="trend-card">
+                <h3>Most Active Day</h3>
+                <p className="trend-value">{userStats.activityTrends?.mostActiveDay || 'No data yet'}</p>
+              </div>
+              <div className="trend-card">
+                <h3>Favorite Subject</h3>
+                <p className="trend-value">{userStats.activityTrends?.favoriteSubject || 'No data yet'}</p>
+              </div>
+              <div className="trend-card">
+                <h3>Learning Streak</h3>
+                <p className="trend-value">{userStats.activityTrends?.learningStreak || 0} days</p>
+              </div>
             </div>
           </div>
         )}
