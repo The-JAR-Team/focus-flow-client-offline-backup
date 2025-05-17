@@ -5,6 +5,28 @@
   padding: 20px;
 }
 
+.trivia-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.back-to-trivia {
+  color: #2196F3;
+  text-decoration: none;
+  font-size: 1rem;
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.3s;
+}
+
+.back-to-trivia:hover {
+  color: #0d47a1;
+  text-decoration: underline;
+}
+
 .control-panel {
   background-color: #f5f5f5;
   padding: 20px;
@@ -91,6 +113,25 @@
 
 .start-quiz-btn.loading {
   background: linear-gradient(45deg, #42a5f5, #1976d2);
+}
+
+.view-summary-btn {
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 8px;
+  background-color: #5c6bc0;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.view-summary-btn:hover {
+  background-color: #3f51b5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(92, 107, 192, 0.3);
 }
 
 .spinner {
