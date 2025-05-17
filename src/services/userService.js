@@ -43,20 +43,37 @@ export const fetchUserStats = async () => {
  */
 export const changePassword = async (currentPassword, newPassword) => {
   try {
-    // Note: This is a placeholder. The actual endpoint might be different.
     const response = await axios.post(
       `${config.baseURL}/change_password`,
       {
-        current_password: currentPassword,
+        old_password: currentPassword,
         new_password: newPassword
       },
       { withCredentials: true }
     );
     
-    return response.data;
+    // Consider any 2xx response as success, even without explicit success flag
+    // Return a normalized response object
+    return {
+      success: true,
+      message: response.data.message || 'Password changed successfully!'
+    };
   } catch (error) {
     console.error('Error changing password:', error);
-    throw new Error(error.response?.data?.message || 'Failed to change password');
+    
+    // Handle different types of errors
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      const message = error.response.data?.message || 'Invalid credentials or server error';
+      throw new Error(message);
+    } else if (error.request) {
+      // The request was made but no response was received
+      throw new Error('No response from server. Please check your connection.');
+    } else {
+      // Something happened in setting up the request
+      throw new Error(error.message || 'Failed to change password');
+    }
   }
 };
 
