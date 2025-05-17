@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Navbar from './Navbar';
 import '../styles/QuizMode.css';
 
@@ -43,14 +43,21 @@ function QuizMode({ video, questions, mode, language, onReset }) {  // Add onRes
               <h3>Your Score: {score}/{questions.length}</h3>
               <p>({((score/questions.length) * 100).toFixed(1)}%)</p>
             </div>
-            <div className="action-buttons">
-              <button onClick={() => {
+            <div className="action-buttons">              <button onClick={() => {
                 setCurrentQuestion(0);
                 setScore(0);
                 setSelectedAnswer(null);
                 setIsComplete(false);
               }}>Try Again</button>
               <button onClick={handleBackToSetup}>Back to Setup</button>
+              <Link 
+                to="/trivia" 
+                className="back-to-trivia-btn"
+                onClick={() => {
+                  // Store current video ID to scroll to it when returning to the list
+                  localStorage.setItem('lastViewedVideoId', video?.video_id);
+                }}
+              >Back to Trivia List</Link>
             </div>
           </div>
         </div>
@@ -63,10 +70,18 @@ function QuizMode({ video, questions, mode, language, onReset }) {  // Add onRes
     <>
       <div style={{ padding: '20px' }}>
         <Navbar />
-      </div>
-      <div className="quiz-active">
-        <div className="quiz-header">
-          <button className="back-btn" onClick={handleBackToSetup}>⬅️ Back</button>
+      </div>      <div className="quiz-active">
+        <div className="quiz-header">          <div className="navigation-buttons">
+            <button className="back-btn" onClick={handleBackToSetup}>⬅️ Back to Setup</button>
+            <Link 
+              to="/trivia" 
+              className="back-to-trivia-list"
+              onClick={() => {
+                // Store current video ID to scroll to it when returning to the list
+                localStorage.setItem('lastViewedVideoId', video?.video_id);
+              }}
+            >⬅️ Back to Trivia List</Link>
+          </div>
           <div className="quiz-info">
             <span>Question {currentQuestion + 1}/{questions.length}</span>
             <span>Score: {score}</span>

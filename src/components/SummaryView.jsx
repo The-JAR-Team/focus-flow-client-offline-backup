@@ -337,15 +337,29 @@ const SummaryView = () => {
   
   return (
     <>
-      <Navbar />
-      <div className="summary-container" dir={language === 'Hebrew' ? 'rtl' : 'ltr'}>
+      <Navbar />      <div className="summary-container" dir={language === 'Hebrew' ? 'rtl' : 'ltr'}>
         <div className="summary-header">
           <div className="header-left">
             <h2>Video Summary</h2>
-            <Link to={`/trivia/${videoId}`} className="back-to-trivia">
-              {language === 'Hebrew' ? 'חזרה לחידון ←' : '← Back to Quiz'}
-            </Link>
-          </div>        <div className="language-selector">
+            <div className="navigation-links">
+
+                            <Link 
+                to="/trivia" 
+                className="back-to-trivia-list"
+                onClick={() => {
+                  // Store current video ID to scroll to it when returning to the list
+                  localStorage.setItem('lastViewedVideoId', videoId);
+                }}
+              >
+                {language === 'Hebrew' ? 'חזרה לרשימת הסרטונים ←' : '← Back to Trivia List'}
+              </Link>
+              
+              <Link to={`/trivia/${videoId}`} className="back-to-trivia">
+                {language === 'Hebrew' ? 'חזרה לחידון ←' : '← Back to Quiz'}
+              </Link>
+
+            </div>
+          </div><div className="language-selector">
             <div className="language-buttons">
               <button 
                 className={`lang-btn ${language === 'English' ? 'active' : ''} ${summaryStatus.English === 'pending' ? 'pending' : ''}`}

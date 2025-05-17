@@ -231,13 +231,45 @@
   margin-bottom: 30px;
 }
 
+.navigation-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .back-btn {
   padding: 8px 16px;
-  font-size: 1.1em;
+  font-size: 0.9em;
   border: none;
   border-radius: 5px;
   background-color: #f0f0f0;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.3s;
+}
+
+.back-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.back-to-trivia-list {
+  padding: 8px 16px;
+  font-size: 0.9em;
+  border: none;
+  border-radius: 5px;
+
+  color: white;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.3s;
+}
+
+.back-to-trivia-list:hover {
+  background-color: #3f51b5;
 }
 
 .quiz-info {
@@ -302,9 +334,10 @@
   display: flex;
   justify-content: center;
   gap: 15px;
+  flex-wrap: wrap;
 }
 
-.action-buttons button {
+.action-buttons button, .back-to-trivia-btn {
   padding: 12px 24px;
   font-size: 1.1em;
   border: none;
@@ -318,7 +351,18 @@
   color: white;
 }
 
-.action-buttons button:last-child {
+.action-buttons button:nth-child(2) {
   background-color: #607D8B;
   color: white;
+}
+
+.back-to-trivia-btn {
+  background-color: #5c6bc0;
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.back-to-trivia-btn:hover {
+  background-color: #3f51b5;
 }

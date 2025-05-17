@@ -305,10 +305,20 @@ function TriviaVideoPage() {
 
     return (
       <div style={{ padding: '20px' }}>
-        <Navbar />
-        <div className="quiz-container">
-          <div className="language-selection">
-            <h2>Quiz for: {video?.video_name}</h2>
+        <Navbar />        <div className="quiz-container">
+          <div className="language-selection">            <div className="trivia-header">
+              <h2>Quiz for: {video?.video_name}</h2>
+              <Link 
+                to="/trivia" 
+                className="back-to-trivia"
+                onClick={() => {
+                  // Store current video ID to scroll to it when returning to the list
+                  localStorage.setItem('lastViewedVideoId', videoId);
+                }}
+              >
+                ← Back to Trivia List
+              </Link>
+            </div>
             
             <div className="control-panel">
               <div className="language-options">
