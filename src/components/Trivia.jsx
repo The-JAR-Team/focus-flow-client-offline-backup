@@ -25,10 +25,17 @@ function Trivia() {  const [videos, setVideos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [videoOwnership, setVideoOwnership] = useState(null);
   const [lastViewedVideoId, setLastViewedVideoId] = useState(null);  const [playlists, setPlaylists] = useState([]);
-  const [playlistSearchTerm, setPlaylistSearchTerm] = useState('');
-  const [filterPlaylist, setFilterPlaylist] = useState(() => {
-    // Load saved playlist filter from localStorage, default to 'all'
-    return localStorage.getItem('triviaFilterPlaylist') || 'all';
+  const [playlistSearchTerm, setPlaylistSearchTerm] = useState('');  const [filterPlaylist, setFilterPlaylist] = useState(() => {
+    // Load saved playlist filter from localStorage, default to empty array for multi-select
+    const savedPlaylists = localStorage.getItem('triviaFilterPlaylist');
+    if (savedPlaylists && savedPlaylists !== 'all') {
+      try {
+        return JSON.parse(savedPlaylists); // Try to parse as JSON array
+      } catch (e) {
+        return [savedPlaylists]; // If it's not JSON, treat as single string and convert to array
+      }
+    }
+    return [];
   });
   const [showPlaylistSuggestions, setShowPlaylistSuggestions] = useState(false);
   const [playlistSuggestions, setPlaylistSuggestions] = useState([]);
@@ -190,7 +197,6 @@ function Trivia() {  const [videos, setVideos] = useState([]);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
   // Handle keyboard navigation in playlist suggestions
   const handlePlaylistKeyDown = (e) => {
     if (!showPlaylistSuggestions) return;
@@ -212,10 +218,30 @@ function Trivia() {  const [videos, setVideos] = useState([]);
       e.preventDefault();
       const selectedPlaylist = playlistSuggestions[activeSuggestionIndex];
       if (selectedPlaylist) {
-        setFilterPlaylist(selectedPlaylist.playlist_name);
-        setPlaylistSearchTerm(selectedPlaylist.playlist_name);
+        // Save current scroll position
+        const scrollPosition = window.scrollY;
+        
+        // Only add if not already selected
+        if (!filterPlaylist.includes(selectedPlaylist.playlist_name)) {
+          const newPlaylists = [...filterPlaylist, selectedPlaylist.playlist_name];
+          setFilterPlaylist(newPlaylists);
+          localStorage.setItem('triviaFilterPlaylist', JSON.stringify(newPlaylists));
+        }
+        
+        // Clear search term after selection
+        setPlaylistSearchTerm('');
         setShowPlaylistSuggestions(false);
-        localStorage.setItem('triviaFilterPlaylist', selectedPlaylist.playlist_name);
+        
+        // Reset lastViewedVideoId to prevent scrolling
+        setLastViewedVideoId(null);
+        
+        // Restore scroll position
+        setTimeout(() => {
+          window.scrollTo({
+            top: scrollPosition,
+            behavior: 'auto'
+          });
+        }, 0);
       }
     }
     // Escape key
@@ -224,18 +250,28 @@ function Trivia() {  const [videos, setVideos] = useState([]);
       setShowPlaylistSuggestions(false);
     }
   };
-
   const handleClearFilters = () => {
+    // Save current scroll position
+    const scrollPosition = window.scrollY;
+    
     setSearchTerm('');
     setFilterOwner('all');
     setFilterSubject('all');
-    setFilterPlaylist('all');
+    setFilterPlaylist([]);
     setPlaylistSearchTerm('');
     setLastViewedVideoId(null); // Clear the last viewed video ID to prevent scrolling
     localStorage.setItem('triviaFilterOwner', 'all');
     localStorage.setItem('triviaFilterSubject', 'all');
-    localStorage.setItem('triviaFilterPlaylist', 'all');
+    localStorage.setItem('triviaFilterPlaylist', JSON.stringify([]));
     localStorage.removeItem('lastViewedVideoId'); // Also remove from localStorage to be thorough
+    
+    // Restore scroll position
+    setTimeout(() => {
+      window.scrollTo({
+        top: scrollPosition,
+        behavior: 'auto'
+      });
+    }, 0);
   };
 
   const handleVideoSelect = (video) => {
@@ -316,63 +352,29 @@ function Trivia() {  const [videos, setVideos] = useState([]);
               Clear Filters
             </button>
           )}
-          
-          {/* Playlist filter moved below other filters */}
+            {/* Playlist filter moved below other filters */}
           <div className="playlist-search-container">
             <input
               type="text"
-              placeholder="Search by Playlists"
+              placeholder="Search and add playlists..."
               value={playlistSearchTerm}
               onChange={(e) => {
                 setPlaylistSearchTerm(e.target.value);
                 setActiveSuggestionIndex(-1);
                 setShowPlaylistSuggestions(true);
                 
-                // If clearing the field, also reset the filter
-                if (e.target.value === '') {
-                  setFilterPlaylist('all');
-                  localStorage.setItem('triviaFilterPlaylist', 'all');
-                }
+                // Reset lastViewedVideoId to prevent scrolling
+                setLastViewedVideoId(null);
+                
+                // If clearing the field, we don't reset selected playlists anymore
+                // as the user might want to add multiple playlists
               }}
               onFocus={() => setShowPlaylistSuggestions(true)}
               onKeyDown={handlePlaylistKeyDown}
-              className={`search-input playlist-search ${filterPlaylist !== 'all' ? 'active-filter' : ''}`}
+              className={`search-input playlist-search ${filterPlaylist.length > 0 ? 'active-filter' : ''}`}
               ref={playlistInputRef}
-            />            {filterPlaylist !== 'all' && (
-              <span 
-                className="playlist-filter-indicator" 
-                title="Clear playlist filter"
-                onClick={(e) => {
-                  e.preventDefault(); // Prevent default behavior
-                  e.stopPropagation(); // Prevent event propagation
-                  
-                  // Save current scroll position
-                  const scrollPosition = window.scrollY;
-                  
-                  // Reset the filter but keep lastViewedVideoId null
-                  setFilterPlaylist('all');
-                  setPlaylistSearchTerm('');
-                  localStorage.setItem('triviaFilterPlaylist', 'all');
-                  
-                  // Explicitly set lastViewedVideoId to null to prevent scrolling
-                  setLastViewedVideoId(null);
-                  
-                  // Close suggestions dropdown if open
-                  setShowPlaylistSuggestions(false);
-                  
-                  // Restore scroll position after a short delay to ensure the state updates happen first
-                  setTimeout(() => {
-                    window.scrollTo({
-                      top: scrollPosition,
-                      behavior: 'auto' // Use 'auto' instead of 'smooth' to avoid visible scrolling
-                    });
-                  }, 0);
-                }}
-              >
-                ❌
-              </span>
-            )}
-            {playlistSearchTerm && filterPlaylist === 'all' && (
+            />
+            {playlistSearchTerm && (
               <span 
                 className="playlist-filter-indicator" 
                 title="Search playlists"
@@ -380,21 +382,109 @@ function Trivia() {  const [videos, setVideos] = useState([]);
                 🔍
               </span>
             )}
-              {showPlaylistSuggestions && (
+            
+            {/* Display selected playlists as tags */}
+            <div className="selected-playlists-container">
+              {filterPlaylist.map((playlist, index) => (
+                <div key={index} className="playlist-tag">
+                  {playlist}
+                  <span 
+                    className="playlist-tag-remove" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      // Save current scroll position
+                      const scrollPosition = window.scrollY;
+                      
+                      // Remove the playlist from selected playlists
+                      const newPlaylists = filterPlaylist.filter((_, i) => i !== index);
+                      setFilterPlaylist(newPlaylists);
+                      localStorage.setItem('triviaFilterPlaylist', JSON.stringify(newPlaylists));
+                      
+                      // Explicitly set lastViewedVideoId to null to prevent scrolling
+                      setLastViewedVideoId(null);
+                      
+                      // Restore scroll position
+                      setTimeout(() => {
+                        window.scrollTo({
+                          top: scrollPosition,
+                          behavior: 'auto'
+                        });
+                      }, 0);
+                    }}
+                  >
+                    ✕
+                  </span>
+                </div>
+              ))}
+              {filterPlaylist.length > 0 && (
+                <div 
+                  className="clear-all-playlists"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Save current scroll position
+                    const scrollPosition = window.scrollY;
+                    
+                    // Clear all selected playlists
+                    setFilterPlaylist([]);
+                    localStorage.setItem('triviaFilterPlaylist', JSON.stringify([]));
+                    
+                    // Explicitly set lastViewedVideoId to null to prevent scrolling
+                    setLastViewedVideoId(null);
+                    
+                    // Restore scroll position
+                    setTimeout(() => {
+                      window.scrollTo({
+                        top: scrollPosition,
+                        behavior: 'auto'
+                      });
+                    }, 0);
+                  }}
+                >
+                  Clear All
+                </div>
+              )}
+            </div>
+              
+            {showPlaylistSuggestions && (
               <div className="playlist-suggestions" ref={suggestionsRef}>
                 {playlistSuggestions.length > 0 ? (
                   playlistSuggestions.map((playlist, index) => (
                     <div 
                       key={playlist.playlist_id} 
-                      className={`playlist-suggestion-item ${index === activeSuggestionIndex ? 'active' : ''}`}
+                      className={`playlist-suggestion-item ${index === activeSuggestionIndex ? 'active' : ''} ${filterPlaylist.includes(playlist.playlist_name) ? 'already-selected' : ''}`}
                       onClick={() => {
-                        setFilterPlaylist(playlist.playlist_name);
-                        setPlaylistSearchTerm(playlist.playlist_name);
+                        // Save current scroll position
+                        const scrollPosition = window.scrollY;
+                        
+                        // Only add if not already selected
+                        if (!filterPlaylist.includes(playlist.playlist_name)) {
+                          const newPlaylists = [...filterPlaylist, playlist.playlist_name];
+                          setFilterPlaylist(newPlaylists);
+                          localStorage.setItem('triviaFilterPlaylist', JSON.stringify(newPlaylists));
+                        }
+                        
+                        // Clear search term after selection
+                        setPlaylistSearchTerm('');
                         setShowPlaylistSuggestions(false);
-                        localStorage.setItem('triviaFilterPlaylist', playlist.playlist_name);
+                        
+                        // Explicitly set lastViewedVideoId to null to prevent scrolling
+                        setLastViewedVideoId(null);
+                        
+                        // Restore scroll position
+                        setTimeout(() => {
+                          window.scrollTo({
+                            top: scrollPosition,
+                            behavior: 'auto'
+                          });
+                        }, 0);
                       }}
                     >
                       {playlist.playlist_name}
+                      {filterPlaylist.includes(playlist.playlist_name) && <span className="already-added">✓</span>}
                     </div>
                   ))
                 ) : (
@@ -405,9 +495,8 @@ function Trivia() {  const [videos, setVideos] = useState([]);
               </div>
             )}
           </div>
-          
-          {/* Only show the Clear Filters button when some filter is active */}
-          {(searchTerm || filterOwner !== 'all' || filterSubject !== 'all' || filterPlaylist !== 'all') && (
+            {/* Only show the Clear Filters button when some filter is active */}
+          {(searchTerm || filterOwner !== 'all' || filterSubject !== 'all' || filterPlaylist.length > 0) && (
             <button 
               className="clear-filters-btn"
               onClick={handleClearFilters}

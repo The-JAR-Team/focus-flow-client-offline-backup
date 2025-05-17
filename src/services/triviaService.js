@@ -174,32 +174,67 @@ export const filterVideos = (videos, { searchTerm, filterOwner, filterSubject, f
       return filterOwner === 'me' ? isOwned : !isOwned;
     });
   }
-
   // Apply playlist filter
-  if (filterPlaylist !== 'all' && playlists && playlists.length > 0) {
-    console.log('Filtering by playlist:', filterPlaylist);
-    console.log('Available playlists for filtering:', playlists.map(p => p.playlist_name));
-    
-    const selectedPlaylist = playlists.find(playlist => playlist.playlist_name === filterPlaylist);
-    console.log('Selected playlist:', selectedPlaylist);
-    
-    if (selectedPlaylist && Array.isArray(selectedPlaylist.videos) && selectedPlaylist.videos.length > 0) {
-      // Extract video IDs from the playlist items
-      const playlistVideoIds = selectedPlaylist.videos.map(video => 
-        video.video_id || video.external_id
-      );
+  if (filterPlaylist && playlists && playlists.length > 0) {
+    // Check if filterPlaylist is an array and not empty
+    if (Array.isArray(filterPlaylist) && filterPlaylist.length > 0) {
+      console.log('Filtering by multiple playlists:', filterPlaylist);
       
-      console.log('Playlist video IDs:', playlistVideoIds);
+      // Create a set of all video IDs from the selected playlists
+      const playlistVideoIds = new Set();
       
-      filtered = filtered.filter(video => {
-        const matchesVideoId = playlistVideoIds.includes(video.video_id);
-        const matchesExternalId = playlistVideoIds.includes(video.external_id);
-        return matchesVideoId || matchesExternalId;
+      // Process each selected playlist
+      filterPlaylist.forEach(playlistName => {
+        const playlist = playlists.find(p => p.playlist_name === playlistName);
+        if (playlist && Array.isArray(playlist.videos) && playlist.videos.length > 0) {
+          // Add all video IDs from this playlist to our set
+          playlist.videos.forEach(video => {
+            if (video.video_id) playlistVideoIds.add(video.video_id);
+            if (video.external_id) playlistVideoIds.add(video.external_id);
+          });
+        }
       });
       
-      console.log('Filtered videos count after playlist filter:', filtered.length);
-    } else {
-      console.warn('Selected playlist is invalid or empty:', selectedPlaylist);
+      console.log('Combined playlist video IDs:', Array.from(playlistVideoIds));
+      
+      // Filter videos that match any of the selected playlists
+      if (playlistVideoIds.size > 0) {
+        filtered = filtered.filter(video => 
+          playlistVideoIds.has(video.video_id) || playlistVideoIds.has(video.external_id)
+        );
+        
+        console.log('Filtered videos count after multi-playlist filter:', filtered.length);
+      }
+    } 
+    // Handle legacy 'all' filterPlaylist value
+    else if (filterPlaylist === 'all') {
+      // Don't filter - include all videos
+    }
+    // Handle single playlist as string (for backward compatibility)
+    else if (typeof filterPlaylist === 'string' && filterPlaylist !== 'all') {
+      console.log('Filtering by single playlist:', filterPlaylist);
+      
+      const selectedPlaylist = playlists.find(playlist => playlist.playlist_name === filterPlaylist);
+      console.log('Selected playlist:', selectedPlaylist);
+      
+      if (selectedPlaylist && Array.isArray(selectedPlaylist.videos) && selectedPlaylist.videos.length > 0) {
+        // Extract video IDs from the playlist items
+        const playlistVideoIds = selectedPlaylist.videos.map(video => 
+          video.video_id || video.external_id
+        );
+        
+        console.log('Playlist video IDs:', playlistVideoIds);
+        
+        filtered = filtered.filter(video => {
+          const matchesVideoId = playlistVideoIds.includes(video.video_id);
+          const matchesExternalId = playlistVideoIds.includes(video.external_id);
+          return matchesVideoId || matchesExternalId;
+        });
+        
+        console.log('Filtered videos count after playlist filter:', filtered.length);
+      } else {
+        console.warn('Selected playlist is invalid or empty:', selectedPlaylist);
+      }
     }
   }
 
