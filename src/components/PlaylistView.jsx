@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Navbar from './Navbar';
-import VideoPlayer from './VideoPlayer';
 import { getSubscriberCount } from '../services/subscriptionService';
 import SubscribeModal from './SubscribeModal';
 import UnsubscribeModal from './UnsubscribeModal'; // added import
@@ -17,7 +16,6 @@ function PlaylistView() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { playlistId } = useParams();
-  const [selectedVideo, setSelectedVideo] = React.useState(null);
   const [mode, setMode] = React.useState(() => localStorage.getItem('mode') || 'pause');
   const [subscriberCount, setSubscriberCount] = React.useState(null); // null indicates not fetched or not authorized
   const [showSubscribeModal, setShowSubscribeModal] = React.useState(false);
@@ -28,8 +26,8 @@ function PlaylistView() {
   const isOwner = playlist?.playlist_owner_id === currentUser?.user_id;
   const [isEditingName, setIsEditingName] = React.useState(false);
   const [isEditingPermission, setIsEditingPermission] = React.useState(false);
-  const [editedName, setEditedName] = React.useState(playlist.playlist_name);
-  const [editedPermission, setEditedPermission] = React.useState(playlist.playlist_permission);
+  const [editedName, setEditedName] = React.useState(playlist?.playlist_name || '');
+  const [editedPermission, setEditedPermission] = React.useState(playlist?.playlist_permission || 'private');
 
   const { myPlaylists } = useSelector((state) => state.dashboard);
 
@@ -41,6 +39,8 @@ function PlaylistView() {
   React.useEffect(() => {
     if (playlist) {
       setSelectedPlaylist(playlist);
+      setEditedName(playlist.playlist_name);
+      setEditedPermission(playlist.playlist_permission);
     }
   }, [playlist]);
 
@@ -53,7 +53,7 @@ function PlaylistView() {
         .then(count => setSubscriberCount(count))
         .catch(error => {
           console.error(error);
-          console.log('Not authorized to view subscrwe got the errrrrrrrrrrrrrrrrrrrrrunt');
+          console.log('Not authorized to view subscriber count');
           setSubscriberCount(null);
         });
     }
@@ -263,63 +263,47 @@ function PlaylistView() {
             </>
           )}
         </div>
-        {!selectedVideo ? (
-          <div className="content-grid-playlist">
-            {playlist.playlist_items.map(video => (
-              <div 
-                className="video-card" 
-                key={video.video_id || video.external_id}
-                onClick={() => setSelectedVideo(video)}
-              >
-                <h4>{video.video_name}</h4>                <div className="thumbnail-container">
-                  <img 
-                    src={`https://img.youtube.com/vi/${video.external_id}/hqdefault.jpg`} 
-                    alt={video.subject}
-                  />
-                  <div 
-                    className="summary-link"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/trivia/${video.video_id}/summary`);
-                    }}
-                  >
-                    <span className="summary-icon">📝</span>
-                    <span className="summary-text">View Summary</span>
-                  </div>
+        <div className="content-grid-playlist">
+          {playlist.playlist_items.map(video => (
+            <div 
+              className="video-card" 
+              key={video.video_id || video.external_id}
+              onClick={() => navigate(`/playlist/${playlistId}/video/${video.external_id}`)}
+            >
+              <h4>{video.video_name}</h4>
+              <div className="thumbnail-container">
+                <img 
+                  src={`https://img.youtube.com/vi/${video.external_id}/hqdefault.jpg`} 
+                  alt={video.subject}
+                />
+                <div 
+                  className="summary-link"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/trivia/${video.video_id}/summary`);
+                  }}
+                >
+                  <span className="summary-icon">📝</span>
+                  <span className="summary-text">View Summary</span>
                 </div>
-                <div className="video-info">
-                  <h5>Subject: {video.subject}</h5>
-                  <small>Length: {video.length}</small>
-                </div>
-                {/* Delete button for playlist owner */}
-                {isOwner && (
-                  <div className="video-delete-button" onClick={(e) => {
-                      e.stopPropagation(); // Prevent opening the video
-                      handleDeleteVideo(video);
-                    }}
-                  >
-                    🗑️
-                  </div>
-                )}
               </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            <button className="back-button" onClick={() => setSelectedVideo(null)}>
-              ← Back to Playlist
-            </button>
-            <VideoPlayer 
-              mode={mode}
-              lectureInfo={{
-                videoId: selectedVideo.external_id,
-                subject: selectedVideo.subject,
-                videoDuration: selectedVideo.length,
-              }}
-              userInfo={{ name: 'Test User', profile: 'default' }}
-            />
-          </>
-        )}
+              <div className="video-info">
+                <h5>Subject: {video.subject}</h5>
+                <small>Length: {video.length}</small>
+              </div>
+              {/* Delete button for playlist owner */}
+              {isOwner && (
+                <div className="video-delete-button" onClick={(e) => {
+                    e.stopPropagation(); // Prevent opening the video
+                    handleDeleteVideo(video);
+                  }}
+                >
+                  🗑️
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
         {showSubscribeModal && (
           <SubscribeModal 
             playlistId={playlist.playlist_id}
