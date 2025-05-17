@@ -65,13 +65,18 @@ function MyAccount() {  const [userStats, setUserStats] = useState(null);
           <div className="profile-header">              <div className="profile-avatar">
               {userStats?.userName ? userStats.userName.split(' ').map(name => name.charAt(0)).join('') : ''}
             </div>
-            <div className="profile-info">              
-              <h2>{userStats?.userName}</h2>
+            <div className="profile-info">              <h2>{userStats?.userName}</h2>
               <p className="user-email">{userStats?.userEmail}</p>
               <p className="user-details">Age: {userStats?.userAge}</p>
               <p className="user-details">User ID: {userStats?.userId}</p>
-              <p className="user-role">
-                Role: {userStats?.userPermission === 2 ? 'Admin' : userStats?.userPermission === 1 ? 'Teacher' : 'Student'}
+              <p className={`user-role ${
+                userStats?.userPermission === 2 ? 'role-admin' : 
+                userStats?.userPermission === 1 ? 'role-student' : 
+                'role-guest'
+              }`}>
+                {userStats?.userPermission === 2 ? 'Admin' : 
+                 userStats?.userPermission === 1 ? 'Student' : 
+                 'Guest'}
               </p>
             </div>
           </div>

@@ -87,11 +87,28 @@
 .user-role {
   display: inline-block;
   padding: 5px 10px;
-  background-color: #e0f3ff;
-  color: #1a73e8;
   border-radius: 4px;
   font-size: 0.9rem;
   margin-top: 10px;
+  font-weight: 500;
+}
+
+.role-admin {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.role-student {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+}
+
+.role-guest {
+  background-color: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffe0b2;
 }
 
 .stats-section {
