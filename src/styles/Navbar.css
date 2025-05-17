@@ -31,6 +31,12 @@
   gap: 20px;
 }
 
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 .navbar-brand {
   color: #fff;
   text-decoration: none;
@@ -58,6 +64,15 @@
   transform: translateY(-1px);
 }
 
+.account-button {
+  background: rgba(74, 158, 255, 0.2);
+  border: 1px solid rgba(74, 158, 255, 0.4);
+}
+
+.account-button:hover {
+  background: rgba(74, 158, 255, 0.3);
+}
+
 .logout-button {
   padding: 8px 16px;
   background: #ff4757;
@@ -73,6 +88,12 @@
   transform: translateY(-1px);
 }
 
+@media (max-width: 768px) {
+  .navbar-right {
+    gap: 10px;
+  }
+}
+
 @media (max-width: 500px) {
   .navbar {
     flex-direction: column;
@@ -82,6 +103,11 @@
 
   .navbar button {
     width: 100%;
+  }
+  
+  .navbar-right {
+    width: 100%;
+    flex-direction: column;
   }
 }
 
