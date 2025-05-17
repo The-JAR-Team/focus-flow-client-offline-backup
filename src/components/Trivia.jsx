@@ -112,11 +112,17 @@ function Trivia() {  const [videos, setVideos] = useState([]);
           // Clear it from localStorage after retrieving it
           localStorage.removeItem('lastViewedVideoId');
         }
-        
-        // If we have a saved playlist filter, update the search term
+          // If we have a saved playlist filter, we don't want to set it as the search term anymore
+        // We'll just display the selected playlists in the tags area
         const savedPlaylistFilter = localStorage.getItem('triviaFilterPlaylist');
         if (savedPlaylistFilter && savedPlaylistFilter !== 'all') {
-          setPlaylistSearchTerm(savedPlaylistFilter);
+          try {
+            // We're parsing but not setting it to playlistSearchTerm anymore
+            JSON.parse(savedPlaylistFilter);
+          } catch (e) {
+            // For backward compatibility
+            console.log('Could not parse playlist filter as JSON:', e);
+          }
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -351,74 +357,74 @@ function Trivia() {  const [videos, setVideos] = useState([]);
             >
               Clear Filters
             </button>
-          )}
-            {/* Playlist filter moved below other filters */}
+          )}          {/* Playlist filter moved below other filters */}
           <div className="playlist-search-container">
-            <input
-              type="text"
-              placeholder="Search and add playlists..."
-              value={playlistSearchTerm}
-              onChange={(e) => {
-                setPlaylistSearchTerm(e.target.value);
-                setActiveSuggestionIndex(-1);
-                setShowPlaylistSuggestions(true);
-                
-                // Reset lastViewedVideoId to prevent scrolling
-                setLastViewedVideoId(null);
-                
-                // If clearing the field, we don't reset selected playlists anymore
-                // as the user might want to add multiple playlists
-              }}
-              onFocus={() => setShowPlaylistSuggestions(true)}
-              onKeyDown={handlePlaylistKeyDown}
-              className={`search-input playlist-search ${filterPlaylist.length > 0 ? 'active-filter' : ''}`}
-              ref={playlistInputRef}
-            />
-            {playlistSearchTerm && (
-              <span 
-                className="playlist-filter-indicator" 
-                title="Search playlists"
-              >
-                🔍
-              </span>
-            )}
+            <div className="playlist-search-input-wrapper">              <input
+                type="text"
+                placeholder="Search and add playlists..."
+                value={playlistSearchTerm || ''}
+                onChange={(e) => {
+                  setPlaylistSearchTerm(e.target.value);
+                  setActiveSuggestionIndex(-1);
+                  setShowPlaylistSuggestions(true);
+                  
+                  // Reset lastViewedVideoId to prevent scrolling
+                  setLastViewedVideoId(null);
+                  
+                  // If clearing the field, we don't reset selected playlists anymore
+                  // as the user might want to add multiple playlists
+                }}
+                onFocus={() => setShowPlaylistSuggestions(true)}
+                onKeyDown={handlePlaylistKeyDown}
+                className={`search-input playlist-search ${filterPlaylist.length > 0 ? 'active-filter' : ''}`}
+                ref={playlistInputRef}
+              />
+              {playlistSearchTerm && (
+                <span 
+                  className="playlist-filter-indicator" 
+                  title="Search playlists"
+                >
+                  🔍
+                </span>
+              )}
+            </div>
             
             {/* Display selected playlists as tags */}
-            <div className="selected-playlists-container">
-              {filterPlaylist.map((playlist, index) => (
-                <div key={index} className="playlist-tag">
-                  {playlist}
-                  <span 
-                    className="playlist-tag-remove" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      
-                      // Save current scroll position
-                      const scrollPosition = window.scrollY;
-                      
-                      // Remove the playlist from selected playlists
-                      const newPlaylists = filterPlaylist.filter((_, i) => i !== index);
-                      setFilterPlaylist(newPlaylists);
-                      localStorage.setItem('triviaFilterPlaylist', JSON.stringify(newPlaylists));
-                      
-                      // Explicitly set lastViewedVideoId to null to prevent scrolling
-                      setLastViewedVideoId(null);
-                      
-                      // Restore scroll position
-                      setTimeout(() => {
-                        window.scrollTo({
-                          top: scrollPosition,
-                          behavior: 'auto'
-                        });
-                      }, 0);
-                    }}
-                  >
-                    ✕
-                  </span>
-                </div>
-              ))}
-              {filterPlaylist.length > 0 && (
+            {filterPlaylist.length > 0 && (
+              <div className="selected-playlists-container">
+                {filterPlaylist.map((playlist, index) => (
+                  <div key={index} className="playlist-tag">
+                    {playlist}
+                    <span 
+                      className="playlist-tag-remove" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Save current scroll position
+                        const scrollPosition = window.scrollY;
+                        
+                        // Remove the playlist from selected playlists
+                        const newPlaylists = filterPlaylist.filter((_, i) => i !== index);
+                        setFilterPlaylist(newPlaylists);
+                        localStorage.setItem('triviaFilterPlaylist', JSON.stringify(newPlaylists));
+                        
+                        // Explicitly set lastViewedVideoId to null to prevent scrolling
+                        setLastViewedVideoId(null);
+                        
+                        // Restore scroll position
+                        setTimeout(() => {
+                          window.scrollTo({
+                            top: scrollPosition,
+                            behavior: 'auto'
+                          });
+                        }, 0);
+                      }}
+                    >
+                      ✕
+                    </span>
+                  </div>
+                ))}
                 <div 
                   className="clear-all-playlists"
                   onClick={(e) => {
@@ -446,8 +452,8 @@ function Trivia() {  const [videos, setVideos] = useState([]);
                 >
                   Clear All
                 </div>
-              )}
-            </div>
+              </div>
+            )}
               
             {showPlaylistSuggestions && (
               <div className="playlist-suggestions" ref={suggestionsRef}>
@@ -483,7 +489,7 @@ function Trivia() {  const [videos, setVideos] = useState([]);
                         }, 0);
                       }}
                     >
-                      {playlist.playlist_name}
+                      <span>{playlist.playlist_name}</span>
                       {filterPlaylist.includes(playlist.playlist_name) && <span className="already-added">✓</span>}
                     </div>
                   ))
