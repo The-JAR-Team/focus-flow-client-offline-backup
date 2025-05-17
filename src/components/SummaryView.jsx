@@ -217,7 +217,9 @@ const SummaryView = () => {
   };  if (loading) {
     return (
       <>
-        <Navbar />
+        <div style={{ padding: '20px' }}>
+          <Navbar />
+        </div>
         <div className="summary-container">
           <Spinner />
           <p className="loading-text">
@@ -263,11 +265,12 @@ const SummaryView = () => {
         </div>
       </>
     );
-  }
-  if (error) {
+  }  if (error) {
     return (
       <>
-        <Navbar />
+        <div style={{ padding: '20px' }}>
+          <Navbar />
+        </div>
         <div className="summary-container error">
           <h2>Error Loading Summary</h2>
           <p>{error}</p>
@@ -280,17 +283,17 @@ const SummaryView = () => {
         </div>
       </>
     );
-  }
-  if (!summary || !summary.summary || !summary.summary.Subject) {
+  }  if (!summary || !summary.summary || !summary.summary.Subject) {
     return (
       <>
-        <Navbar />
+        <div style={{ padding: '20px' }}>
+          <Navbar />
+        </div>
         <div className="summary-container error">
           <h2>No Summary Available</h2>
           <p>There is no summary available for this video in {language}.</p>
           
-          <div className="language-loading-status">
-            {summaryStatus.English === 'pending' && (
+          <div className="language-loading-status">{summaryStatus.English === 'pending' && (
               <p>
                 <strong>English summary is being generated.</strong> 
                 Check #{checkCount.English} - This may take a few minutes.
@@ -334,10 +337,12 @@ const SummaryView = () => {
       </>
     );
   }
-  
-  return (
+    return (
     <>
-      <Navbar />      <div className="summary-container" dir={language === 'Hebrew' ? 'rtl' : 'ltr'}>
+      <div style={{ padding: '20px' }}>
+        <Navbar />
+      </div>
+      <div className="summary-container" dir={language === 'Hebrew' ? 'rtl' : 'ltr'}>
         <div className="summary-header">
           <div className="header-left">
             <h2>Video Summary</h2>

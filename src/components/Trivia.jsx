@@ -362,7 +362,7 @@ function Trivia() {  const [videos, setVideos] = useState([]);
             <div className="playlist-search-input-wrapper">              <input
                 type="text"
                 placeholder="Search and add playlists..."
-                value={playlistSearchTerm || ''}
+                value={typeof playlistSearchTerm === 'string' ? playlistSearchTerm : ''}
                 onChange={(e) => {
                   setPlaylistSearchTerm(e.target.value);
                   setActiveSuggestionIndex(-1);

@@ -61,10 +61,11 @@ function VideoPlayerPage() {
       </div>
     );
   }
-
   return (
     <div className="video-player-page">
-      <Navbar />
+      <div style={{ padding: '20px' }}>
+        <Navbar />
+      </div>
       <div className="video-player-content">
         <button className="back-button" onClick={() => navigate(`/playlist/${playlistId}`)}>
           ← Back to Playlist
