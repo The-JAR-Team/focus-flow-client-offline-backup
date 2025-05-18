@@ -20,10 +20,12 @@ function Dashboard() {
   const [eyeDebuggerOn, setEyeDebuggerOn] = useState(false);
   const [videos, setVideos] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('All');
-  const [selectedVideo, setSelectedVideo] = useState(null);  const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
+  const [selectedVideo, setSelectedVideo] = useState(null);  
+  const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
   const [error, setError] = useState(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(false);const [expandedSections, setExpandedSections] = useState({
+  const [forceUpdate, setForceUpdate] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({
     favorites: true,
     myPlaylists: true,
     publicPlaylists: true,
@@ -36,16 +38,22 @@ function Dashboard() {
       ...prev,
       [section]: !prev[section]
     }));
-  };  // Get data from Redux store instead of local state
+  };
+
   const { currentUser } = useSelector(state => state.user);
+  const dashboardState = useSelector(state => state.dashboard);
+  console.log('[Dashboard.jsx] dashboardState from useSelector:', dashboardState);
+
   const {
-    myGenericVideos,
-    otherGenericVideos,
-    myPlaylists,
-    otherPlaylists,
+    myGenericVideos = [], 
+    otherGenericVideos = [], 
+    myPlaylists = [], 
+    otherPlaylists = [], 
     isLoaded
-  } = useSelector(state => state.dashboard);
+  } = dashboardState || {}; // Ensure dashboardState itself is not undefined before destructuring
+
   useEffect(() => {
+    console.log('[Dashboard.jsx] myGenericVideos after destructuring:', myGenericVideos);
     setTimeout(() => setEyeDebuggerOn(false), 5000);
   }, []);
 
@@ -69,7 +77,9 @@ function Dashboard() {
 
   const handleVideoSelect = (video) => {
     setSelectedVideo(video);
-  };  const refreshDashboard = async (e) => {
+  };
+
+  const refreshDashboard = async (e) => {
     try {
       // Force refresh of favorites data
       const groupService = await import('../services/groupService');
@@ -78,7 +88,9 @@ function Dashboard() {
       }
 
       // Fetch dashboard data
+      console.log('[Dashboard.jsx] Calling initializeDashboardData');
       const dashboardData = await initializeDashboardData(currentUser);
+      console.log('[Dashboard.jsx] Data from initializeDashboardData:', dashboardData);
 
       dispatch(setDashboardData({
         myGenericVideos: dashboardData.myGenericVideos,
@@ -86,6 +98,7 @@ function Dashboard() {
         myPlaylists: dashboardData.myPlaylists,
         otherPlaylists: dashboardData.otherPlaylists
       }));
+      console.log('[Dashboard.jsx] Dispatched setDashboardData');
     } catch (error) {
       console.error("Error refreshing dashboard:", error);
     }
@@ -147,7 +160,8 @@ function Dashboard() {
                 >
                   Question Mode
                 </button>
-              </div>            </div>
+              </div>            
+            </div>
             
             {/* Favorites Section */}
             <FavoritesList 
@@ -161,8 +175,11 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('myPlaylists')} className="collapsible-header">
                   My Playlists
                   <span className={`arrow ${expandedSections.myPlaylists ? 'expanded' : ''}`}>▼</span>
-                </h2>              </div>              <div className={`collapsible-content ${expandedSections.myPlaylists ? 'expanded' : ''}`}>
-                <div className="content-grid my-playlists-grid">                  {myPlaylists.map(playlist => (
+                </h2>              
+              </div>              
+              <div className={`collapsible-content ${expandedSections.myPlaylists ? 'expanded' : ''}`}>
+                <div className="content-grid my-playlists-grid">                  
+                  {myPlaylists.map(playlist => (
                     <div 
                       className="playlist-card" 
                       key={playlist.playlist_id}
@@ -190,8 +207,11 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('publicPlaylists')} className="collapsible-header">
                   Public Playlists
                   <span className={`arrow ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>▼</span>
-                </h2>              </div>              <div className={`collapsible-content ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>
-                <div className="content-grid public-playlists-grid">                  {otherPlaylists.map(playlist => (
+                </h2>              
+              </div>              
+              <div className={`collapsible-content ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>
+                <div className="content-grid public-playlists-grid">                  
+                  {otherPlaylists.map(playlist => (
                     <div 
                       className="playlist-card" 
                       key={playlist.playlist_id}
@@ -220,7 +240,8 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('myVideos')} className="collapsible-header">
                   My Videos
                   <span className={`arrow ${expandedSections.myVideos ? 'expanded' : ''}`}>▼</span>
-                </h2>              </div>
+                </h2>              
+              </div>
               <div className={`collapsible-content ${expandedSections.myVideos ? 'expanded' : ''}`}>
                 <div className="content-grid my-videos-grid">
                   {myGenericVideos.map(video => (
@@ -243,7 +264,8 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('publicVideos')} className="collapsible-header">
                   Public Videos
                   <span className={`arrow ${expandedSections.publicVideos ? 'expanded' : ''}`}>▼</span>
-                </h2>              </div>
+                </h2>              
+              </div>
               <div className={`collapsible-content ${expandedSections.publicVideos ? 'expanded' : ''}`}>
                 <div className="content-grid public-videos-grid">
                   {otherGenericVideos.map(video => (

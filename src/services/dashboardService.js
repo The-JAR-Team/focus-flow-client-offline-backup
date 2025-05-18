@@ -1,57 +1,96 @@
 import { fetchVideoMetadata } from './videos';
 
 export const initializeDashboardData = async (userData) => {
-  const data = await fetchVideoMetadata();
-  
-  if (!data?.playlists) {
-    throw new Error('No playlists data available');
+  console.log('[dashboardService] Initializing dashboard data with userData:', userData);
+  try {
+    const data = await fetchVideoMetadata();
+    console.log('[dashboardService] Data from fetchVideoMetadata:', data);
+
+    if (!data || !data.playlists) { // Added check for data itself being falsy
+      console.error('[dashboardService] No playlists data available from fetchVideoMetadata.');
+      // Return a default empty structure to prevent undefined issues downstream
+      return {
+        myGenericVideos: [],
+        otherGenericVideos: [],
+        myPlaylists: [],
+        otherPlaylists: [],
+      };
+    }
+
+    // Ensure userData is available and has user_id before processing
+    if (!userData || typeof userData.user_id === 'undefined') {
+      console.error('[dashboardService] userData is invalid or missing user_id.');
+      return {
+        myGenericVideos: [],
+        otherGenericVideos: [],
+        myPlaylists: [],
+        otherPlaylists: [],
+      };
+    }
+
+    return await processVideoData(data, userData);
+  } catch (error) {
+    console.error('[dashboardService] Error in initializeDashboardData:', error);
+    // Return a default empty structure on any error
+    return {
+      myGenericVideos: [],
+      otherGenericVideos: [],
+      myPlaylists: [],
+      otherPlaylists: [],
+    };
   }
-  
-  return await processVideoData(data, userData);
 };
 
 const processVideoData = async (data, userData) => {
-const processVideoData = async (data, userData) => {
-  const genericPlaylists = data.playlists.filter(p => p.playlist_name === 'generic');
-  const otherPlaylists = data.playlists.filter(p => p.playlist_name !== 'generic');
+  console.log('[dashboardService] Processing video data:', data, 'with userData:', userData);
+  try {
+    const genericPlaylists = data.playlists.filter(p => p.playlist_name === 'generic');
+    const otherPlaylists = data.playlists.filter(p => p.playlist_name !== 'generic');
 
-  // Process generic playlists
-  const myGenericPlaylists = genericPlaylists.filter(p => p.playlist_owner_id === userData.user_id);
-  const otherGenericPlaylists = genericPlaylists.filter(p => p.playlist_owner_id !== userData.user_id);
+    const myGenericPlaylists = genericPlaylists.filter(p => p.playlist_owner_id === userData.user_id);
+    const otherGenericPlaylists = genericPlaylists.filter(p => p.playlist_owner_id !== userData.user_id);
 
-  // Process videos from my playlists
-  const myVideos = myGenericPlaylists.flatMap(playlist => 
-    playlist.playlist_items.map(item => ({
-      ...item,
-      video_id: item.external_id,
-      group: item.subject,
-      uploadby: item.upload_by
-    }))
-  );
-
-  // Process videos from other playlists
-  const otherVideos = otherGenericPlaylists
-    .filter(p => ['public', 'unlisted'].includes(p.playlist_permission))
-    .flatMap(playlist => 
-      playlist.playlist_items.map(item => ({
+    const myVideos = myGenericPlaylists.flatMap(playlist =>
+      (playlist.playlist_items || []).map(item => ({
         ...item,
-        video_id: item.external_id,
+        video_id: item.external_id, // Assuming external_id is the correct field for video_id here
         group: item.subject,
-        uploadby: item.upload_by,
-        permission: playlist.playlist_permission,
-        playlist_owner_name: playlist.playlist_owner_name
+        uploadby: item.upload_by
       }))
     );
 
-  // Process regular playlists
-  const myPlaylists = otherPlaylists.filter(p => p.playlist_owner_id === userData.user_id);
-  const otherRegularPlaylists = otherPlaylists.filter(p => p.playlist_owner_id !== userData.user_id);
+    const otherVideos = otherGenericPlaylists
+      .filter(p => ['public', 'unlisted'].includes(p.playlist_permission))
+      .flatMap(playlist =>
+        (playlist.playlist_items || []).map(item => ({
+          ...item,
+          video_id: item.external_id, // Assuming external_id is the correct field for video_id here
+          group: item.subject,
+          uploadby: item.upload_by,
+          permission: playlist.playlist_permission,
+          playlist_owner_name: playlist.playlist_owner_name
+        }))
+      );
 
-  return {
-    myGenericVideos: myVideos,
-    otherGenericVideos: otherVideos,
-    myPlaylists,
-    otherPlaylists: otherRegularPlaylists
-  };
-};
+    const myPlaylists = otherPlaylists.filter(p => p.playlist_owner_id === userData.user_id);
+    const otherRegularPlaylists = otherPlaylists.filter(p => p.playlist_owner_id !== userData.user_id);
+
+    const result = {
+      myGenericVideos: myVideos || [],
+      otherGenericVideos: otherVideos || [],
+      myPlaylists: myPlaylists || [],
+      otherPlaylists: otherRegularPlaylists || []
+    };
+    console.log('[dashboardService] Processed data result:', result);
+    return result;
+  } catch (error) {
+    console.error('[dashboardService] Error in processVideoData:', error);
+    // Return a default empty structure on any error
+    return {
+      myGenericVideos: [],
+      otherGenericVideos: [],
+      myPlaylists: [],
+      otherPlaylists: [],
+    };
+  }
 };

@@ -21,35 +21,45 @@ export const fetchGroups = async () => {
 // Get a specific group by name
 export const fetchGroupByName = async (groupName) => {
   try {
-    // For favorites, if we're already fetching, wait for that request to finish
-    if (groupName === 'favorites' && globalFavoritesPromise && !isRefreshingFavorites) {
-      console.log('Using existing favorites request promise');
-      return await globalFavoritesPromise;
-    }
-
-    // Create a new request promise for favorites
     if (groupName === 'favorites') {
-      console.log(`Fetching group '${groupName}' from API`);
-      isRefreshingFavorites = true;
+      // If a refresh is already in progress, return the existing promise for it
+      if (isRefreshingFavorites && globalFavoritesPromise) {
+        console.log('Favorites refresh in progress, returning existing promise');
+        return await globalFavoritesPromise;
+      }
+      
+      // If not currently refreshing, but we have a valid (non-null) promise, it's a cache hit.
+      // This happens if globalFavoritesPromise was set by a previous successful fetch and not invalidated.
+      if (!isRefreshingFavorites && globalFavoritesPromise) {
+        console.log('Using cached favorites data');
+        return await globalFavoritesPromise; 
+      }
+
+      // Otherwise (no active refresh, no valid cached promise OR cache was invalidated by setting globalFavoritesPromise to null)
+      // We need to fetch.
+      console.log(`Fetching group '${groupName}' from API (new request or cache invalidated)`);
+      isRefreshingFavorites = true; // Mark that we are starting a refresh
+      // Assign the promise to globalFavoritesPromise immediately
       globalFavoritesPromise = axios.get(`${config.baseURL}/group/${groupName}`, { withCredentials: true })
         .then(response => {
-          isRefreshingFavorites = false;
-          return response.data;
+          isRefreshingFavorites = false; // Refresh complete
+          return response.data; 
         })
         .catch(error => {
-          isRefreshingFavorites = false;
+          isRefreshingFavorites = false; // Refresh failed
+          globalFavoritesPromise = null; // Invalidate promise on error so next call retries
           console.error(`Error fetching group ${groupName}:`, error);
-          throw error;
+          throw error; 
         });
-      
-      return await globalFavoritesPromise;
+      return await globalFavoritesPromise; // Wait for the current fetch to complete
     }
     
     // For non-favorites groups, do normal request
+    console.log(`Fetching non-favorites group '${groupName}' from API`);
     const response = await axios.get(`${config.baseURL}/group/${groupName}`, { withCredentials: true });
     return response.data;
   } catch (error) {
-    console.error(`Error fetching group ${groupName}:`, error);
+    console.error(`Error in fetchGroupByName for ${groupName}:`, error);
     throw error;
   }
 };
