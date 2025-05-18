@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import VideoPlayer from './VideoPlayer';
@@ -6,6 +6,9 @@ import EyeDebugger from './EyeDebugger';
 import '../styles/Dashboard.css';
 import StackedThumbnails from './StackedThumbnails';
 import Spinner from './Spinner';
+import FavoritesStar from './FavoritesStar';
+import FavoritesList from './FavoritesList';
+import { subscribeFavorites } from '../services/favoritesCache';
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedPlaylist } from '../redux/playlistSlice';
 import { setDashboardData } from '../redux/dashboardSlice';
@@ -17,11 +20,13 @@ function Dashboard() {
   const [eyeDebuggerOn, setEyeDebuggerOn] = useState(false);
   const [videos, setVideos] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('All');
-  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [selectedVideo, setSelectedVideo] = useState(null);  
   const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
   const [error, setError] = useState(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
+    favorites: true,
     myPlaylists: true,
     publicPlaylists: true,
     myVideos: true,
@@ -35,19 +40,29 @@ function Dashboard() {
     }));
   };
 
-  // Get data from Redux store instead of local state
   const { currentUser } = useSelector(state => state.user);
+  const dashboardState = useSelector(state => state.dashboard);
+  console.log('[Dashboard.jsx] dashboardState from useSelector:', dashboardState);
+
   const {
-    myGenericVideos,
-    otherGenericVideos,
-    myPlaylists,
-    otherPlaylists,
+    myGenericVideos = [], 
+    otherGenericVideos = [], 
+    myPlaylists = [], 
+    otherPlaylists = [], 
     isLoaded
-  } = useSelector(state => state.dashboard);
+  } = dashboardState || {}; // Ensure dashboardState itself is not undefined before destructuring
 
   useEffect(() => {
+    console.log('[Dashboard.jsx] myGenericVideos after destructuring:', myGenericVideos);
     setTimeout(() => setEyeDebuggerOn(false), 5000);
   }, []);
+
+  // Initialize dashboard data on component mount
+  useEffect(() => {
+    if (currentUser && !isLoaded) {
+      refreshDashboard();
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (selectedVideo) {
@@ -65,14 +80,28 @@ function Dashboard() {
   };
 
   const refreshDashboard = async (e) => {
-    const dashboardData = await initializeDashboardData(currentUser);
+    try {
+      // Force refresh of favorites data
+      const groupService = await import('../services/groupService');
+      if (groupService.refreshFavorites) {
+        groupService.refreshFavorites();
+      }
 
-    dispatch(setDashboardData({
-      myGenericVideos: dashboardData.myGenericVideos,
-      otherGenericVideos: dashboardData.otherGenericVideos,
-      myPlaylists: dashboardData.myPlaylists,
-      otherPlaylists: dashboardData.otherPlaylists
-    }));
+      // Fetch dashboard data
+      console.log('[Dashboard.jsx] Calling initializeDashboardData');
+      const dashboardData = await initializeDashboardData(currentUser);
+      console.log('[Dashboard.jsx] Data from initializeDashboardData:', dashboardData);
+
+      dispatch(setDashboardData({
+        myGenericVideos: dashboardData.myGenericVideos,
+        otherGenericVideos: dashboardData.otherGenericVideos,
+        myPlaylists: dashboardData.myPlaylists,
+        otherPlaylists: dashboardData.otherPlaylists
+      }));
+      console.log('[Dashboard.jsx] Dispatched setDashboardData');
+    } catch (error) {
+      console.error("Error refreshing dashboard:", error);
+    }
   }
 
   const groups = ['All Lectures', ...new Set(videos.map(v => v.group))];
@@ -131,8 +160,14 @@ function Dashboard() {
                 >
                   Question Mode
                 </button>
-              </div>
+              </div>            
             </div>
+            
+            {/* Favorites Section */}
+            <FavoritesList 
+              expanded={expandedSections.favorites} 
+              toggleExpand={() => toggleSection('favorites')} 
+            />
             
             {/* My Playlists Section */}
             <div className="dashboard-section">
@@ -140,9 +175,10 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('myPlaylists')} className="collapsible-header">
                   My Playlists
                   <span className={`arrow ${expandedSections.myPlaylists ? 'expanded' : ''}`}>▼</span>
-                </h2>              </div>
+                </h2>              
+              </div>              
               <div className={`collapsible-content ${expandedSections.myPlaylists ? 'expanded' : ''}`}>
-                <div className="content-grid my-playlists-grid">
+                <div className="content-grid my-playlists-grid">                  
                   {myPlaylists.map(playlist => (
                     <div 
                       className="playlist-card" 
@@ -150,6 +186,10 @@ function Dashboard() {
                       onClick={() => handlePlaylistClick(playlist)}
                     >
                       <h4>{playlist.playlist_name}</h4>
+                      <FavoritesStar 
+                        playlist={playlist} 
+                        onToggle={() => setForceUpdate(prev => !prev)} 
+                      />
                       <StackedThumbnails videos={playlist.playlist_items} />
                       <div className="playlist-info">
                         <p>Permission: {playlist.playlist_permission}</p>
@@ -167,9 +207,10 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('publicPlaylists')} className="collapsible-header">
                   Public Playlists
                   <span className={`arrow ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>▼</span>
-                </h2>              </div>
+                </h2>              
+              </div>              
               <div className={`collapsible-content ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>
-                <div className="content-grid public-playlists-grid">
+                <div className="content-grid public-playlists-grid">                  
                   {otherPlaylists.map(playlist => (
                     <div 
                       className="playlist-card" 
@@ -177,6 +218,10 @@ function Dashboard() {
                       onClick={() => handlePlaylistClick(playlist)}
                     >
                       <h4>{playlist.playlist_name}</h4>
+                      <FavoritesStar 
+                        playlist={playlist} 
+                        onToggle={() => setForceUpdate(prev => !prev)} 
+                      />
                       <StackedThumbnails videos={playlist.playlist_items} />
                       <div className="playlist-info">
                         <p>Owner: {playlist.playlist_owner_name}</p>
@@ -195,7 +240,8 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('myVideos')} className="collapsible-header">
                   My Videos
                   <span className={`arrow ${expandedSections.myVideos ? 'expanded' : ''}`}>▼</span>
-                </h2>              </div>
+                </h2>              
+              </div>
               <div className={`collapsible-content ${expandedSections.myVideos ? 'expanded' : ''}`}>
                 <div className="content-grid my-videos-grid">
                   {myGenericVideos.map(video => (
@@ -218,7 +264,8 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('publicVideos')} className="collapsible-header">
                   Public Videos
                   <span className={`arrow ${expandedSections.publicVideos ? 'expanded' : ''}`}>▼</span>
-                </h2>              </div>
+                </h2>              
+              </div>
               <div className={`collapsible-content ${expandedSections.publicVideos ? 'expanded' : ''}`}>
                 <div className="content-grid public-videos-grid">
                   {otherGenericVideos.map(video => (
