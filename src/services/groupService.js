@@ -9,7 +9,6 @@ let isRefreshingFavorites = false;
 // Get all groups for the current user
 export const fetchGroups = async () => {
   try {
-    // This endpoint would need to be created on the backend
     const response = await axios.get(`${config.baseURL}/groups`, { withCredentials: true });
     return response.data;
   } catch (error) {
@@ -18,45 +17,60 @@ export const fetchGroups = async () => {
   }
 };
 
+// Get all groups for the current user, including their items (playlists and videos).
+export const getAllUserGroupsWithItems = async () => {
+  try {
+    const response = await axios.get(`${config.baseURL}/group`, { withCredentials: true });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching all user groups with items:', error.response ? error.response.data : error.message);
+    throw error.response ? error.response.data : new Error('Failed to fetch groups');
+  }
+};
+
+// Get the names of all groups for the current user.
+export const getUserGroupNames = async () => {
+  try {
+    const response = await axios.get(`${config.baseURL}/group/names`, { withCredentials: true });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user group names:', error.response ? error.response.data : error.message);
+    throw error.response ? error.response.data : new Error('Failed to fetch group names');
+  }
+};
+
 // Get a specific group by name
 export const fetchGroupByName = async (groupName) => {
   try {
     if (groupName === 'favorites') {
-      // If a refresh is already in progress, return the existing promise for it
       if (isRefreshingFavorites && globalFavoritesPromise) {
         console.log('Favorites refresh in progress, returning existing promise');
         return await globalFavoritesPromise;
       }
       
-      // If not currently refreshing, but we have a valid (non-null) promise, it's a cache hit.
-      // This happens if globalFavoritesPromise was set by a previous successful fetch and not invalidated.
       if (!isRefreshingFavorites && globalFavoritesPromise) {
         console.log('Using cached favorites data');
         return await globalFavoritesPromise; 
       }
 
-      // Otherwise (no active refresh, no valid cached promise OR cache was invalidated by setting globalFavoritesPromise to null)
-      // We need to fetch.
       console.log(`Fetching group '${groupName}' from API (new request or cache invalidated)`);
-      isRefreshingFavorites = true; // Mark that we are starting a refresh
-      // Assign the promise to globalFavoritesPromise immediately
-      globalFavoritesPromise = axios.get(`${config.baseURL}/group/${groupName}`, { withCredentials: true })
+      isRefreshingFavorites = true;
+      globalFavoritesPromise = axios.get(`${config.baseURL}/group/${encodeURIComponent(groupName)}`, { withCredentials: true })
         .then(response => {
-          isRefreshingFavorites = false; // Refresh complete
+          isRefreshingFavorites = false;
           return response.data; 
         })
         .catch(error => {
-          isRefreshingFavorites = false; // Refresh failed
-          globalFavoritesPromise = null; // Invalidate promise on error so next call retries
+          isRefreshingFavorites = false;
+          globalFavoritesPromise = null;
           console.error(`Error fetching group ${groupName}:`, error);
           throw error; 
         });
-      return await globalFavoritesPromise; // Wait for the current fetch to complete
+      return await globalFavoritesPromise;
     }
     
-    // For non-favorites groups, do normal request
     console.log(`Fetching non-favorites group '${groupName}' from API`);
-    const response = await axios.get(`${config.baseURL}/group/${groupName}`, { withCredentials: true });
+    const response = await axios.get(`${config.baseURL}/group/${encodeURIComponent(groupName)}`, { withCredentials: true });
     return response.data;
   } catch (error) {
     console.error(`Error in fetchGroupByName for ${groupName}:`, error);
@@ -72,6 +86,11 @@ export const createGroup = async (groupData) => {
       groupData,
       { withCredentials: true }
     );
+    if (groupData.group_name === 'favorites') {
+      isRefreshingFavorites = false;
+      globalFavoritesPromise = Promise.resolve({ data: { group: response.data, status: 'success'} });
+      notifyFavoritesChanged();
+    }
     return response.data;
   } catch (error) {
     console.error('Error creating group:', error);
@@ -86,11 +105,15 @@ export const addItemToGroup = async (groupName, itemType, itemId) => {
       `${config.baseURL}/group/items`,
       {
         group_name: groupName,
-        item_type: itemType, // "playlist" or "video"
+        item_type: itemType,
         item_id: itemId
       },
       { withCredentials: true }
     );
+    if (groupName === 'favorites') {
+      refreshFavorites();
+      notifyFavoritesChanged();
+    }
     return response.data;
   } catch (error) {
     console.error(`Error adding ${itemType} to group ${groupName}:`, error);
@@ -112,6 +135,10 @@ export const removeItemFromGroup = async (groupName, itemType, itemId) => {
         withCredentials: true 
       }
     );
+    if (groupName === 'favorites') {
+      refreshFavorites();
+      notifyFavoritesChanged();
+    }
     return response.data;
   } catch (error) {
     console.error(`Error removing ${itemType} from group ${groupName}:`, error);
@@ -119,17 +146,54 @@ export const removeItemFromGroup = async (groupName, itemType, itemId) => {
   }
 };
 
+// Switch the order of two items within a group.
+export const switchGroupItemOrder = async (groupName, itemType, order1, order2) => {
+  try {
+    const response = await axios.patch(
+      `${config.baseURL}/group/items/switch_order`,
+      {
+        group_name: groupName,
+        item_type: itemType,
+        order1: order1,
+        order2: order2,
+      },
+      { withCredentials: true }
+    );
+    if (groupName === 'favorites') {
+      refreshFavorites();
+      notifyFavoritesChanged();
+    }
+    return response.data;
+  } catch (error) {
+    console.error(`Error switching item order in group '${groupName}':`, error.response ? error.response.data : error.message);
+    throw error.response ? error.response.data : new Error('Failed to switch item order');
+  }
+};
+
+// Deletes a specific group by its name.
+export const deleteGroup = async (groupName) => {
+  try {
+    const response = await axios.delete(`${config.baseURL}/group/${encodeURIComponent(groupName)}`, { withCredentials: true });
+    if (groupName === 'favorites') {
+      refreshFavorites();
+      notifyFavoritesChanged();
+    }
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting group '${groupName}':`, error.response ? error.response.data : error.message);
+    throw error.response ? error.response.data : new Error(`Failed to delete group '${groupName}'`);
+  }
+};
+
 // Initialize favorites group
 export const initializeFavorites = async () => {
   try {
-    // Try to get the favorites group
     try {
       const favoritesResponse = await fetchGroupByName('favorites');
       if (favoritesResponse.status === 'success') {
         return favoritesResponse.group;
       }
     } catch (error) {
-      // If favorites not found, create it
       if (error.response?.data?.status === 'failed' && 
           error.response?.data?.reason?.includes('not found')) {
         const createResponse = await createGroup({
@@ -138,17 +202,13 @@ export const initializeFavorites = async () => {
         });
         
         if (createResponse.status === 'success') {
-          // Return newly created favorites group
           return {
-            group_id: createResponse.group_id,
-            group_name: 'favorites',
-            description: 'favorites',
+            ...createResponse,
             playlists: [],
             videos: []
           };
         }
       }
-      // If it's another error, throw it
       throw error;
     }
   } catch (error) {
@@ -160,20 +220,21 @@ export const initializeFavorites = async () => {
 // Toggle playlist in favorites (add if not present, remove if present)
 export const togglePlaylistInFavorites = async (playlist) => {
   try {
-    // First get the favorites group to check if playlist is already there
+    await initializeFavorites(); 
+    
     const favoritesResponse = await fetchGroupByName('favorites');
     
     if (favoritesResponse.status === 'success') {
       const favorites = favoritesResponse.group;
-      const isPlaylistInFavorites = favorites.playlists.some(p => p.playlist_id === playlist.playlist_id);        if (isPlaylistInFavorites) {        // Remove from favorites
+      const isPlaylistInFavorites = favorites.playlists && favorites.playlists.some(p => p.playlist_id === playlist.playlist_id);
+      
+      if (isPlaylistInFavorites) {
         const removeResult = await removeItemFromGroup('favorites', 'playlist', playlist.playlist_id);
         console.log("Removed from favorites:", removeResult);
         
-        // Force refresh on next fetch
         isRefreshingFavorites = true;
         globalFavoritesPromise = null;
         
-        // Notify subscribers about the change
         notifyFavoritesChanged();
         
         return { 
@@ -181,15 +242,13 @@ export const togglePlaylistInFavorites = async (playlist) => {
           action: 'removed',
           message: `Removed playlist ${playlist.playlist_name} from favorites` 
         };
-      } else {        // Add to favorites
+      } else {
         const addResult = await addItemToGroup('favorites', 'playlist', playlist.playlist_id);
         console.log("Added to favorites:", addResult);
         
-        // Force refresh on next fetch
         isRefreshingFavorites = true;
         globalFavoritesPromise = null;
         
-        // Notify subscribers about the change
         notifyFavoritesChanged();
         
         return { 
@@ -202,16 +261,15 @@ export const togglePlaylistInFavorites = async (playlist) => {
       throw new Error('Failed to get favorites group');
     }
   } catch (error) {
-    // If group doesn't exist, create it and add the playlist
     if (error.response?.data?.status === 'failed' && 
-        error.response?.data?.reason?.includes('not found')) {      try {        await initializeFavorites();
+        error.response?.data?.reason?.includes('not found')) {
+      try {
+        await initializeFavorites();
         await addItemToGroup('favorites', 'playlist', playlist.playlist_id);
         
-        // Force refresh on next fetch
         isRefreshingFavorites = true;
         globalFavoritesPromise = null;
         
-        // Notify subscribers about the change
         notifyFavoritesChanged();
         
         return { 
@@ -233,19 +291,19 @@ export const togglePlaylistInFavorites = async (playlist) => {
 // Toggle video in favorites
 export const toggleVideoInFavorites = async (video) => {
   try {
-    // First get the favorites group to check if video is already there
+    await initializeFavorites();
+
     const favoritesResponse = await fetchGroupByName('favorites');
     
     if (favoritesResponse.status === 'success') {
       const favorites = favoritesResponse.group;
-      const isVideoInFavorites = favorites.videos.some(v => v.video_id === video.video_id);        if (isVideoInFavorites) {        // Remove from favorites
+      const isVideoInFavorites = favorites.videos && favorites.videos.some(v => v.video_id === video.video_id);
+      if (isVideoInFavorites) {
         await removeItemFromGroup('favorites', 'video', video.video_id);
         
-        // Force refresh on next fetch
         isRefreshingFavorites = true;
         globalFavoritesPromise = null;
         
-        // Notify subscribers about the change
         notifyFavoritesChanged();
         
         return { 
@@ -253,14 +311,12 @@ export const toggleVideoInFavorites = async (video) => {
           action: 'removed',
           message: `Removed video ${video.name} from favorites` 
         };
-      } else {        // Add to favorites
+      } else {
         await addItemToGroup('favorites', 'video', video.video_id);
         
-        // Force refresh on next fetch
         isRefreshingFavorites = true;
         globalFavoritesPromise = null;
         
-        // Notify subscribers about the change
         notifyFavoritesChanged();
         
         return { 
@@ -271,7 +327,8 @@ export const toggleVideoInFavorites = async (video) => {
       }
     } else {
       throw new Error('Failed to get favorites group');
-    }  } catch (error) {
+    }
+  } catch (error) {
     console.error('Error toggling video in favorites:', error);
     throw error;
   }

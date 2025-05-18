@@ -1,0 +1,364 @@
+/* General Styles for GroupsPage */
+.groups-page-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: \'Arial\', sans-serif;
+}
+
+.groups-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #eee;
+}
+
+.groups-header h1 {
+  color: #333;
+  font-size: 2.5em;
+}
+
+.create-group-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease;
+}
+
+.create-group-btn:hover {
+  background-color: #0056b3;
+}
+
+/* Modal Styles */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it\'s above other content */
+}
+
+.modal-content {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 500px;
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.8em;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #555;
+}
+
+.form-group input[type="text"],
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1em;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px; /* Spacing between buttons */
+  margin-top: 25px;
+}
+
+.modal-actions .btn-primary {
+  background-color: #28a745;
+  color: white;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.modal-actions .btn-primary:hover {
+  background-color: #218838;
+}
+.modal-actions .btn-primary:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+
+.modal-actions .btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.modal-actions .btn-secondary:hover {
+  background-color: #5a6268;
+}
+.modal-actions .btn-secondary:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+
+/* No Groups Message */
+.no-groups-message {
+  text-align: center;
+  padding: 40px 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.no-groups-message p {
+  font-size: 1.2em;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.inline-link {
+  background: none;
+  border: none;
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 1em;
+  padding: 0;
+}
+.inline-link:hover {
+  color: #0056b3;
+}
+
+
+/* Groups Grid & Card Styles */
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 25px;
+  margin-top: 20px;
+}
+
+.group-card {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.3s ease;
+}
+
+.group-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.group-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.group-card-header h3 {
+  margin: 0;
+  color: #007bff;
+  font-size: 1.6em;
+}
+
+.delete-group-btn {
+  background: none;
+  border: none;
+  color: #dc3545;
+  font-size: 1.3em;
+  cursor: pointer;
+  padding: 5px;
+}
+.delete-group-btn:hover {
+  color: #c82333;
+}
+.delete-group-btn:disabled {
+  color: #cccccc;
+  cursor: not-allowed;
+}
+
+
+.group-description {
+  font-size: 0.95em;
+  color: #666;
+  margin-bottom: 15px;
+  flex-grow: 1; /* Allows description to take available space */
+  min-height: 40px; /* Ensure some space even if description is short */
+}
+
+.group-actions {
+  margin-bottom: 15px;
+}
+
+.btn-add-item {
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease;
+}
+.btn-add-item:hover {
+  background-color: #138496;
+}
+.btn-add-item:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.group-items-section {
+  margin-bottom: 15px;
+}
+
+.group-items-section h4 {
+  font-size: 1.1em;
+  color: #444;
+  margin-bottom: 8px;
+  border-bottom: 1px dashed #eee;
+  padding-bottom: 5px;
+}
+
+.item-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.item-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 5px;
+  border-bottom: 1px solid #f5f5f5;
+  font-size: 0.9em;
+}
+.item-card:last-child {
+  border-bottom: none;
+}
+
+/* Styles for playlist items specifically to accommodate StackedThumbnails */
+.playlist-item-card {
+  align-items: flex-start; /* Align items to the top if StackedThumbnails makes card taller */
+}
+
+.playlist-item-content {
+  display: flex;
+  flex-direction: column; /* Stack name and thumbnails vertically */
+  flex-grow: 1;
+  margin-right: 10px;
+}
+
+.playlist-item-content .item-name {
+  margin-bottom: 5px; /* Space between name and thumbnails */
+}
+
+.item-name {
+  color: #333;
+}
+
+.btn-remove-item {
+  background-color: #ff6b6b; /* A soft red for remove actions */
+  color: white;
+  border: none;
+  padding: 6px 12px; /* Adjusted padding */
+  border-radius: 4px; /* Consistent border-radius */
+  cursor: pointer;
+  font-size: 0.85em; /* Slightly adjusted font size */
+  transition: background-color 0.2s ease;
+}
+.btn-remove-item:hover {
+  background-color: #ee5253; /* Darker shade on hover */
+}
+.btn-remove-item:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.no-items-message {
+  font-style: italic;
+  color: #777;
+  font-size: 0.9em;
+  padding: 10px 0;
+}
+
+.group-meta {
+  font-size: 0.8em;
+  color: #888;
+  text-align: right;
+  margin-top: auto; /* Pushes meta to the bottom */
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001; /* Above modal backdrop */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .groups-header h1 {
+    font-size: 2em;
+  }
+  .create-group-btn {
+    padding: 10px 15px;
+    font-size: 0.9em;
+  }
+  .groups-grid {
+    grid-template-columns: 1fr; /* Stack cards on smaller screens */
+  }
+  .modal-content {
+    width: 95%;
+    padding: 20px;
+  }
+}
