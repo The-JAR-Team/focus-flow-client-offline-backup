@@ -25,7 +25,8 @@ function Dashboard() {
   const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
   const [error, setError] = useState(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(false);  const [expandedSections, setExpandedSections] = useState({
+  const [forceUpdate, setForceUpdate] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({
     favorites: true,
     myPlaylists: true,
     publicPlaylists: true,
@@ -38,7 +39,9 @@ function Dashboard() {
     return savedGroups ? new Set(JSON.parse(savedGroups)) : new Set(['favorites']);
   });
 
-
+  // Check if user is in guest mode (permission level 0)
+  const { currentUser } = useSelector(state => state.user);
+  const isGuestMode = currentUser && currentUser.permission === 0;
   
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -46,7 +49,6 @@ function Dashboard() {
       [section]: !prev[section]
     }));
   };
-  const { currentUser } = useSelector(state => state.user);
   const dashboardState = useSelector(state => state.dashboard);
 
   const {
@@ -177,10 +179,14 @@ function Dashboard() {
     <div className="dashboard-container">
       <Navbar />
       <div className="dashboard-content">
-        {currentUser ? (
-          <>
+        {currentUser ? (          <>
             <div className="user-greeting">
               <h1>Hello {currentUser.first_name} {currentUser.last_name}</h1>
+              {isGuestMode && (
+                <div className="guest-mode-notice">
+                  <p>You are in Guest Mode. Only public playlists and videos are visible.</p><p> You can't add video , manage groups and manage playlists</p>
+                </div>
+              )}
             </div>
             <button className="back-button" onClick={() => refreshDashboard()}>
               Refresh Dashboard
@@ -193,8 +199,7 @@ function Dashboard() {
               Please <button onClick={() => navigate('/')}>Log in</button> or <button onClick={() => navigate('/register')}>Register</button>.
             </p>
           </div>
-        )}
-        {!selectedVideo ? (
+        )}        {!selectedVideo ? (
           <>            <div className="controls-row">
               <div className="mode-selector">
                 <button
@@ -218,33 +223,34 @@ function Dashboard() {
               </div>            
             </div>
             
-            {/* Group Selection Checkboxes */}
-            <div className="group-selection-container">
-              <h3>My Groups</h3>
-              <div className="group-checkboxes">
-                {userGroups.map(group => (
-                  <label key={group.group_id} className="group-checkbox-label">
-                    <input
-                      type="checkbox"
-                      className="group-checkbox"
-                      checked={selectedGroups.has(group.group_name)}
-                      onChange={() => toggleGroupSelection(group.group_name)}
-                    />
-                    <span className="group-checkbox-text">{group.group_name}</span>
-                  </label>
-                ))}
+            {/* Group Selection Checkboxes - Hide in Guest Mode */}
+            {!isGuestMode && (
+              <div className="group-selection-container">
+                <h3>My Groups</h3>
+                <div className="group-checkboxes">
+                  {userGroups.map(group => (
+                    <label key={group.group_id} className="group-checkbox-label">
+                      <input
+                        type="checkbox"
+                        className="group-checkbox"
+                        checked={selectedGroups.has(group.group_name)}
+                        onChange={() => toggleGroupSelection(group.group_name)}
+                      />
+                      <span className="group-checkbox-text">{group.group_name}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-              {/* Favorites Section */}
-            {selectedGroups.has('favorites') && (
+            )}              {/* Favorites Section - Hide in Guest Mode */}
+            {!isGuestMode && selectedGroups.has('favorites') && (
               <FavoritesList 
                 expanded={expandedSections.favorites} 
                 toggleExpand={() => toggleSection('favorites')} 
               />
             )}
             
-            {/* Dynamic Group Sections */}
-            {userGroups.map(group => {
+            {/* Dynamic Group Sections - Hide in Guest Mode */}
+            {!isGuestMode && userGroups.map(group => {
               // Skip "favorites" as it's already shown through FavoritesList
               if (group.group_name === 'favorites' || !selectedGroups.has(group.group_name)) return null;
               
@@ -368,36 +374,38 @@ function Dashboard() {
             })}
             
             {/* My Playlists Section */}
-            <div className="dashboard-section">
-              <div className="section-header">
-                <h2 onClick={() => toggleSection('myPlaylists')} className="collapsible-header">
-                  My Playlists
-                  <span className={`arrow ${expandedSections.myPlaylists ? 'expanded' : ''}`}>▼</span>
-                </h2>              
-              </div>              
-              <div className={`collapsible-content ${expandedSections.myPlaylists ? 'expanded' : ''}`}>
-                <div className="content-grid my-playlists-grid">                  
-                  {myPlaylists.map(playlist => (
-                    <div 
-                      className="playlist-card" 
-                      key={playlist.playlist_id}
-                      onClick={() => handlePlaylistClick(playlist)}
-                    >
-                      <h4>{playlist.playlist_name}</h4>
-                      <FavoritesStar 
-                        playlist={playlist} 
-                        onToggle={() => setForceUpdate(prev => !prev)} 
-                      />
-                      <StackedThumbnails videos={playlist.playlist_items} />
-                      <div className="playlist-info">
-                        <p>Permission: {playlist.playlist_permission}</p>
-                        <p>Videos: {playlist.playlist_items.length}</p>
+            {!isGuestMode && (
+              <div className="dashboard-section">
+                <div className="section-header">
+                  <h2 onClick={() => toggleSection('myPlaylists')} className="collapsible-header">
+                    My Playlists
+                    <span className={`arrow ${expandedSections.myPlaylists ? 'expanded' : ''}`}>▼</span>
+                  </h2>              
+                </div>              
+                <div className={`collapsible-content ${expandedSections.myPlaylists ? 'expanded' : ''}`}>
+                  <div className="content-grid my-playlists-grid">                  
+                    {myPlaylists.map(playlist => (
+                      <div 
+                        className="playlist-card" 
+                        key={playlist.playlist_id}
+                        onClick={() => handlePlaylistClick(playlist)}
+                      >
+                        <h4>{playlist.playlist_name}</h4>
+                        <FavoritesStar 
+                          playlist={playlist} 
+                          onToggle={() => setForceUpdate(prev => !prev)} 
+                        />
+                        <StackedThumbnails videos={playlist.playlist_items} />
+                        <div className="playlist-info">
+                          <p>Permission: {playlist.playlist_permission}</p>
+                          <p>Videos: {playlist.playlist_items.length}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Public Playlists Section */}
             <div className="dashboard-section">
@@ -433,28 +441,30 @@ function Dashboard() {
             </div>
 
             {/* My Videos Section */}
-            <div className="dashboard-section">
-              <div className="section-header">
-                <h2 onClick={() => toggleSection('myVideos')} className="collapsible-header">
-                  My Videos
-                  <span className={`arrow ${expandedSections.myVideos ? 'expanded' : ''}`}>▼</span>
-                </h2>              
-              </div>
-              <div className={`collapsible-content ${expandedSections.myVideos ? 'expanded' : ''}`}>
-                <div className="content-grid my-videos-grid">
-                  {myGenericVideos.map(video => (
-                    <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
-                      <h4>{video.video_name}</h4>
-                      <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
-                      <div className="video-info">
-                        <h5>Subject: {video.group}</h5>
-                        <small>Length: {video.length}</small>
+            {!isGuestMode && (
+              <div className="dashboard-section">
+                <div className="section-header">
+                  <h2 onClick={() => toggleSection('myVideos')} className="collapsible-header">
+                    My Videos
+                    <span className={`arrow ${expandedSections.myVideos ? 'expanded' : ''}`}>▼</span>
+                  </h2>              
+                </div>
+                <div className={`collapsible-content ${expandedSections.myVideos ? 'expanded' : ''}`}>
+                  <div className="content-grid my-videos-grid">
+                    {myGenericVideos.map(video => (
+                      <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
+                        <h4>{video.video_name}</h4>
+                        <img src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`} alt={video.group} />
+                        <div className="video-info">
+                          <h5>Subject: {video.group}</h5>
+                          <small>Length: {video.length}</small>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Public Videos Section */}
             <div className="dashboard-section">

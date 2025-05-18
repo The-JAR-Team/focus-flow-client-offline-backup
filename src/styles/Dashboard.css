@@ -4,6 +4,20 @@
   border-radius: 4px;
 }
 
+.guest-mode-notice {
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  color: #856404;
+  padding: 10px 15px;
+  border-radius: 4px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+
+.guest-mode-notice p {
+  margin: 0;
+}
+
 /* Group selection styles */
 .group-selection-container {
   background-color: #f8f9fa;
