@@ -6,17 +6,18 @@
 
 /* Group selection styles */
 .group-selection-container {
-  margin: 15px 0;
-  padding: 15px;
   background-color: #f8f9fa;
   border-radius: 8px;
+  padding: 15px 20px;
+  margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .group-selection-container h3 {
   margin-top: 0;
-  margin-bottom: 15px;
   color: #333;
+  font-size: 18px;
+  margin-bottom: 12px;
 }
 
 .group-checkboxes {
@@ -34,6 +35,8 @@
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   cursor: pointer;
   transition: all 0.2s ease;
+  margin-right: 10px;
+  margin-bottom: 10px;
 }
 
 .group-checkbox-label:hover {
@@ -142,12 +145,13 @@
 .dashboard-section .collapsible-content {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease-out;
+  transition: max-height 0.4s cubic-bezier(0, 1, 0, 1);
+  background-color: white;
 }
 
 .dashboard-section .collapsible-content.expanded {
-  max-height: 2000px; /* Large enough to show all content */
-  transition: max-height 0.5s ease-in;
+  max-height: 5000px; /* Large enough to show all content */
+  transition: max-height 0.8s ease-in-out;
 }
 
 .empty-section-message {
@@ -520,13 +524,22 @@ h2:hover {
 }
 
 .dashboard-section {
-  margin-bottom: 120px; /* Increased margin to prevent overlap when expanded */
+  margin-bottom: 15px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   position: relative;
   overflow: visible; /* Ensure content doesn't get cut off */
   clear: both; /* Prevent floating elements from causing overlap */
   width: 100%;
   display: block;
   padding-bottom: 30px;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .collapsible-header {
@@ -560,15 +573,16 @@ h2:hover {
   max-height: 0;
   opacity: 0;
   overflow: hidden; 
-  transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out; /* Adjusted transition */
+  transition: max-height 0.4s cubic-bezier(0, 1, 0, 1), opacity 0.5s ease-in-out; /* Adjusted transition */
   position: relative;
   z-index: 1;
   width: 100%;
+  background-color: white;
 }
 
 .collapsible-content.expanded {
   /* Use a very large value that accommodates any content height */
-  max-height: 100000px;/* Adjust if necessary, needs to be larger than max possible content height */
+  max-height: 5000px;/* Adjust if necessary, needs to be larger than max possible content height */
   opacity: 1;         
   overflow: visible; /* Keep visible to prevent clipping during/after transition */
   margin-bottom: 40px; /* Add bottom margin for spacing */
