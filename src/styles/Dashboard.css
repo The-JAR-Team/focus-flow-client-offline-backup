@@ -23,6 +23,52 @@
   box-sizing: border-box; /* Ensure padding is included in width calculation */
 }
 
+.favorites-playlists-grid,
+.favorites-videos-grid {
+  margin-bottom: 20px;
+}
+
+.empty-section-message {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+.empty-thumbnails {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  color: #999;
+  font-style: italic;
+  margin: 25px auto;
+  width: 90%;
+}
+
+.refresh-button {
+  margin-top: 15px;
+  padding: 8px 16px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.refresh-button:hover {
+  background-color: #e0e0e0;
+}
+
+.error-message {
+  padding: 20px;
+  text-align: center;
+  color: #d32f2f;
+}
+
 .video-card {
   background: #fff;
   padding: 10px;
@@ -438,12 +484,27 @@ h2:hover {
   margin-bottom: 20px; /* Space after the last grid (less needed) */
 }
 
+.favorites-grid {
+  margin-bottom: 40px; /* Extra space after favorites grid */
+}
+
+/* Custom styling for the favorites section to make it stand out */
+.dashboard-section.favorites-section {
+  background-color: #f9f9f9;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  border-left: 5px solid #ffcc00; /* Gold accent for favorites */
+  margin-bottom: 60px; /* Extra space for the favorites section */
+}
+
 /* Ensure each dashboard section has proper spacing on mobile */
 @media (max-width: 600px) {
   .my-playlists-grid,
   .public-playlists-grid,
   .my-videos-grid,
-  .public-videos-grid {
+  .public-videos-grid,
+  .favorites-grid {
     margin-bottom: 80px; /* More spacing on mobile devices */
     display: grid;
     grid-template-columns: 1fr; /* Force single column on mobile */
@@ -470,4 +531,138 @@ h2:hover {
     display: table;
     clear: both;
   }
+  
+  /* Adjust favorites section for mobile */
+  .dashboard-section.favorites-section {
+    padding: 15px;
+    margin-bottom: 100px;
+  }
+}
+
+/* Favorite item specific styling */
+.favorite-marker {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #ffcc00;
+  font-size: 24px;
+  z-index: 5;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.favorite-marker:hover {
+  transform: scale(1.2);
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+}
+
+/* Styles for the favorite toggle button */
+.favorite-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 10;
+  padding: 5px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+  color: #999;
+}
+
+.favorite-toggle:hover {
+  transform: scale(1.15);
+}
+
+.favorite-toggle.active {
+  color: #ffcc00;
+}
+
+/* Add a subtle highlight for favorited items in their original sections */
+.playlist-card.is-favorite {
+  border: 2px solid #ffcc00;
+  box-shadow: 0 5px 15px rgba(255, 204, 0, 0.15);
+}
+
+.playlist-card.is-favorite:hover {
+  box-shadow: 0 8px 20px rgba(255, 204, 0, 0.25);
+}
+
+/* Special animation for items in the favorites section */
+.favorites-section .playlist-card {
+  animation: favorite-glow 3s infinite alternate ease-in-out;
+}
+
+@keyframes favorite-glow {
+  from { box-shadow: 0 3px 10px rgba(255, 204, 0, 0.1); }
+  to { box-shadow: 0 5px 15px rgba(255, 204, 0, 0.3); }
+}
+
+/* Empty favorites section styling */
+.empty-favorites {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-style: italic;
+}
+
+/* Drag and drop styling for organizing favorites */
+.favorites-drag-area {
+  border: 2px dashed #ffcc00;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #999;
+  transition: all 0.3s ease;
+}
+
+.favorites-drag-area.drag-over {
+  background-color: rgba(255, 204, 0, 0.1);
+  transform: scale(1.02);
+}
+
+/* Favorites management controls */
+.favorites-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 15px;
+  gap: 10px;
+}
+
+.favorites-controls button {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.favorites-controls button:hover {
+  background: #ebebeb;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Add a specialized favorites header */
+.favorites-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.favorites-header h2 {
+  color: #333;
+  margin: 0;
+  background: linear-gradient(90deg, #f5f5f5, #fff9e0, #f5f5f5);
+}
+
+.star-icon {
+  color: #ffcc00;
+  font-size: 30px;
 }

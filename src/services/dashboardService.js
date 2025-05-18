@@ -6,7 +6,12 @@ export const initializeDashboardData = async (userData) => {
   if (!data?.playlists) {
     throw new Error('No playlists data available');
   }
+  
+  return await processVideoData(data, userData);
+};
 
+const processVideoData = async (data, userData) => {
+const processVideoData = async (data, userData) => {
   const genericPlaylists = data.playlists.filter(p => p.playlist_name === 'generic');
   const otherPlaylists = data.playlists.filter(p => p.playlist_name !== 'generic');
 
@@ -48,4 +53,5 @@ export const initializeDashboardData = async (userData) => {
     myPlaylists,
     otherPlaylists: otherRegularPlaylists
   };
+};
 };

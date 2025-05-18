@@ -5,6 +5,7 @@ import storage from 'redux-persist/lib/storage/session';
 import userReducer from './userSlice';
 import playlistReducer from './playlistSlice';
 import dashboardReducer from './dashboardSlice';
+import groupsReducer from './groupsSlice';
 
 const userPersistConfig = {
   key: 'user',
@@ -24,15 +25,23 @@ const dashboardPersistConfig = {
   whitelist: ['myGenericVideos', 'otherGenericVideos', 'myPlaylists', 'otherPlaylists', 'isLoaded']
 };
 
+const groupsPersistConfig = {
+  key: 'groups',
+  storage,
+  whitelist: ['groups', 'favorites', 'isLoaded']
+};
+
 const persistedUserReducer = persistReducer(userPersistConfig, userReducer);
 const persistedPlaylistReducer = persistReducer(playlistPersistConfig, playlistReducer);
 const persistedDashboardReducer = persistReducer(dashboardPersistConfig, dashboardReducer);
+const persistedGroupsReducer = persistReducer(groupsPersistConfig, groupsReducer);
 
 // Create app reducer with all slices
 const appReducer = combineReducers({
   user: persistedUserReducer,
   playlist: persistedPlaylistReducer,
-  dashboard: persistedDashboardReducer
+  dashboard: persistedDashboardReducer,
+  groups: persistedGroupsReducer
 });
 
 // Add wrapper reducer
