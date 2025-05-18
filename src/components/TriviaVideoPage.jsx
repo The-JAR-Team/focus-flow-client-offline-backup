@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import QuizMode from './QuizMode';
 import Navbar from './Navbar';
 import Spinner from './Spinner';
@@ -9,6 +9,7 @@ import '../styles/TriviaVideoPage.css';
 
 function TriviaVideoPage() {
   const { videoId } = useParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [video, setVideo] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -23,6 +24,7 @@ function TriviaVideoPage() {
   const [hebrewStatus, setHebrewStatus] = useState(null);
   const [englishStatus, setEnglishStatus] = useState(null);
   const [retryCount, setRetryCount] = useState({ hebrew: 0, english: 0 });
+  const [playlistOptions, setPlaylistOptions] = useState([]);
 
   const hebrewAbortController = useRef(new AbortController());
   const englishAbortController = useRef(new AbortController());
@@ -49,6 +51,14 @@ function TriviaVideoPage() {
     setQuestions([]);
     setSelectedLanguage('English');
     setQuizMode('chronological');
+  };
+  
+  const navigateToVideoPlayer = (playlistId) => {
+    if (video && video.external_id) {
+      navigate(`/playlist/${playlistId}/video/${video.external_id}`);
+    } else {
+      console.error('Cannot navigate to video player: missing video external ID');
+    }
   };
 
   const fetchQuestionsWithRetry = async (externalId, language, maxRetries = 30) => {
@@ -165,6 +175,22 @@ function TriviaVideoPage() {
         }
 
         setVideo(videoData);
+        
+        // Load playlist options for this video
+        try {
+          const videoToPlaylistMap = JSON.parse(localStorage.getItem('videoToPlaylistMap') || '{}');
+          const externalId = videoData.external_id || videoData.video_id;
+          const videoId = videoData.video_id || videoData.external_id;
+          
+          // Check for playlists containing this video using either external_id or video_id
+          const videoPlaylists = videoToPlaylistMap[externalId] || videoToPlaylistMap[videoId] || [];
+          
+          console.log('Available playlists for this video:', videoPlaylists);
+          setPlaylistOptions(videoPlaylists);
+        } catch (error) {
+          console.error('Error loading playlist options:', error);
+        }
+        
         setLoadingQuestions(true);
         setHebrewStatus('Starting question generation...');
         setEnglishStatus('Starting question generation...');
@@ -370,6 +396,48 @@ function TriviaVideoPage() {
                 <span className="btn-icon">📝</span>
                 View Summary
               </Link>
+                {/* Watch Video Button with Playlist Selection */}
+              {playlistOptions.length > 0 && (
+                <div className="watch-video-container">
+                  {playlistOptions.length === 1 ? (
+                    <button 
+                      className="watch-video-btn"
+                      onClick={() => navigateToVideoPlayer(playlistOptions[0].playlist_id)}
+                    >
+                      <span className="btn-icon">📺</span>
+                      Watch Video
+                    </button>
+                  ) : (
+                    <div className="dropdown-container">
+                      <select 
+                        className="playlist-select"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Select a playlist</option>
+                        {playlistOptions.map(playlist => (
+                          <option key={playlist.playlist_id} value={playlist.playlist_id}>
+                            {playlist.playlist_name}
+                          </option>
+                        ))}
+                      </select>
+                      <button 
+                        className="watch-video-btn"
+                        onClick={() => {
+                          const select = document.querySelector('.playlist-select');
+                          if (select && select.value) {
+                            navigateToVideoPlayer(select.value);
+                          } else {
+                            alert('Please select a playlist first');
+                          }
+                        }}
+                      >
+                        <span className="btn-icon">📺</span>
+                        Watch Video
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {currentStatus && (

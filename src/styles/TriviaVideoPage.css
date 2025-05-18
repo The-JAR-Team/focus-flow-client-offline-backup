@@ -70,9 +70,10 @@
 
 .action-buttons {
   display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   justify-content: center;
-  gap: 15px;
-  margin: 20px 0;
+  margin-bottom: 20px;
 }
 
 .start-quiz-btn, .toggle-questions-btn {
@@ -254,4 +255,54 @@
 .view-summary-btn .btn-icon {
   margin-right: 8px;
   font-size: 1.2rem;
+}
+
+.watch-video-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background-color: #ff4081;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  white-space: nowrap;
+}
+
+.watch-video-btn:hover {
+  background-color: #e91e63;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 5px rgba(255, 64, 129, 0.3);
+}
+
+.watch-video-container {
+  display: flex;
+  align-items: stretch;
+  margin-left: 10px;
+}
+
+.dropdown-container {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.playlist-select {
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background-color: #f8f8f8;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 1em;
 }
