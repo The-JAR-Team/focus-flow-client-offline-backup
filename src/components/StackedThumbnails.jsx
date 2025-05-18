@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const StackedThumbnails = ({ videos = [], maxThumbnails = 3 }) => {    console.log("StackedThumbnails received:", videos);
+const StackedThumbnails = ({ videos = [], maxThumbnails = 3 }) => {    
   
   // Ensure videos is an array and has valid elements
   const validVideos = Array.isArray(videos) 
@@ -13,7 +13,7 @@ const StackedThumbnails = ({ videos = [], maxThumbnails = 3 }) => {    console.l
       }) 
     : [];
   
-  console.log("StackedThumbnails validVideos:", validVideos);
+  //console.log("StackedThumbnails validVideos:", validVideos);
   
   // Only take up to maxThumbnails
   const thumbnails = validVideos.slice(0, maxThumbnails);

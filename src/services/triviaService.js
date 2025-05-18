@@ -52,6 +52,30 @@ export const extractPlaylists = (data) => {
     return [];
   }
   
+  // Create a video-to-playlist mapping and store it in localStorage
+  const videoToPlaylistMap = {};
+  
+  relevantPlaylists.forEach(playlist => {
+    if (playlist.playlist_items && Array.isArray(playlist.playlist_items)) {
+      playlist.playlist_items.forEach(video => {
+        const videoId = video.video_id || video.external_id;
+        if (videoId) {
+          if (!videoToPlaylistMap[videoId]) {
+            videoToPlaylistMap[videoId] = [];
+          }
+          videoToPlaylistMap[videoId].push({
+            playlist_id: playlist.playlist_id,
+            playlist_name: playlist.playlist_name
+          });
+        }
+      });
+    }
+  });
+  
+  // Store the mapping in localStorage
+  localStorage.setItem('videoToPlaylistMap', JSON.stringify(videoToPlaylistMap));
+  console.log('Stored video-to-playlist mapping:', videoToPlaylistMap);
+  
   // Transform the playlists into a more usable format
   const formattedPlaylists = relevantPlaylists.map(playlist => ({
     playlist_id: playlist.playlist_id,

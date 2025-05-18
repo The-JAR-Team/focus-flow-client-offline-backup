@@ -13,6 +13,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedPlaylist } from '../redux/playlistSlice';
 import { setDashboardData } from '../redux/dashboardSlice';
 import { initializeDashboardData } from '../services/dashboardService';
+import { getAllUserGroupsWithItems } from '../services/groupService';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -24,36 +25,37 @@ function Dashboard() {
   const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
   const [error, setError] = useState(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
+  const [forceUpdate, setForceUpdate] = useState(false);  const [expandedSections, setExpandedSections] = useState({
     favorites: true,
     myPlaylists: true,
     publicPlaylists: true,
     myVideos: true,
     publicVideos: true
   });
+  const [userGroups, setUserGroups] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState(() => {
+    const savedGroups = localStorage.getItem('selectedGroups');
+    return savedGroups ? new Set(JSON.parse(savedGroups)) : new Set(['favorites']);
+  });
 
+
+  
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }));
   };
-
   const { currentUser } = useSelector(state => state.user);
   const dashboardState = useSelector(state => state.dashboard);
-  console.log('[Dashboard.jsx] dashboardState from useSelector:', dashboardState);
 
   const {
     myGenericVideos = [], 
     otherGenericVideos = [], 
     myPlaylists = [], 
     otherPlaylists = [], 
-    isLoaded
-  } = dashboardState || {}; // Ensure dashboardState itself is not undefined before destructuring
-
+    isLoaded  } = dashboardState || {}; // Ensure dashboardState itself is not undefined before destructuring
   useEffect(() => {
-    console.log('[Dashboard.jsx] myGenericVideos after destructuring:', myGenericVideos);
     setTimeout(() => setEyeDebuggerOn(false), 5000);
   }, []);
 
@@ -63,13 +65,53 @@ function Dashboard() {
       refreshDashboard();
     }
   }, [currentUser]);
+  // Fetch user groups
+  useEffect(() => {
+    const fetchUserGroups = async () => {
+      try {
+        if (currentUser) {
+          const response = await getAllUserGroupsWithItems();          if (response && response.groups) {
+            setUserGroups(response.groups);
+            
+            // Initialize expandedSections for each group (collapsed by default)
+            const newExpandedSections = {...expandedSections};
+            response.groups.forEach(group => {
+              if (group.group_name === 'favorites') {
+                newExpandedSections[group.group_name] = true; // favorites expanded by default
+              } else {
+                newExpandedSections[group.group_name] = false; // other groups collapsed by default
+              }
+            });
+            setExpandedSections(newExpandedSections);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user groups:', error);
+      }
+    };
 
+    fetchUserGroups();
+  }, [currentUser]);
+  
+    console.log('[Dashboard.jsx] dashboardState from useSelector:', dashboardState);
+
+  // Print out the playlist IDs in the dashboardState for debugging
+  useEffect(() => {
+    if (dashboardState && dashboardState.myPlaylists) {
+      console.log('[Dashboard.jsx] Available myPlaylists IDs:', 
+        dashboardState.myPlaylists.map(p => p.playlist_id));
+    }
+    if (dashboardState && dashboardState.otherPlaylists) {
+      console.log('[Dashboard.jsx] Available otherPlaylists IDs:', 
+        dashboardState.otherPlaylists.map(p => p.playlist_id));
+    }
+  }, [dashboardState]);
+  
   useEffect(() => {
     if (selectedVideo) {
-      console.log("[DEBUG] Attempting to load video:", selectedVideo.external_id, selectedVideo.subject);
+      // Video selected, no action needed here
     }
   }, [selectedVideo]);
-
   const handlePlaylistClick = (playlist) => {
     dispatch(setSelectedPlaylist(playlist));
     navigate(`/playlist/${playlist.playlist_id}`);
@@ -78,7 +120,24 @@ function Dashboard() {
   const handleVideoSelect = (video) => {
     setSelectedVideo(video);
   };
-
+  const toggleGroupSelection = (groupName) => {
+    setSelectedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupName)) {
+        newSet.delete(groupName);
+      } else {
+        newSet.add(groupName);
+        // Auto-expand when checking a group
+        setExpandedSections(prevExpanded => ({
+          ...prevExpanded,
+          [groupName]: true
+        }));
+      }
+      // Save to localStorage
+      localStorage.setItem('selectedGroups', JSON.stringify([...newSet]));
+      return newSet;
+    });
+  };
   const refreshDashboard = async (e) => {
     try {
       // Force refresh of favorites data
@@ -88,9 +147,7 @@ function Dashboard() {
       }
 
       // Fetch dashboard data
-      console.log('[Dashboard.jsx] Calling initializeDashboardData');
       const dashboardData = await initializeDashboardData(currentUser);
-      console.log('[Dashboard.jsx] Data from initializeDashboardData:', dashboardData);
 
       dispatch(setDashboardData({
         myGenericVideos: dashboardData.myGenericVideos,
@@ -98,7 +155,6 @@ function Dashboard() {
         myPlaylists: dashboardData.myPlaylists,
         otherPlaylists: dashboardData.otherPlaylists
       }));
-      console.log('[Dashboard.jsx] Dispatched setDashboardData');
     } catch (error) {
       console.error("Error refreshing dashboard:", error);
     }
@@ -139,8 +195,7 @@ function Dashboard() {
           </div>
         )}
         {!selectedVideo ? (
-          <>
-            <div className="controls-row">
+          <>            <div className="controls-row">
               <div className="mode-selector">
                 <button
                   className={`mode-button ${mode === 'pause' ? 'active' : ''}`}
@@ -163,11 +218,154 @@ function Dashboard() {
               </div>            
             </div>
             
-            {/* Favorites Section */}
-            <FavoritesList 
-              expanded={expandedSections.favorites} 
-              toggleExpand={() => toggleSection('favorites')} 
-            />
+            {/* Group Selection Checkboxes */}
+            <div className="group-selection-container">
+              <h3>My Groups</h3>
+              <div className="group-checkboxes">
+                {userGroups.map(group => (
+                  <label key={group.group_id} className="group-checkbox-label">
+                    <input
+                      type="checkbox"
+                      className="group-checkbox"
+                      checked={selectedGroups.has(group.group_name)}
+                      onChange={() => toggleGroupSelection(group.group_name)}
+                    />
+                    <span className="group-checkbox-text">{group.group_name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+              {/* Favorites Section */}
+            {selectedGroups.has('favorites') && (
+              <FavoritesList 
+                expanded={expandedSections.favorites} 
+                toggleExpand={() => toggleSection('favorites')} 
+              />
+            )}
+            
+            {/* Dynamic Group Sections */}
+            {userGroups.map(group => {
+              // Skip "favorites" as it's already shown through FavoritesList
+              if (group.group_name === 'favorites' || !selectedGroups.has(group.group_name)) return null;
+              
+              return (
+                <div key={group.group_id} className="dashboard-section">
+                  <div className="section-header">
+                    <h2 
+                      onClick={() => toggleSection(group.group_name)} 
+                      className="collapsible-header"
+                    >
+                      {group.group_name}
+                      <span className={`arrow ${expandedSections[group.group_name] ? 'expanded' : ''}`}>▼</span>
+                    </h2>
+                  </div>
+                  
+                  <div className={`collapsible-content ${expandedSections[group.group_name] ? 'expanded' : ''}`}>
+                    {/* Playlists in Group Section */}
+                    {group.playlists && group.playlists.length > 0 && (
+                      <div>
+                        <h3>Playlists</h3>
+                        <div className="content-grid group-playlists-grid">
+                          {group.playlists.map(playlist => {                            // Format playlist for consistent handling
+                            const playlistObj = {
+                              playlist_id: playlist.playlist_id,
+                              playlist_name: playlist.playlist_name,
+                              playlist_permission: playlist.permission,
+                              playlist_owner_id: playlist.playlist_owner_id || currentUser.user_id,
+                              playlist_owner_name: playlist.playlist_owner_name || currentUser.first_name + ' ' + currentUser.last_name,
+                              playlist_items: playlist.playlist_items || []
+                            };
+                            
+                            // Find the full playlist data from Redux store (either myPlaylists or otherPlaylists)
+                            const fullPlaylistData = myPlaylists.find(p => p.playlist_id === playlistObj.playlist_id) || 
+                                                    otherPlaylists.find(p => p.playlist_id === playlistObj.playlist_id);
+                            
+                            if (fullPlaylistData) {
+                              // Use the complete data from store, but keep some properties from the group data
+                              playlistObj.playlist_items = fullPlaylistData.playlist_items;
+                              // Also copy any other useful properties from the full data
+                              if (fullPlaylistData.description) {
+                                playlistObj.description = fullPlaylistData.description;
+                              }
+                            }
+                            
+                            return (
+                              <div 
+                                className="playlist-card" 
+                                key={playlist.playlist_id}
+                                onClick={() => handlePlaylistClick(playlistObj)}
+                              >
+                                <h4>{playlist.playlist_name}</h4>                                <FavoritesStar 
+                                  playlist={playlistObj}
+                                  onToggle={() => setForceUpdate(prev => !prev)} 
+                                />
+                                {playlistObj.playlist_items ? (
+                                  <StackedThumbnails videos={playlistObj.playlist_items} />
+                                ) : (
+                                  <div className="stacked-thumbnails empty-thumbnails" style={{ height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ backgroundColor: '#f0f0f0', borderRadius: '4px', padding: '8px', fontSize: '0.9rem' }}>No thumbnails</div>
+                                  </div>
+                                )}
+                                <div className="playlist-info">
+                                  {playlist.playlist_owner_name && (
+                                    <p>Owner: {playlist.playlist_owner_name}</p>
+                                  )}
+                                  <p>Permission: {playlist.permission}</p>
+                                  {playlist.description && <p>{playlist.description}</p>}
+                                  {playlist.playlist_items && <p>Videos: {playlist.playlist_items.length}</p>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Videos in Group Section */}
+                    {group.videos && group.videos.length > 0 && (
+                      <div>
+                        <h3>Videos</h3>
+                        <div className="content-grid group-videos-grid">
+                          {group.videos.map(video => {                            // Format video for consistent handling
+                            const videoObj = {
+                              video_id: video.video_id,
+                              external_id: video.youtube_id,
+                              video_name: video.name,
+                              subject: video.description,
+                              group: video.description,
+                              length: video.length,
+                              uploadby: video.upload_by
+                            };
+                            
+                            return (
+                              <div 
+                                className="video-card" 
+                                key={video.video_id} 
+                                onClick={() => handleVideoSelect(videoObj)}
+                              >
+                                <h4>{video.name}</h4>
+                                <img src={`https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`} alt={video.description} />
+                                <div className="video-info">
+                                  <h5>Subject: {video.description}</h5>
+                                  <small>Length: {video.length}</small>
+                                  {video.upload_by && <small>Uploaded by: {video.upload_by}</small>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {group.playlists.length === 0 && group.videos.length === 0 && (
+                      <div className="empty-section-message">
+                        No items in this group yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
             
             {/* My Playlists Section */}
             <div className="dashboard-section">

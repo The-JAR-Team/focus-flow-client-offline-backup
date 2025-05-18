@@ -36,10 +36,26 @@ export async function removeVideoFromPlaylist(videoData) {
 // Fetch user's playlist by ID
 export async function getPlaylistById(playlistId) {
     try{
+        // First try to get the playlist from the existing data
         const data = await fetchVideoMetadata();
-        const playlist = data.playlists.find(p => p.playlist_id === playlistId);
-        if (!playlist) throw new Error('Playlist not found');
-        return playlist;
+        const playlist = data.playlists.find(p => p.playlist_id === parseInt(playlistId));
+        
+        if (playlist) {
+            console.log('Playlist found in metadata:', playlist);
+            return playlist;
+        }
+        
+        // If not found in metadata, try to fetch directly (for direct URL access)
+        console.log('Playlist not found in metadata, fetching directly');
+        const response = await axios.get(`${config.baseURL}/playlists/${playlistId}`, {
+            withCredentials: true
+        });
+        
+        if (response.data && response.data.playlist) {
+            return response.data.playlist;
+        }
+        
+        throw new Error('Playlist not found');
     } catch (error) {
         console.error('Error fetching playlist:', error);
         throw error;

@@ -91,7 +91,7 @@
     border-radius: 4px;
     font-size: 1rem;
     background-color: #fff;
-    min-height: 150px;
+    min-height: 100px;
     border: 1px solid #ddd;
     transition: all 0.2s ease;
   }

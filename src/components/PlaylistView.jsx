@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import Navbar from './Navbar';
 import { getSubscriberCount } from '../services/subscriptionService';
 import SubscribeModal from './SubscribeModal';
-import UnsubscribeModal from './UnsubscribeModal'; // added import
+import UnsubscribeModal from './UnsubscribeModal';
 import { removeVideoFromPlaylist, updatePlaylistName, updatePlaylistPermission } from '../services/playlistService';
 import { removeVideo, updatePlaylistData } from '../redux/dashboardSlice';
-import { useDispatch } from 'react-redux';
 import { setSelectedPlaylist, clearPlaylist, removeVideoFromSelectedPlaylist, editSelectedPlaylistName, editSelectedPlaylistPermission } from '../redux/playlistSlice';
 import { toast } from 'react-toastify';
 import '../styles/PlaylistView.css';
@@ -16,65 +15,125 @@ function PlaylistView() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { playlistId } = useParams();
-  const [mode, setMode] = React.useState(() => localStorage.getItem('mode') || 'pause');
-  const [subscriberCount, setSubscriberCount] = React.useState(null); // null indicates not fetched or not authorized
-  const [showSubscribeModal, setShowSubscribeModal] = React.useState(false);
-  const [showUnsubscribeModal, setShowUnsubscribeModal] = React.useState(false); // added state
   
+  // All state hooks at the top level
+  const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
+  const [subscriberCount, setSubscriberCount] = useState(null);
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+  const [showUnsubscribeModal, setShowUnsubscribeModal] = useState(false);
+  const [playlistData, setPlaylistData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingPermission, setIsEditingPermission] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [editedPermission, setEditedPermission] = useState('private');
+  
+  // Redux selectors
   const { currentUser } = useSelector((state) => state.user);
   const { playlist } = useSelector(state => state.playlist);
-  const isOwner = playlist?.playlist_owner_id === currentUser?.user_id;
-  const [isEditingName, setIsEditingName] = React.useState(false);
-  const [isEditingPermission, setIsEditingPermission] = React.useState(false);
-  const [editedName, setEditedName] = React.useState(playlist?.playlist_name || '');
-  const [editedPermission, setEditedPermission] = React.useState(playlist?.playlist_permission || 'private');
-
-  const { myPlaylists } = useSelector((state) => state.dashboard);
-
-  React.useEffect(() => {
-    // Write mode to localStorage under key 'mode'
+  const { myPlaylists, otherPlaylists } = useSelector((state) => state.dashboard);
+  
+  // Compute derived state
+  const isOwner = playlistData?.playlist_owner_id === currentUser?.user_id;
+  
+  // Save the mode to localStorage
+  useEffect(() => {
     localStorage.setItem('mode', mode);
   }, [mode]);
 
-  React.useEffect(() => {
-    if (playlist) {
-      setSelectedPlaylist(playlist);
-      setEditedName(playlist.playlist_name);
-      setEditedPermission(playlist.playlist_permission);
+  // Update edited fields when playlistData changes
+  useEffect(() => {
+    if (playlistData) {
+      setEditedName(playlistData.playlist_name);
+      setEditedPermission(playlistData.playlist_permission);
     }
-  }, [playlist]);
+  }, [playlistData]);
 
-  if (!playlist) return <div>Loading...</div>;
-
-  // Fetch subscriber count; if fails, do not show subscriber section
-  React.useEffect(() => {
-    if (playlist && playlist.playlist_id) {
-      getSubscriberCount(playlist.playlist_id)
-        .then(count => setSubscriberCount(count))
-        .catch(error => {
+  // Fetch subscriber count when playlistData is available
+  useEffect(() => {
+    const fetchSubscriberCount = async () => {
+      if (playlistData && playlistData.playlist_id) {
+        try {
+          const count = await getSubscriberCount(playlistData.playlist_id);
+          setSubscriberCount(count);
+        } catch (error) {
           console.error(error);
           console.log('Not authorized to view subscriber count');
           setSubscriberCount(null);
-        });
-    }
-  }, [playlist?.playlist_id]); // fetch only if we didn't delete all videos from playlist
+        }
+      }
+    };
+    
+    fetchSubscriberCount();
+  }, [playlistData?.playlist_id]);
 
-  // delete video from My Playlist (owner's) 
+  // Fetch playlist if not in Redux store
+  useEffect(() => {
+    const fetchPlaylistIfNeeded = async () => {
+      if (playlist && playlist.playlist_id === parseInt(playlistId)) {
+        // Use the playlist from Redux store
+        setPlaylistData(playlist);
+        setIsLoading(false);
+        return;
+      }
+
+      // Try to find playlist in dashboard data
+      const allPlaylists = [...(myPlaylists || []), ...(otherPlaylists || [])];
+      const foundPlaylist = allPlaylists.find(p => p.playlist_id === parseInt(playlistId));
+      
+      if (foundPlaylist) {
+        dispatch(setSelectedPlaylist(foundPlaylist));
+        setPlaylistData(foundPlaylist);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch from API if not found in Redux store
+      try {
+        setIsLoading(true);
+        const { getPlaylistById } = await import('../services/playlistService');
+        const fetchedPlaylist = await getPlaylistById(parseInt(playlistId));
+        
+        if (fetchedPlaylist) {
+          dispatch(setSelectedPlaylist(fetchedPlaylist));
+          setPlaylistData(fetchedPlaylist);
+        } else {
+          toast.error('Playlist not found');
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        console.error('Error fetching playlist:', error);
+        toast.error('Failed to load playlist');
+        navigate('/dashboard');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlaylistIfNeeded();  }, [playlistId, playlist, myPlaylists, otherPlaylists, dispatch, navigate]);
+
+  // Handler functions
   const handleDeleteVideo = async (video) => {
     if (window.confirm(`Are you sure you want to remove "${video.video_name}" from this playlist?`)) {
       try {
         await removeVideoFromPlaylist(video);
         dispatch(removeVideo({
-          playlist_name: playlist.playlist_name,
+          playlist_name: playlistData.playlist_name,
           playlist_item_id: video.playlist_item_id
         }));
 
-        if (playlist.playlist_items.length === 1) {
+        if (playlistData.playlist_items.length === 1) {
           navigate('/dashboard'); // Redirect to dashboard if no videos left
           dispatch(clearPlaylist());
         }
         else {
           dispatch(removeVideoFromSelectedPlaylist({ playlist_item_id: video.playlist_item_id }));
+          
+          // Update local state
+          setPlaylistData(prev => ({
+            ...prev,
+            playlist_items: prev.playlist_items.filter(item => item.playlist_item_id !== video.playlist_item_id)
+          }));
         }
         toast.success('Video removed successfully!');
       } catch (error) {
@@ -86,14 +145,20 @@ function PlaylistView() {
 
   const savePlaylistName = async () => {
     try {
-      await updatePlaylistName(playlist.playlist_name, editedName);
+      await updatePlaylistName(playlistData.playlist_name, editedName);
 
       dispatch(editSelectedPlaylistName(editedName));
 
       dispatch(updatePlaylistData({
-        playlist_name: playlist.playlist_name,
+        playlist_name: playlistData.playlist_name,
         name: editedName, 
         permission: null
+      }));
+
+      // Update local state
+      setPlaylistData(prev => ({
+        ...prev,
+        playlist_name: editedName
       }));
 
       // Exit edit mode
@@ -109,14 +174,20 @@ function PlaylistView() {
 
   const savePlaylistPermission = async () => {
     try {
-      await updatePlaylistPermission(playlist.playlist_id, editedPermission);
+      await updatePlaylistPermission(playlistData.playlist_id, editedPermission);
 
       dispatch(editSelectedPlaylistPermission(editedPermission));
 
       dispatch(updatePlaylistData({
-        playlist_name: playlist.playlist_name,
+        playlist_name: playlistData.playlist_name,
         name: null,
         permission: editedPermission
+      }));
+
+      // Update local state
+      setPlaylistData(prev => ({
+        ...prev,
+        playlist_permission: editedPermission
       }));
 
       // Exit edit mode
@@ -129,6 +200,32 @@ function PlaylistView() {
       console.error(errorMessage);
     }
   };
+
+  // Conditional rendering
+  if (isLoading) {
+    return (
+      <div className="dashboard-container">
+        <Navbar />
+        <div className="dashboard-content">
+          <div className="loading-message">Loading playlist...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!playlistData) {
+    return (
+      <div className="dashboard-container">
+        <Navbar />
+        <div className="dashboard-content">
+          <div className="not-found-message">Playlist not found</div>
+          <button className="back-button" onClick={() => navigate('/dashboard')}>
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-container">
@@ -153,14 +250,14 @@ function PlaylistView() {
               <div className="edit-actions">
                 <button 
                   onClick={savePlaylistName}
-                  disabled={!editedName.trim() || editedName === playlist.playlist_name}
+                  disabled={!editedName.trim() || editedName === playlistData.playlist_name}
                   className="save-btn"
                 >
                   Save
                 </button>
                 <button 
                   onClick={() => {
-                    setEditedName(playlist.playlist_name); // Reset to original
+                    setEditedName(playlistData.playlist_name); // Reset to original
                     setIsEditingName(false);
                   }}
                   className="cancel-btn"
@@ -171,7 +268,7 @@ function PlaylistView() {
             </div>
           ) : (
             <div className="playlist-title-display">
-              <h2>{playlist.playlist_name}</h2>
+              <h2>{playlistData.playlist_name}</h2>
               {isOwner && (
                 <button
                   className="edit-icon"
@@ -187,7 +284,7 @@ function PlaylistView() {
 
         <div className="playlist-header">
           <div className="permission-container"> 
-            {isEditingPermission?(
+            {isEditingPermission ? (
               <div className="permission-toggles-container"> 
                 <div className="permission-toggles-group">
                   <button
@@ -217,14 +314,14 @@ function PlaylistView() {
                 <div className="permission-edit-actions">
                   <button
                     onClick={savePlaylistPermission}
-                    disabled={editedPermission === playlist.playlist_permission}
+                    disabled={editedPermission === playlistData.playlist_permission}
                     className="save-btn"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => {
-                      setEditedPermission(playlist.playlist_permission);
+                      setEditedPermission(playlistData.playlist_permission);
                       setIsEditingPermission(false);
                     }}
                     className="cancel-btn"
@@ -233,9 +330,9 @@ function PlaylistView() {
                   </button>
                 </div>
               </div>
-            ):(
+            ) : (
                 <div className="inline-edit-form"> 
-                <p>Permission: {playlist.playlist_permission}</p>
+                <p>Permission: {playlistData.playlist_permission}</p>
                 {isOwner && (
                   <button
                     className="edit-icon"
@@ -249,7 +346,7 @@ function PlaylistView() {
             )}
           </div>
 
-          <p>Owner: {playlist.playlist_owner_name}</p>
+          <p>Owner: {playlistData.playlist_owner_name}</p>
           {subscriberCount !== null && (
             <>
               <p>Subscribers: {subscriberCount}</p>
@@ -264,7 +361,7 @@ function PlaylistView() {
           )}
         </div>
         <div className="content-grid-playlist">
-          {playlist.playlist_items.map(video => (
+          {playlistData.playlist_items && playlistData.playlist_items.map(video => (
             <div 
               className="video-card" 
               key={video.video_id || video.external_id}
@@ -306,22 +403,22 @@ function PlaylistView() {
         </div>
         {showSubscribeModal && (
           <SubscribeModal 
-            playlistId={playlist.playlist_id}
+            playlistId={playlistData.playlist_id}
             onClose={() => setShowSubscribeModal(false)}
             onSubscribed={() => {
               // Refresh subscriber count if authorized
-              getSubscriberCount(playlist.playlist_id)
+              getSubscriberCount(playlistData.playlist_id)
                 .then(count => setSubscriberCount(count))
                 .catch(err => setSubscriberCount(null));
             }}
           />
         )}
-        {showUnsubscribeModal && ( // added unsubscribe modal block
+        {showUnsubscribeModal && (
           <UnsubscribeModal 
-            playlistId={playlist.playlist_id}
+            playlistId={playlistData.playlist_id}
             onClose={() => setShowUnsubscribeModal(false)}
             onUnsubscribed={() => {
-              getSubscriberCount(playlist.playlist_id)
+              getSubscriberCount(playlistData.playlist_id)
                 .then(count => setSubscriberCount(count))
                 .catch(err => setSubscriberCount(null));
             }}
