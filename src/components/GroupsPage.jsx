@@ -267,7 +267,7 @@ function GroupsPage() {
                     ))}
                   </ul>
                 ) : <p className="no-items-message">No playlists in this group yet.</p>}
-              </div>              <div className="group-items-section">
+              </div>            {/*  <div className="group-items-section">
                 <h4 data-count={group.videos?.length || 0}>Videos</h4>
                 {group.videos && group.videos.length > 0 ? (
                   <ul className="item-list">
@@ -286,6 +286,7 @@ function GroupsPage() {
                   </ul>
                 ) : <p className="no-items-message">No videos in this group yet.</p>}
               </div>
+                */}
               <small className="group-meta">Last updated: {new Date(group.updated_at).toLocaleString()}</small>
             </div>
           ))}

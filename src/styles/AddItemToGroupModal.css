@@ -71,7 +71,7 @@
   display: flex;
   border-bottom: 1px solid #eee;
   background-color: #f8f9fa;
-  overflow-x: auto;
+  
   white-space: nowrap;
 }
 

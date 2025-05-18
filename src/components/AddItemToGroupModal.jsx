@@ -252,7 +252,7 @@ const AddItemToGroupModal = ({ groupName, onClose, onSuccess }) => {
           >
             Public Playlists ({filteredItems.otherPlaylists.length})
           </button>
-          <button 
+          {/*<button 
             className={`tab-button ${activeTab === 'myVideos' ? 'active' : ''}`}
             onClick={() => handleTabChange('myVideos')}
           >
@@ -264,6 +264,7 @@ const AddItemToGroupModal = ({ groupName, onClose, onSuccess }) => {
           >
             Public Videos ({filteredItems.otherVideos.length})
           </button>
+          */}
         </div>
         
         <div className="modal-body">
