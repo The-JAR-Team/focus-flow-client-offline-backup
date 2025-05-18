@@ -380,22 +380,23 @@ function TriviaVideoPage() {
                 >
                   <span className="mode-icon">🎲</span>
                   Random
-                </button>
-              </div>
+                </button>              </div>
             </div>            <div className="action-buttons">
-              {renderStartQuizButton()}
-              <button 
-                className={`toggle-questions-btn ${isQuestionsHidden ? 'questions-hidden' : ''}`}
-                onClick={() => setIsQuestionsHidden(!isQuestionsHidden)}
-                disabled={currentQuestions.length === 0}
-              >
-                <span className="btn-icon">{isQuestionsHidden ? '👁️' : '👁️‍🗨️'}</span>
-                {isQuestionsHidden ? 'Show Questions' : 'Hide Questions'}
-              </button>
-              <Link to={`/trivia/${videoId}/summary`} className="view-summary-btn">
-                <span className="btn-icon">📝</span>
-                View Summary
-              </Link>
+              <div className="action-buttons-row">
+                {renderStartQuizButton()}
+                <button 
+                  className={`toggle-questions-btn ${isQuestionsHidden ? 'questions-hidden' : ''}`}
+                  onClick={() => setIsQuestionsHidden(!isQuestionsHidden)}
+                  disabled={currentQuestions.length === 0}
+                >
+                  <span className="btn-icon">{isQuestionsHidden ? '👁️' : '👁️‍🗨️'}</span>
+                  {isQuestionsHidden ? 'Show Questions' : 'Hide Questions'}
+                </button>
+                <Link to={`/trivia/${videoId}/summary`} className="view-summary-btn">
+                  <span className="btn-icon">📝</span>
+                  View Summary
+                </Link>
+              </div>
                 {/* Watch Video Button with Playlist Selection */}
               {playlistOptions.length > 0 && (
                 <div className="watch-video-container">
@@ -413,7 +414,7 @@ function TriviaVideoPage() {
                         className="playlist-select"
                         defaultValue=""
                       >
-                        <option value="" disabled>Select a playlist</option>
+                        <option value="" disabled>Choose playlist</option>
                         {playlistOptions.map(playlist => (
                           <option key={playlist.playlist_id} value={playlist.playlist_id}>
                             {playlist.playlist_name}
