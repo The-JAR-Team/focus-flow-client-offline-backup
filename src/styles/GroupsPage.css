@@ -12,27 +12,33 @@
   align-items: center;
   margin-bottom: 30px;
   padding-bottom: 15px;
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 .groups-header h1 {
-  color: #333;
+  color: #1e293b;
   font-size: 2.5em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .create-group-btn {
-  background-color: #007bff;
+  background-color: #2563eb;
   color: white;
   border: none;
-  padding: 12px 20px;
-  border-radius: 5px;
+  padding: 12px 22px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 1em;
-  transition: background-color 0.3s ease;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .create-group-btn:hover {
-  background-color: #0056b3;
+  background-color: #1d4ed8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 /* Modal Styles */
@@ -139,36 +145,41 @@
 /* No Groups Message */
 .no-groups-message {
   text-align: center;
-  padding: 40px 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  margin-top: 20px;
+  padding: 50px 30px;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  margin-top: 30px;
+  border: 1px dashed #cbd5e1;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
 }
 
 .no-groups-message p {
-  font-size: 1.2em;
-  color: #555;
-  margin-bottom: 10px;
+  font-size: 1.3em;
+  color: #64748b;
+  margin-bottom: 15px;
+  line-height: 1.6;
 }
 
 .inline-link {
   background: none;
   border: none;
-  color: #007bff;
+  color: #2563eb;
   text-decoration: underline;
   cursor: pointer;
-  font-size: 1em;
+  font-size: 1.05em;
   padding: 0;
+  font-weight: 500;
+  transition: color 0.2s ease;
 }
 .inline-link:hover {
-  color: #0056b3;
+  color: #1d4ed8;
 }
 
 
 /* Groups Grid & Card Styles */
 .groups-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 25px;
   margin-top: 20px;
 }
@@ -176,31 +187,39 @@
 .group-card {
   background-color: #fff;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  transition: box-shadow 0.3s ease;
+  transition: all 0.3s ease;
+  height: 100%;
+  min-height: 320px;
 }
 
 .group-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-3px);
 }
 
 .group-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
 }
 
 .group-card-header h3 {
   margin: 0;
-  color: #007bff;
+  color: #2563eb; /* More modern blue */
   font-size: 1.6em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .delete-group-btn {
@@ -210,78 +229,135 @@
   font-size: 1.3em;
   cursor: pointer;
   padding: 5px;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 .delete-group-btn:hover {
   color: #c82333;
+  transform: scale(1.1);
 }
 .delete-group-btn:disabled {
   color: #cccccc;
   cursor: not-allowed;
+  transform: none;
 }
-
 
 .group-description {
   font-size: 0.95em;
-  color: #666;
-  margin-bottom: 15px;
-  flex-grow: 1; /* Allows description to take available space */
+  color: #555;
+  margin-bottom: 20px;
+  flex-grow: 0; /* Don't let it expand too much */
   min-height: 40px; /* Ensure some space even if description is short */
+  max-height: 80px; /* Limit height for long descriptions */
+  overflow-y: auto; /* Allow scrolling for long descriptions */
+  line-height: 1.4;
 }
 
 .group-actions {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .btn-add-item {
-  background-color: #17a2b8;
+  background-color: #0ea5e9; /* More vibrant blue */
   color: white;
   border: none;
-  padding: 8px 15px;
-  border-radius: 4px;
+  padding: 10px 18px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9em;
-  transition: background-color 0.2s ease;
+  font-size: 0.95em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 .btn-add-item:hover {
-  background-color: #138496;
+  background-color: #0284c7;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 .btn-add-item:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .group-items-section {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent overflow issues */
 }
 
 .group-items-section h4 {
-  font-size: 1.1em;
+  font-size: 1.05em;
   color: #444;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   border-bottom: 1px dashed #eee;
-  padding-bottom: 5px;
+  padding-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.group-items-section h4::after {
+  content: attr(data-count);
+  background-color: #e2e8f0;
+  color: #475569;
+  font-size: 0.8em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: normal;
 }
 
 .item-list {
   list-style: none;
   padding-left: 0;
+  margin: 0;
+  flex-grow: 1;
+  overflow-y: auto;
+  max-height: 180px; /* Limit height and make scrollable */
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.item-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.item-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.item-list::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 6px;
 }
 
 .item-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 5px;
-  border-bottom: 1px solid #f5f5f5;
-  font-size: 0.9em;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background-color: #f8fafc;
+  transition: background-color 0.2s ease;
+  border-left: 4px solid transparent;
 }
-.item-card:last-child {
-  border-bottom: none;
+
+.item-card:hover {
+  background-color: #f1f5f9;
+  border-left-color: #0ea5e9;
 }
 
 /* Styles for playlist items specifically to accommodate StackedThumbnails */
 .playlist-item-card {
   align-items: flex-start; /* Align items to the top if StackedThumbnails makes card taller */
+  border-left-color: #8b5cf6; /* Purple for playlists */
+}
+
+.video-item-card {
+  border-left-color: #f97316; /* Orange for videos */
 }
 
 .playlist-item-content {
@@ -289,46 +365,65 @@
   flex-direction: column; /* Stack name and thumbnails vertically */
   flex-grow: 1;
   margin-right: 10px;
+  overflow: hidden; /* Prevent overflow */
 }
 
 .playlist-item-content .item-name {
-  margin-bottom: 5px; /* Space between name and thumbnails */
+  margin-bottom: 8px; /* Space between name and thumbnails */
 }
 
 .item-name {
   color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .btn-remove-item {
-  background-color: #ff6b6b; /* A soft red for remove actions */
-  color: white;
-  border: none;
-  padding: 6px 12px; /* Adjusted padding */
-  border-radius: 4px; /* Consistent border-radius */
+  background-color: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  padding: 6px 12px;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 0.85em; /* Slightly adjusted font size */
-  transition: background-color 0.2s ease;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 80px;
 }
 .btn-remove-item:hover {
-  background-color: #ee5253; /* Darker shade on hover */
+  background-color: #ef4444;
+  color: white;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
 }
 .btn-remove-item:disabled {
-  background-color: #cccccc;
+  background-color: transparent;
+  border-color: #cccccc;
+  color: #cccccc;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .no-items-message {
   font-style: italic;
-  color: #777;
+  color: #94a3b8;
   font-size: 0.9em;
-  padding: 10px 0;
+  padding: 12px;
+  text-align: center;
+  background-color: #f8fafc;
+  border-radius: 6px;
+  border: 1px dashed #e2e8f0;
 }
 
 .group-meta {
   font-size: 0.8em;
-  color: #888;
+  color: #94a3b8;
   text-align: right;
   margin-top: auto; /* Pushes meta to the bottom */
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
 }
 
 /* Loading Overlay */
@@ -346,6 +441,12 @@
 }
 
 /* Responsive adjustments */
+@media (max-width: 1024px) {
+  .groups-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
   .groups-header h1 {
     font-size: 2em;
@@ -355,10 +456,36 @@
     font-size: 0.9em;
   }
   .groups-grid {
-    grid-template-columns: 1fr; /* Stack cards on smaller screens */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+  }
+  .group-card {
+    padding: 16px;
+    min-height: 280px;
   }
   .modal-content {
     width: 95%;
     padding: 20px;
+  }
+  .item-name {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 576px) {
+  .groups-page-container {
+    padding: 15px 10px;
+  }
+  .groups-grid {
+    grid-template-columns: 1fr;
+  }
+  .group-card {
+    min-height: auto;
+  }
+  .group-card-header h3 {
+    font-size: 1.4em;
+  }
+  .item-name {
+    max-width: 120px;
   }
 }

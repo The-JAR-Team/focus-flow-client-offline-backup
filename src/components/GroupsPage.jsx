@@ -244,10 +244,8 @@ function GroupsPage() {
                 <button onClick={() => handleAddItem(group.group_name)} className="btn-add-item" disabled={isLoading}>
                   + Add Item
                 </button>
-              </div>
-
-              <div className="group-items-section">
-                <h4>Playlists ({group.playlists?.length || 0})</h4>
+              </div>              <div className="group-items-section">
+                <h4 data-count={group.playlists?.length || 0}>Playlists</h4>
                 {group.playlists && group.playlists.length > 0 ? (
                   <ul className="item-list">
                     {group.playlists.map(playlist => (
@@ -269,10 +267,8 @@ function GroupsPage() {
                     ))}
                   </ul>
                 ) : <p className="no-items-message">No playlists in this group yet.</p>}
-              </div>
-
-              <div className="group-items-section">
-                <h4>Videos ({group.videos?.length || 0})</h4>
+              </div>              <div className="group-items-section">
+                <h4 data-count={group.videos?.length || 0}>Videos</h4>
                 {group.videos && group.videos.length > 0 ? (
                   <ul className="item-list">
                     {group.videos.map(video => (
