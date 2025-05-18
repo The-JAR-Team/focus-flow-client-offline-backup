@@ -20,6 +20,7 @@
   gap: 30px;
   padding: 20px; 
   width: 100%;
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
 }
 
 .video-card {
@@ -161,6 +162,8 @@ h2 {
   border-radius: 8px;
   background: #f5f5f5;
   transition: background-color 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 h2:hover {
@@ -170,6 +173,58 @@ h2:hover {
 @media (max-width: 600px) {
   .dashboard-container {
     padding: 10px;
+  }
+  
+  .dashboard-section {
+    margin-bottom: 150px; /* Increased margin on mobile devices */
+    padding-bottom: 20px; /* Additional padding at the bottom */
+    position: relative;
+    z-index: auto; /* Reset z-index for proper stacking */
+  }
+  
+  .dashboard-section:not(:last-child) {
+    margin-bottom: 200px; /* Even more space between sections on mobile */
+  }
+  
+  .collapsible-content.expanded {
+    margin-bottom: 70px; /* More space between expanded content and next section */
+    padding-bottom: 50px; /* More padding at the bottom on mobile */
+  }
+  
+  /* Ensure content grids don't extend beyond their containers */
+  .content-grid {
+    width: 100%;
+    overflow: hidden;
+    padding: 15px 10px;
+    gap: 20px;
+  }
+  
+  /* Reduce font size for better mobile display */
+  h2 {
+    font-size: 28px;
+  }
+  
+  /* Adjust playlist cards for mobile */
+  .playlist-card {
+    min-height: 220px;
+    max-width: 100%;
+  }
+}
+
+/* Additional media query for medium-sized mobile devices */
+@media (min-width: 601px) and (max-width: 768px) {
+  .dashboard-section {
+    margin-bottom: 100px; /* Adjusted spacing for tablets */
+  }
+  
+  .content-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+    padding: 15px;
+  }
+  
+  .collapsible-content.expanded {
+    margin-bottom: 30px;
   }
 }
 
@@ -297,8 +352,13 @@ h2:hover {
 }
 
 .dashboard-section {
-  margin-bottom: 80px; /* Increased margin to prevent overlap when expanded */
-  position: relative; 
+  margin-bottom: 120px; /* Increased margin to prevent overlap when expanded */
+  position: relative;
+  overflow: visible; /* Ensure content doesn't get cut off */
+  clear: both; /* Prevent floating elements from causing overlap */
+  width: 100%;
+  display: block;
+  padding-bottom: 30px;
 }
 
 .collapsible-header {
@@ -333,11 +393,81 @@ h2:hover {
   opacity: 0;
   overflow: hidden; 
   transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out; /* Adjusted transition */
+  position: relative;
+  z-index: 1;
+  width: 100%;
 }
 
 .collapsible-content.expanded {
   /* Use a very large value that accommodates any content height */
-  max-height: 10000px; /* Adjust if necessary, needs to be larger than max possible content height */
+  max-height: 100000px;/* Adjust if necessary, needs to be larger than max possible content height */
   opacity: 1;         
   overflow: visible; /* Keep visible to prevent clipping during/after transition */
+  margin-bottom: 40px; /* Add bottom margin for spacing */
+  padding-bottom: 30px; /* Add padding at bottom for extra spacing */
+  position: relative; /* Ensure proper stacking context */
+}
+
+/* Fix for mobile display */
+@media (max-width: 600px) {
+  .collapsible-content {
+    position: static;
+  }
+  
+  .collapsible-content.expanded {
+    position: static;
+    display: block;
+    margin-bottom: 80px;
+  }
+}
+
+/* Specific grid styles for each dashboard section */
+.my-playlists-grid {
+  margin-bottom: 40px; /* Extra space after my playlists grid */
+}
+
+.public-playlists-grid {
+  margin-bottom: 40px; /* Extra space after public playlists grid */
+}
+
+.my-videos-grid {
+  margin-bottom: 40px; /* Extra space after my videos grid */
+}
+
+.public-videos-grid {
+  margin-bottom: 20px; /* Space after the last grid (less needed) */
+}
+
+/* Ensure each dashboard section has proper spacing on mobile */
+@media (max-width: 600px) {
+  .my-playlists-grid,
+  .public-playlists-grid,
+  .my-videos-grid,
+  .public-videos-grid {
+    margin-bottom: 80px; /* More spacing on mobile devices */
+    display: grid;
+    grid-template-columns: 1fr; /* Force single column on mobile */
+    overflow: visible;
+    position: static; /* Remove relative positioning on mobile */
+  }
+  
+  /* Add visual separation between sections */
+  .dashboard-section:after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 1px;
+    background-color: #eee;
+    margin-top: 30px;
+    position: absolute;
+    bottom: -30px;
+    left: 0;
+  }
+  
+  /* Clear any floats to prevent overlap */
+  .dashboard-section::after {
+    content: "";
+    display: table;
+    clear: both;
+  }
 }

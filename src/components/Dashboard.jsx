@@ -140,10 +140,9 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('myPlaylists')} className="collapsible-header">
                   My Playlists
                   <span className={`arrow ${expandedSections.myPlaylists ? 'expanded' : ''}`}>▼</span>
-                </h2>
-              </div>
+                </h2>              </div>
               <div className={`collapsible-content ${expandedSections.myPlaylists ? 'expanded' : ''}`}>
-                <div className="content-grid">
+                <div className="content-grid my-playlists-grid">
                   {myPlaylists.map(playlist => (
                     <div 
                       className="playlist-card" 
@@ -168,10 +167,9 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('publicPlaylists')} className="collapsible-header">
                   Public Playlists
                   <span className={`arrow ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>▼</span>
-                </h2>
-              </div>
+                </h2>              </div>
               <div className={`collapsible-content ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>
-                <div className="content-grid">
+                <div className="content-grid public-playlists-grid">
                   {otherPlaylists.map(playlist => (
                     <div 
                       className="playlist-card" 
@@ -197,10 +195,9 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('myVideos')} className="collapsible-header">
                   My Videos
                   <span className={`arrow ${expandedSections.myVideos ? 'expanded' : ''}`}>▼</span>
-                </h2>
-              </div>
+                </h2>              </div>
               <div className={`collapsible-content ${expandedSections.myVideos ? 'expanded' : ''}`}>
-                <div className="content-grid">
+                <div className="content-grid my-videos-grid">
                   {myGenericVideos.map(video => (
                     <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
                       <h4>{video.video_name}</h4>
@@ -221,10 +218,9 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('publicVideos')} className="collapsible-header">
                   Public Videos
                   <span className={`arrow ${expandedSections.publicVideos ? 'expanded' : ''}`}>▼</span>
-                </h2>
-              </div>
+                </h2>              </div>
               <div className={`collapsible-content ${expandedSections.publicVideos ? 'expanded' : ''}`}>
-                <div className="content-grid">
+                <div className="content-grid public-videos-grid">
                   {otherGenericVideos.map(video => (
                     <div className="video-card" key={video.video_id} onClick={() => handleVideoSelect(video)}>
                       <h4>{video.video_name}</h4>
