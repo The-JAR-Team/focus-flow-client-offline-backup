@@ -13,6 +13,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedPlaylist } from '../redux/playlistSlice';
 import { setDashboardData } from '../redux/dashboardSlice';
 import { initializeDashboardData } from '../services/dashboardService';
+import { getAllUserGroupsWithItems } from '../services/groupService';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -32,6 +33,8 @@ function Dashboard() {
     myVideos: true,
     publicVideos: true
   });
+  const [userGroups, setUserGroups] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState(new Set(['favorites']));
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -51,7 +54,6 @@ function Dashboard() {
     otherPlaylists = [], 
     isLoaded
   } = dashboardState || {}; // Ensure dashboardState itself is not undefined before destructuring
-
   useEffect(() => {
     console.log('[Dashboard.jsx] myGenericVideos after destructuring:', myGenericVideos);
     setTimeout(() => setEyeDebuggerOn(false), 5000);
@@ -63,13 +65,41 @@ function Dashboard() {
       refreshDashboard();
     }
   }, [currentUser]);
+  // Fetch user groups
+  useEffect(() => {
+    const fetchUserGroups = async () => {
+      try {
+        if (currentUser) {
+          const response = await getAllUserGroupsWithItems();
+          if (response && response.groups) {
+            setUserGroups(response.groups);
+            console.log('[Dashboard.jsx] User groups fetched:', response.groups);
+            
+            // Initialize expandedSections for each group (collapsed by default)
+            const newExpandedSections = {...expandedSections};
+            response.groups.forEach(group => {
+              if (group.group_name === 'favorites') {
+                newExpandedSections[group.group_name] = true; // favorites expanded by default
+              } else {
+                newExpandedSections[group.group_name] = false; // other groups collapsed by default
+              }
+            });
+            setExpandedSections(newExpandedSections);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user groups:', error);
+      }
+    };
+
+    fetchUserGroups();
+  }, [currentUser]);
 
   useEffect(() => {
     if (selectedVideo) {
       console.log("[DEBUG] Attempting to load video:", selectedVideo.external_id, selectedVideo.subject);
     }
   }, [selectedVideo]);
-
   const handlePlaylistClick = (playlist) => {
     dispatch(setSelectedPlaylist(playlist));
     navigate(`/playlist/${playlist.playlist_id}`);
@@ -77,6 +107,18 @@ function Dashboard() {
 
   const handleVideoSelect = (video) => {
     setSelectedVideo(video);
+  };
+
+  const toggleGroupSelection = (groupName) => {
+    setSelectedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupName)) {
+        newSet.delete(groupName);
+      } else {
+        newSet.add(groupName);
+      }
+      return newSet;
+    });
   };
 
   const refreshDashboard = async (e) => {
@@ -139,8 +181,7 @@ function Dashboard() {
           </div>
         )}
         {!selectedVideo ? (
-          <>
-            <div className="controls-row">
+          <>            <div className="controls-row">
               <div className="mode-selector">
                 <button
                   className={`mode-button ${mode === 'pause' ? 'active' : ''}`}
@@ -163,11 +204,106 @@ function Dashboard() {
               </div>            
             </div>
             
+            {/* Group Selection Checkboxes */}
+            <div className="group-selection-container">
+              <h3>My Groups</h3>
+              <div className="group-checkboxes">
+                {userGroups.map(group => (
+                  <label key={group.group_id} className="group-checkbox-label">
+                    <input
+                      type="checkbox"
+                      className="group-checkbox"
+                      checked={selectedGroups.has(group.group_name)}
+                      onChange={() => toggleGroupSelection(group.group_name)}
+                    />
+                    <span className="group-checkbox-text">{group.group_name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
             {/* Favorites Section */}
             <FavoritesList 
               expanded={expandedSections.favorites} 
               toggleExpand={() => toggleSection('favorites')} 
             />
+            
+            {/* Dynamic Group Sections */}
+            {userGroups.map(group => {
+              // Skip "favorites" as it's already shown through FavoritesList
+              if (group.group_name === 'favorites' || !selectedGroups.has(group.group_name)) return null;
+              
+              return (
+                <div key={group.group_id} className="dashboard-section">
+                  <div className="section-header">
+                    <h2 
+                      onClick={() => toggleSection(group.group_name)} 
+                      className="collapsible-header"
+                    >
+                      {group.group_name}
+                      <span className={`arrow ${expandedSections[group.group_name] ? 'expanded' : ''}`}>▼</span>
+                    </h2>
+                  </div>
+                  
+                  <div className={`collapsible-content ${expandedSections[group.group_name] ? 'expanded' : ''}`}>
+                    {/* Playlists in Group Section */}
+                    {group.playlists && group.playlists.length > 0 && (
+                      <div>
+                        <h3>Playlists</h3>
+                        <div className="content-grid group-playlists-grid">
+                          {group.playlists.map(playlist => (
+                            <div 
+                              className="playlist-card" 
+                              key={playlist.playlist_id}
+                              onClick={() => handlePlaylistClick({...playlist, playlist_id: playlist.playlist_id})}
+                            >
+                              <h4>{playlist.playlist_name}</h4>
+                              <div className="playlist-info">
+                                <p>Permission: {playlist.permission}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Videos in Group Section */}
+                    {group.videos && group.videos.length > 0 && (
+                      <div>
+                        <h3>Videos</h3>
+                        <div className="content-grid group-videos-grid">
+                          {group.videos.map(video => (
+                            <div 
+                              className="video-card" 
+                              key={video.video_id} 
+                              onClick={() => handleVideoSelect({
+                                external_id: video.youtube_id,
+                                subject: video.description,
+                                length: video.length
+                              })}
+                            >
+                              <h4>{video.name}</h4>
+                              <img src={`https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`} alt={video.description} />
+                              <div className="video-info">
+                                <h5>Subject: {video.description}</h5>
+                                <small>Length: {video.length}</small>
+                                <small>Uploaded by: {video.upload_by}</small>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {group.playlists.length === 0 && group.videos.length === 0 && (
+                      <div className="empty-section-message">
+                        No items in this group yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
             
             {/* My Playlists Section */}
             <div className="dashboard-section">

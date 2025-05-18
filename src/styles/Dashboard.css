@@ -4,6 +4,89 @@
   border-radius: 4px;
 }
 
+/* Group selection styles */
+.group-selection-container {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.group-selection-container h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.group-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.group-checkbox-label {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  padding: 8px 12px;
+  border-radius: 30px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.group-checkbox-label:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+
+.group-checkbox {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.group-checkbox-text {
+  position: relative;
+  padding-left: 35px;
+  font-weight: 500;
+  color: #4a4a4a;
+}
+
+.group-checkbox-text:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px solid #ddd;
+  background-color: #fff;
+  transition: all 0.2s ease;
+}
+
+.group-checkbox:checked + .group-checkbox-text:before {
+  background-color: #4285f4;
+  border-color: #4285f4;
+}
+
+.group-checkbox:checked + .group-checkbox-text:after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
 .videos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 25%));
@@ -24,8 +107,47 @@
 }
 
 .favorites-playlists-grid,
-.favorites-videos-grid {
+.favorites-videos-grid,
+.group-playlists-grid,
+.group-videos-grid {
   margin-bottom: 20px;
+}
+
+/* Style for collapsible headers in group sections */
+.dashboard-section .collapsible-header {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  margin-bottom: 0;
+  transition: background-color 0.3s ease;
+}
+
+.dashboard-section .collapsible-header:hover {
+  background-color: #e9ecef;
+}
+
+.dashboard-section .arrow {
+  font-size: 12px;
+  transition: transform 0.3s ease;
+}
+
+.dashboard-section .arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.dashboard-section .collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.dashboard-section .collapsible-content.expanded {
+  max-height: 2000px; /* Large enough to show all content */
+  transition: max-height 0.5s ease-in;
 }
 
 .empty-section-message {
