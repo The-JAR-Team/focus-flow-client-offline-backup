@@ -951,11 +951,16 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       fetchSummaryData(lectureInfo.videoId, selectedLanguage);
     }
   };
-
   // Handle timeline item click to seek video
   const handleTimelineItemClick = (seconds) => {
-    if (playerRef.current && playerRef.current.internalPlayer) {
-      playerRef.current.internalPlayer.seekTo(seconds, true);
+    if (playerRef.current) {
+      console.log(`🎯 Seeking to ${formatTime(seconds)}`);
+      playerRef.current.seekTo(seconds, true);
+      
+      // If video is paused, play it
+      if (!isPlaying) {
+        playerRef.current.playVideo();
+      }
     }
   };
 
