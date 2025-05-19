@@ -1,0 +1,237 @@
+/* Base styles inherited from QuestionTimeline.css */
+.timeline-container.summary-timeline {
+  width: 550px;
+  border-left: 1px solid #ccc;
+  padding: 15px;
+  overflow-y: auto;
+  background-color: #f9f9f9;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  scroll-snap-type: y proximity;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+.summary-timeline .timeline-header {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.1em;
+  color: #333;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  position: sticky;
+  top: 0;
+  background-color: #f9f9f9;
+  z-index: 10;
+}
+
+.no-subjects {
+  color: #888;
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* Loading container styles */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 0;
+  height: 200px;
+}
+
+.loading-container .spinner {
+  margin-bottom: 15px;
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-left-color: #09f;
+  animation: spin 1s ease infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Subject item styles */
+.subject-item {
+  padding: 10px 8px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+  scroll-snap-align: start;
+  scroll-margin-top: 50px;
+  position: relative;
+  padding-left: 15px;
+}
+
+.subject-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #ddd;
+}
+
+.subject-item::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 15px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #aaa;
+}
+
+/* Subject header styles */
+.subject-header {
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.subject-time {
+  font-weight: bold;
+  color: #555;
+  white-space: nowrap;
+  font-size: 0.85em;
+  flex-shrink: 0;
+}
+
+.subject-title {
+  color: #444;
+  line-height: 1.4;
+  flex-grow: 1;
+  font-weight: 600;
+}
+
+.expand-icon {
+  font-size: 10px;
+  margin-top: 3px;
+  transition: transform 0.3s ease;
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+/* Subject details (expanded view) */
+.subject-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #eee;
+  animation: fadeIn 0.3s ease;
+}
+
+.subject-overall-summary {
+  background-color: #f5f5f5;
+  padding: 10px;
+  border-radius: 4px;
+  font-style: italic;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.subject-overall-summary p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Sub-summaries section */
+.sub-summaries {
+  margin-top: 10px;
+}
+
+.sub-summaries h4 {
+  font-size: 0.9em;
+  margin: 8px 0;
+  color: #555;
+}
+
+.sub-summary-item {
+  padding: 8px;
+  margin: 5px 0;
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.sub-summary-item:hover {
+  background-color: #f0f8ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.sub-summary-time {
+  font-size: 0.8em;
+  color: #777;
+  white-space: nowrap;
+}
+
+.sub-summary-text {
+  font-size: 0.9em;
+  color: #333;
+  flex-grow: 1;
+}
+
+/* Current, next, and past states */
+.current-subject {
+  background-color: #e7f5ff;
+  border-left: 4px solid #1890ff;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+}
+
+.current-subject::after {
+  background-color: #1890ff;
+  width: 10px;
+  height: 10px;
+  left: -4px;
+}
+
+.next-subject {
+  border: 1px solid #91d5ff;
+  box-shadow: 0 0 5px rgba(24, 144, 255, 0.2);
+}
+
+.next-subject .subject-title {
+  color: #0056b3;
+}
+
+.next-subject::after {
+  background-color: #91d5ff;
+}
+
+.past-subject {
+  background-color: #f8f8f8;
+  opacity: 0.85;
+}
+
+.past-subject .subject-title {
+  color: #666;
+}
+
+.current-sub-summary {
+  background-color: #eaf7ff;
+  border-left: 3px solid #1890ff;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

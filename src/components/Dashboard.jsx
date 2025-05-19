@@ -22,7 +22,8 @@ function Dashboard() {
   const [videos, setVideos] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('All');
   const [selectedVideo, setSelectedVideo] = useState(null);  
-  const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
+  // Only question mode is used throughout the app
+  const mode = 'question';
   const [error, setError] = useState(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(false);
@@ -200,28 +201,7 @@ function Dashboard() {
             </p>
           </div>
         )}        {!selectedVideo ? (
-          <>            <div className="controls-row">
-              <div className="mode-selector">
-                <button
-                  className={`mode-button ${mode === 'pause' ? 'active' : ''}`}
-                  onClick={() => {
-                    setMode('pause');
-                    localStorage.setItem('mode', 'pause');
-                  }}
-                >
-                  Pause Mode
-                </button>
-                <button
-                  className={`mode-button ${mode === 'question' ? 'active' : ''}`}
-                  onClick={() => {
-                    setMode('question');
-                    localStorage.setItem('mode', 'question');
-                  }}
-                >
-                  Question Mode
-                </button>
-              </div>            
-            </div>
+          <>
             
             {/* Group Selection Checkboxes - Hide in Guest Mode */}
             {!isGuestMode && (

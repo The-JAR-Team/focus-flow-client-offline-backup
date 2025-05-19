@@ -4,6 +4,8 @@ import { Bar } from 'react-chartjs-2';
 import '../styles/VideoPlayer.css';
 import '../styles/TriviaVideoPage.css'; // Add this import for button styles
 import '../styles/QuestionTimeline.css'; // Import the CSS for QuestionTimeline
+import '../styles/SummaryTimeline.css'; // Import the CSS for SummaryTimeline
+import '../styles/TimelineControls.css'; // Import the CSS for timeline controls
 
 import {
   fetchLastWatchTime,
@@ -42,6 +44,7 @@ import {
 import {
   formatTime
 } from '../services/questionTimelineService';
+import { fetchVideoSummary } from '../services/summaryTimelineService';
 
 import {
   Chart as ChartJS,
@@ -55,7 +58,8 @@ import {
 } from 'chart.js';
 import { QuestionModal, DecisionModal } from './QuestionModals';
 import useFaceMesh from '../hooks/useFaceMesh';
-import QuestionTimeline from './QuestionTimeline'; // Import the new component
+import QuestionTimeline from './QuestionTimeline'; // Import the question timeline component
+import SummaryTimeline from './SummaryTimeline'; // Import the summary timeline component
 
 import EyeDebugger from './EyeDebugger';
 ChartJS.register(BarElement, CategoryScale, LinearScale, TimeScale, Title, Tooltip, Legend);
@@ -136,6 +140,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const [currentTime, setCurrentTime] = useState(0); // State for current video time
   const [playerHeight, setPlayerHeight] = useState(390); // Default player height
   const [showTimeline, setShowTimeline] = useState(true); // State for timeline visibility
+  const [timelineType, setTimelineType] = useState('question'); // question or summary
+  const [summaryData, setSummaryData] = useState(null);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
 
   const [noClientPause, setNoClientPause] = useState(false);
 
@@ -910,6 +917,48 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       handleLowEngagement();
     }, 50);
   }, [handleLowEngagement, exitFullScreenIfActive, currentQuestion, isPlaying]);
+
+  // Fetch video summary data
+  const fetchSummaryData = useCallback(async (videoId, language) => {
+    if (!videoId) return;
+    
+    try {
+      setIsSummaryLoading(true);
+      const data = await fetchVideoSummary(videoId, language);
+      setSummaryData(data);
+      console.log(`Loaded ${language} summary data for video ${videoId}`);
+    } catch (error) {
+      console.error(`Error fetching ${language} summary:`, error);
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  }, []);
+
+  // Load summary data when video or language changes
+  useEffect(() => {
+    if (lectureInfo.videoId && timelineType === 'summary') {
+      fetchSummaryData(lectureInfo.videoId, selectedLanguage);
+    }
+  }, [lectureInfo.videoId, selectedLanguage, timelineType, fetchSummaryData]);
+
+  // Toggle between question and summary timeline
+  const toggleTimelineType = () => {
+    const newType = timelineType === 'question' ? 'summary' : 'question';
+    setTimelineType(newType);
+    
+    // If switching to summary and we don't have data yet, fetch it
+    if (newType === 'summary' && !summaryData && lectureInfo.videoId) {
+      fetchSummaryData(lectureInfo.videoId, selectedLanguage);
+    }
+  };
+
+  // Handle timeline item click to seek video
+  const handleTimelineItemClick = (seconds) => {
+    if (playerRef.current && playerRef.current.internalPlayer) {
+      playerRef.current.internalPlayer.seekTo(seconds, true);
+    }
+  };
+
   const renderStatus = () => (
     <div className="status-info">
       <p>Mode: {mode}</p>
@@ -1004,8 +1053,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         onClick={handlePlotResults}
       >
         {showResultsChart ? 'Hide Results' : 'Plot Results'}
-      </button>
-      <button
+      </button>      <button
         className="debug-button"
         onClick={handleToggleTimeline}
       >
@@ -1013,10 +1061,17 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       </button>
       <button
         className="debug-button"
+        onClick={toggleTimelineType}
+      >
+        {timelineType === 'question' ? 'Switch to Summary' : 'Switch to Questions'}
+      </button>
+      <button
+        className="debug-button"
         onClick={handleAllPlotResults}
       >
         {showAllResultsChart ? 'Hide all watcher\'s results' : 'Plot all watchers\' results'}
       </button>
+
     </div>
   );
 
@@ -1137,13 +1192,39 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
 
       {mode === 'question' && showTimeline && (
         <div className="timeline-section"> {/* Wrapper for the timeline */}
-          <QuestionTimeline
-            questions={questions}
-            currentTime={currentTime}
-            language={selectedLanguage}
-            playerHeight={playerHeight}
-            onQuestionClick={handleQuestionClick}
-          />
+          <div className="timeline-controls">
+            <button 
+              className="timeline-toggle-button" 
+              onClick={toggleTimelineType}
+              title={`Switch to ${timelineType === 'question' ? 'summary' : 'question'} timeline`}
+            >
+              {timelineType === 'question' ? 'Switch to Summary' : 'Switch to Questions'}
+            </button>
+          </div>
+            {timelineType === 'question' ? (
+            <QuestionTimeline
+              questions={questions}
+              currentTime={currentTime}
+              language={selectedLanguage}
+              playerHeight={playerHeight}
+              onQuestionClick={handleQuestionClick}
+            />
+          ) : (
+            isSummaryLoading ? (
+              <div className="timeline-loading">
+                <span className="spinner"></span>
+                <p>Loading summary data...</p>
+              </div>
+            ) : (              <SummaryTimeline
+                summaryData={summaryData}
+                currentTime={currentTime}
+                language={selectedLanguage}
+                playerHeight={playerHeight}
+                onTimeClick={handleTimelineItemClick}
+                isLoading={isSummaryLoading}
+              />
+            )
+          )}
         </div>
       )}
 
