@@ -90,11 +90,12 @@ const SummaryTimeline = ({ summaryData, currentTime, language, playerHeight, onT
   const toggleSubject = (subjectId) => {
     setExpandedSubjectId(expandedSubjectId === subjectId ? null : subjectId);
   };
-
   return (
     <div
-      className="timeline-container summary-timeline"      ref={timelineRef}
+      className={`timeline-container summary-timeline ${language === 'Hebrew' ? 'rtl-timeline' : ''}`}
+      ref={timelineRef}
       style={{ height: `${playerHeight}px` }}
+      dir={language === 'Hebrew' ? 'rtl' : 'ltr'}
     >
       <h3 className="timeline-header">{language} Summary Timeline</h3>
       

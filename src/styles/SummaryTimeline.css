@@ -235,3 +235,51 @@
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* RTL Support for Hebrew */
+.timeline-container.rtl-timeline {
+  border-left: none;
+  border-right: 1px solid #ccc;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  text-align: right;
+}
+
+.rtl-timeline .subject-item {
+  padding-left: 8px;
+  padding-right: 15px;
+}
+
+.rtl-timeline .subject-item::before {
+  left: auto;
+  right: 0;
+}
+
+.rtl-timeline .subject-item::after {
+  left: auto;
+  right: -3px;
+}
+
+.rtl-timeline .current-subject {
+  border-left: none;
+  border-right: 4px solid #1890ff;
+}
+
+.rtl-timeline .current-subject::after {
+  left: auto;
+  right: -4px;
+}
+
+.rtl-timeline .current-sub-summary {
+  border-left: none;
+  border-right: 3px solid #1890ff;
+}
+
+/* Fix flex direction for RTL */
+.rtl-timeline .subject-header,
+.rtl-timeline .sub-summary-item {
+  flex-direction: row-reverse;
+}
+
+.rtl-timeline .expand-icon.expanded {
+  transform: rotate(-180deg);
+}
