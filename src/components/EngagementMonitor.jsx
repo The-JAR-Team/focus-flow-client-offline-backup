@@ -17,6 +17,10 @@ const EngagementMonitor = () => {
   // Buffer for landmark data
   const landmarkBufferRef = useRef([]);
   
+  // For FPS calculation
+  const frameCountRef = useRef(0);
+  const lastFpsLogTimeRef = useRef(Date.now());
+  
   // Constants for data collection
   const FPS = 10;
   const FRAME_INTERVAL = 100; // Collect frame every 100ms
@@ -59,10 +63,22 @@ const EngagementMonitor = () => {
     };
     
     fetchPublicVideo();
+    lastFpsLogTimeRef.current = Date.now(); // Initialize FPS log time
   }, []);
 
   // Handle FaceMesh results
   const handleResults = (results) => {
+    // FPS Calculation
+    frameCountRef.current++;
+    const now = Date.now();
+    if (now - lastFpsLogTimeRef.current >= 5000) { // 5 seconds
+      const elapsedSeconds = (now - lastFpsLogTimeRef.current) / 1000;
+      const fps = frameCountRef.current / elapsedSeconds;
+      console.log(`🎥 Current Camera FPS: ${fps.toFixed(2)}`);
+      frameCountRef.current = 0;
+      lastFpsLogTimeRef.current = now;
+    }
+
     // Hide loading state when we get first results
     if (isLoading) {
       setIsLoading(false);
