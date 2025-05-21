@@ -242,7 +242,7 @@ const EngagementMonitor = () => {
               number_of_landmarks: 478,
               landmarks: [relevantLandmarks]
             },
-            model: "v1"
+            model: "v4"
           };
 
           const response = await axios.post(

@@ -277,7 +277,7 @@ export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSe
           number_of_landmarks: 478,
           landmarks: [relevantLandmarks]
         },          
-        model: "v1"
+        model: "v4"
       };
       
       const response = await axios.post(`${config.baseURL}/watch/log_watch`, payload, { withCredentials: true });
