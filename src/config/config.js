@@ -5,3 +5,15 @@ export const config = {
 };
 
 export const BASE_URL = 'https://focus-flow-236589840712.me-west1.run.app';
+
+// Constants for model operations
+export const ONNX_CONFIG = {
+  // Whether to use fallback server processing if local inference fails
+  useFallback: true,
+  // Fallback server endpoint (uses the same endpoint as before)
+  fallbackEndpoint: `${BASE_URL}/watch/log_watch`,
+  // Number of local inference errors before switching to server fallback
+  maxLocalErrors: 3,
+  // Whether to log additional debug information
+  debug: false,
+};

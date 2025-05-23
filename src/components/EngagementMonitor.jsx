@@ -1,18 +1,21 @@
 import React, { useRef, useState, useEffect } from 'react';
 import useFaceMesh from '../hooks/useFaceMesh';
 import axios from 'axios';
-import { config } from '../config/config';
+import { config, ONNX_CONFIG } from '../config/config';
 import '../styles/EngagementMonitor.css';
+import { initializeOnnxModel, predictEngagement } from '../services/engagementOnnxService';
 
 const EngagementMonitor = () => {
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [faceMeshStatus, setFaceMeshStatus] = useState('Initializing...');
-  const [isActive, setIsActive] = useState(true);
-  const [engagementScore, setEngagementScore] = useState(null);
+  const canvasRef = useRef(null);  const [faceMeshStatus, setFaceMeshStatus] = useState('Initializing...');
+  const [isActive, setIsActive] = useState(true);  const [engagementScore, setEngagementScore] = useState(null);
   const [engagementClass, setEngagementClass] = useState('');
   const [errorMessage, setErrorMessage] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [onnxModelReady, setOnnxModelReady] = useState(false);
+  const [onnxStatus, setOnnxStatus] = useState('Loading ONNX model...');
+  const [useServerFallback, setUseServerFallback] = useState(false);
+  const onnxErrorCountRef = useRef(0);
   
   // Buffer for landmark data
   const landmarkBufferRef = useRef([]);
@@ -30,9 +33,31 @@ const EngagementMonitor = () => {
   // References for intervals
   const trackingIntervalRef = useRef(null);
   const sendingIntervalRef = useRef(null);
-
   // Get a public video ID from the first accessible video
   const [publicVideoId, setPublicVideoId] = useState(null);
+    // Initialize ONNX model
+  useEffect(() => {
+    const initModel = async () => {
+      try {
+        setOnnxStatus('Starting ONNX model initialization...');
+        const initialized = await initializeOnnxModel();
+        setOnnxModelReady(initialized);
+        if (!initialized) {
+          setOnnxStatus('Failed to initialize ONNX model');
+          setErrorMessage("Failed to initialize ONNX model");
+        } else {
+          setOnnxStatus('ONNX model initialized successfully');
+          console.log("ONNX model initialized successfully");
+        }
+      } catch (error) {
+        setOnnxStatus(`Error initializing ONNX model: ${error.message}`);
+        console.error("Error initializing ONNX model:", error);
+        setErrorMessage("Error initializing ONNX model: " + (error.message || "Unknown error"));
+      }
+    };
+    
+    initModel();
+  }, []);
   
   // Fetch a public video ID that we can use for the engagement monitor
   useEffect(() => {
@@ -55,10 +80,12 @@ const EngagementMonitor = () => {
             }
           }
         }
-        setErrorMessage("No public videos found for engagement monitoring");
+        // For local ONNX processing, we don't strictly need a video ID
+        console.log("No public videos found, but continuing with local processing");
       } catch (error) {
         console.error("Error fetching accessible videos:", error);
-        setErrorMessage("Error fetching videos: " + (error.message || "Unknown error"));
+        // For local ONNX processing, we can continue without the video ID
+        console.log("Error fetching videos, but continuing with local processing");
       }
     };
     
@@ -117,13 +144,10 @@ const EngagementMonitor = () => {
 
     // Get bounding box from face landmarks
     const landmarks = results.multiFaceLandmarks[0];
-    
-    // Store the landmark data
+      // Store the landmark data
     if (isActive && landmarks) {
-      landmarkBufferRef.current.push({
-        timestamp: Date.now(),
-        landmarks: landmarks
-      });
+      // Store only the landmarks data, not the timestamp
+      landmarkBufferRef.current.push(landmarks);
       
       // Keep only the most recent frames needed
       if (landmarkBufferRef.current.length > REQUIRED_FRAMES) {
@@ -221,7 +245,6 @@ const EngagementMonitor = () => {
       setIsLoading(false);
     }
   };
-
   // Initialize data collection and sending intervals
   useEffect(() => {
     if (isActive) {
@@ -229,60 +252,41 @@ const EngagementMonitor = () => {
       trackingIntervalRef.current = setInterval(() => {
         // This is just to ensure the buffer doesn't grow too large
         // Actual collection happens in handleResults
-      }, FRAME_INTERVAL);
-
-      // Start sending data to server at regular intervals
+      }, FRAME_INTERVAL);      // Start processing engagement data at regular intervals
       sendingIntervalRef.current = setInterval(async () => {
         if (landmarkBufferRef.current.length < REQUIRED_FRAMES) {
           console.log(`⚠️ Not enough frames yet (${landmarkBufferRef.current.length}/${REQUIRED_FRAMES})`);
           return;
         }
         
-        if (!publicVideoId) {
-          console.log("⚠️ No video ID available");
-          return;
-        }
-
         try {
+          // Get the most recent frames from the buffer
           const relevantLandmarks = landmarkBufferRef.current
-            .slice(-REQUIRED_FRAMES)
-            .map(item => item.landmarks);
+            .slice(-REQUIRED_FRAMES);
 
-          const payload = {
-            youtube_id: publicVideoId,
-            current_time: 0, // Placeholder
-            extraction: "mediapipe",
-            extraction_payload: {
-              fps: FPS,
-              interval: 10,
-              number_of_landmarks: 478,
-              landmarks: [relevantLandmarks]
-            },
-            model: "v4"
-          };
+          // Check if ONNX model is ready
+          if (!onnxModelReady) {
+            console.log("⚠️ ONNX model not ready yet");
+            return;
+          }
 
-          const response = await axios.post(
-            `${config.baseURL}/watch/log_watch`, 
-            payload, 
-            { withCredentials: true }
-          );
+          // Process landmarks with ONNX model
+          console.log(`Processing ${relevantLandmarks.length} landmarks with ONNX model`);
+          const result = await predictEngagement(relevantLandmarks);
           
-          if (response.data.status === 'failed') {
-            setErrorMessage(response.data.reason || "API error");
-            console.error('API error:', response.data.reason);
+          if (!result) {
+            console.error('❌ ONNX prediction failed');
+            setErrorMessage("ONNX prediction failed");
             return;
           }
           
-          const modelResult = response.data?.model_result;
-          const modelClass = response.data?.model_result_class_name;
+          setEngagementScore(result.score);
+          setEngagementClass(result.name);
           
-          setEngagementScore(modelResult);
-          setEngagementClass(modelClass);
-          
-          console.log(`✅ Sent ${REQUIRED_FRAMES} frames successfully. Model result:`, modelResult, modelClass);
+          console.log(`✅ Processed ${REQUIRED_FRAMES} frames with ONNX model. Result:`, result.score, result.name);
         } catch (error) {
-          console.error('❌ Error sending landmarks:', error);
-          setErrorMessage("Error sending data: " + (error.message || "Unknown error"));
+          console.error('❌ Error processing landmarks with ONNX:', error);
+          setErrorMessage("Error processing landmarks: " + (error.message || "Unknown error"));
         }
       }, SEND_INTERVAL);
     }
@@ -296,7 +300,7 @@ const EngagementMonitor = () => {
         clearInterval(sendingIntervalRef.current);
       }
     };
-  }, [isActive, publicVideoId]);
+  }, [isActive, onnxModelReady]);
 
   // Toggle active state
   const toggleActive = () => {
@@ -305,15 +309,27 @@ const EngagementMonitor = () => {
       landmarkBufferRef.current = [];
     }
   };
-
   // Handle retry when FaceMesh fails
-  const handleRetry = () => {
+  const handleRetry = async () => {
     setErrorMessage(null);
     setIsLoading(true);
     setFaceMeshStatus('Initializing...');
     
     // Clear buffers
     landmarkBufferRef.current = [];
+    
+    // Re-initialize ONNX model
+    try {
+      setOnnxModelReady(false);
+      const initialized = await initializeOnnxModel();
+      setOnnxModelReady(initialized);
+      if (!initialized) {
+        setErrorMessage("Failed to initialize ONNX model");
+      }
+    } catch (error) {
+      console.error("Error re-initializing ONNX model:", error);
+      setErrorMessage("Error initializing ONNX model: " + (error.message || "Unknown error"));
+    }
     
     // Force a browser repaint/reflow to help with webcam issues
     if (videoRef.current) {
@@ -325,12 +341,12 @@ const EngagementMonitor = () => {
       }, 50);
     }
   };
-
   return (
     <div className="engagement-monitor">
       <div className="status-bar">
         <div className="status-text">
-          <span>Status: {faceMeshStatus}</span>
+          <span>FaceMesh: {faceMeshStatus}</span>
+          <span>ONNX: {onnxModelReady ? 'Ready' : 'Loading...'}</span>
           <span>Engagement: {engagementScore !== null ? `${engagementScore.toFixed(2)} (${engagementClass})` : 'Measuring...'}</span>
           {errorMessage && <span className="error">{errorMessage}</span>}
         </div>
