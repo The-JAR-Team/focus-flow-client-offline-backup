@@ -13,6 +13,7 @@ import CreatePlaylist from './components/CreatePlaylist';
 import EngagementMonitor from './components/EngagementMonitor';
 import MyAccount from './components/MyAccount';
 import GroupsPage from './components/GroupsPage';
+import OnnxModelPreloader from './components/OnnxModelPreloader';
 import './styles/App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -21,6 +22,9 @@ import PrivateRoute from './components/PrivateRoute';
 function App() {
   return (
     <HashRouter>
+      {/* Preload ONNX model when app starts */}
+      <OnnxModelPreloader />
+      
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
