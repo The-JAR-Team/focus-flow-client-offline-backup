@@ -16,4 +16,8 @@ export const ONNX_CONFIG = {
   maxLocalErrors: 3,
   // Whether to log additional debug information
   debug: false,
+  // Model management
+  enableModelSwitching: true,
+  // Whether to show model selection UI
+  showModelSelector: true,
 };

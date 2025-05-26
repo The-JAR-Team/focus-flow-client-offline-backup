@@ -1,5 +1,21 @@
 import axios from "axios";
 import { config } from '../config/config';
+import { 
+  initializeVideoEngagement, 
+  processEngagementData,
+  getProcessingStatus
+} from './videoEngagementService';
+import {
+  initializeVideoSession,
+  addEngagementData,
+  startBatchInterval,
+  stopBatchInterval,
+  cleanupSession,
+  handlePauseEvent,
+  handleSeekEvent,
+  handleBufferResetEvent,
+  getSessionStatus
+} from './ticketService';
 
 const VIDEO_METADATA_URL = 'https://raw.githubusercontent.com/The-JAR-Team/viewDataFromDataBase/refs/heads/main/fetch/video_metadata.json';
 const VIDEO_TRANSCRIPT_URL = 'https://raw.githubusercontent.com/The-JAR-Team/viewDataFromDataBase/refs/heads/main/transcripts';
@@ -129,6 +145,9 @@ let onModelResultCallback = null;
 let onBufferUpdateCallback = null;
 let onFaceMeshErrorCallback = null; // Callback for FaceMesh error notification
 
+// Track if resume is in progress to prevent multiple simultaneous calls
+let resumeInProgress = false;
+
 export const setModelResultCallback = (callback) => {
   onModelResultCallback = callback;
 };
@@ -145,7 +164,7 @@ export const getRequestsSentCount = () => {
   return requestsSentCount;
 };
 
-export const resetTracking = () => {
+export const resetTracking = async () => {
   isVideoPaused = true;
   landmarkBuffer = [];
   latestLandmark = null; // Clear the latest landmark too to prevent reusing old data
@@ -154,6 +173,14 @@ export const resetTracking = () => {
   clearInterval(sendingInterval);
   trackingInterval = null;
   sendingInterval = null;
+  
+  // Clean up session and send final batch
+  try {
+    await cleanupSession();
+  } catch (error) {
+    console.error('❌ Error cleaning up session:', error);
+  }
+  
   // Don't reset requestsSentCount here to keep the total count
   console.log('🔄 Tracking reset, buffer cleared, and intervals stopped.');
   
@@ -168,19 +195,61 @@ export const resetTracking = () => {
   }
 };
 
-export const handleVideoPause = () => {
+export const handleVideoPause = async (currentTime = 0) => {
   resetTracking();
+  
+  // Send pause event to ticket system
+  try {
+    await handlePauseEvent(currentTime);
+  } catch (error) {
+    console.error('❌ Error sending pause event:', error);
+  }
+  
   console.log('🛑 Video paused.');
 };
 
 export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSeconds = 10, getCurrentTime = () => 0) => {
-  // Clear any existing intervals first
-  clearInterval(trackingInterval);
-  clearInterval(sendingInterval);
+  // Prevent multiple simultaneous calls
+  if (resumeInProgress) {
+    console.log('⚠️ Video resume already in progress, skipping duplicate call');
+    return;
+  }
+  
+  resumeInProgress = true;
+  
+  try {    // Clear any existing intervals first
+    clearInterval(trackingInterval);
+    clearInterval(sendingInterval);
+    trackingInterval = null;
+    sendingInterval = null;
+    console.log('🧹 Cleared existing intervals for fresh start');
+    
     // Reset state
-  isVideoPaused = false;
-  landmarkBuffer = [];
-  lastUsedLandmarks = null; // Reset last used landmarks to prevent duplication
+    isVideoPaused = false;
+    landmarkBuffer = [];
+    lastUsedLandmarks = null; // Reset last used landmarks to prevent duplication
+  
+  // Initialize video session with new ticket system
+  try {
+    const ticketId = await initializeVideoSession(youtube_id);
+    if (ticketId) {
+      console.log(`🎫 Video session initialized with ticket: ${ticketId}`);
+      
+      // Start batch interval for engagement data
+      startBatchInterval(sendIntervalSeconds);
+    } else {
+      console.warn('⚠️ Failed to initialize video session, continuing with legacy mode');
+    }
+  } catch (error) {
+    console.error('❌ Error initializing video session:', error);
+  }
+  
+  // Initialize ONNX processing on first resume
+  const processingStatus = getProcessingStatus();
+  if (!processingStatus.onnxInitialized && !processingStatus.useServerFallback) {
+    console.log('🔧 Initializing ONNX processing for video engagement...');
+    await initializeVideoEngagement();
+  }
   
   // Always collect frames regardless of mode
   console.log(`▶️ Video tracking started: collecting frame every ${FRAME_INTERVAL}ms, sending every ${sendIntervalSeconds}s.`);
@@ -235,17 +304,18 @@ export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSe
       }
     }
   }, FRAME_INTERVAL);
-  // Initialize sending interval in both client and server modes
+    // Initialize sending interval with local ONNX processing
+  console.log(`⏰ Creating sending interval: ${sendIntervalSeconds * 1000}ms (${sendIntervalSeconds}s)`);
   sendingInterval = setInterval(async () => {
     // Immediate checks to prevent unnecessary processing
     if (isVideoPaused) {
-      console.log('🛑 Skipping log_watch - video paused');
+      console.log('🛑 Skipping engagement processing - video paused');
       return;
     }
     
     // Don't send data if FaceMesh is in error state
     if (hasFaceMeshError) {
-      console.warn('⚠️ FaceMesh error - skipping log_watch request');
+      console.warn('⚠️ FaceMesh error - skipping engagement processing');
       return;
     }
     
@@ -262,48 +332,60 @@ export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSe
       // Check if landmarks are the same as last request
       const landmarksJSON = JSON.stringify(relevantLandmarks);
       if (lastUsedLandmarks === landmarksJSON) {
-        console.log('⚠️ Same landmarks detected, skipping duplicate request');
+        console.log('⚠️ Same landmarks detected, skipping duplicate processing');
         return;
       }
-      lastUsedLandmarks = landmarksJSON;
-
-      const payload = {
-        youtube_id: youtube_id,
-        current_time: getCurrentTime(),
-        extraction: "mediapipe",
-        extraction_payload: {
-          fps: 10,
-          interval: 10,
-          number_of_landmarks: 478,
-          landmarks: [relevantLandmarks]
-        },          
-        model: "v4"
-      };
+      lastUsedLandmarks = landmarksJSON;      // Process engagement data locally with ONNX (or fallback to server)
+      const modelResult = await processEngagementData(
+        relevantLandmarks, 
+        youtube_id, 
+        getCurrentTime()
+      );
       
-      const response = await axios.post(`${config.baseURL}/watch/log_watch`, payload, { withCredentials: true });
-      requestsSentCount++; // Increment counter for successful requests
-      const modelResult = response.data?.model_result;
-      lastModelResult = modelResult;
-      
-      if (onModelResultCallback) {
-        onModelResultCallback(modelResult);
-      }
-      console.log('current_time', getCurrentTime());
-      console.log(`✅ Sent ${REQUIRED_FRAMES} frames successfully (${requestsSentCount} total). Model result:`, modelResult);
-      
-      // Update buffer info after sending
-      if (onBufferUpdateCallback) {
-        onBufferUpdateCallback({
-          currentFrames: landmarkBuffer.length,
-          requiredFrames: REQUIRED_FRAMES,
-          requestsSent: requestsSentCount,
-          hasError: false
-        });
+      if (modelResult) {
+        requestsSentCount++; // Increment counter for successful processing
+        lastModelResult = modelResult;
+        
+        // Add engagement data to batch instead of sending immediately
+        const engagementData = {
+          video_time: getCurrentTime(),
+          engagement_score: modelResult.engagement_score || modelResult,
+          engagement_level: modelResult.engagement_level,
+          processing_mode: modelResult.processing_mode || 'unknown',
+          landmarks_count: relevantLandmarks.length,
+          processing_timestamp: Date.now()
+        };
+        
+        addEngagementData(engagementData);
+        
+        if (onModelResultCallback) {
+          onModelResultCallback(modelResult);
+        }
+        
+        console.log('current_time', getCurrentTime());
+        console.log(`✅ Processed ${REQUIRED_FRAMES} frames successfully (${requestsSentCount} total). Result:`, modelResult);
+        
+        // Update buffer info after processing
+        if (onBufferUpdateCallback) {
+          onBufferUpdateCallback({
+            currentFrames: landmarkBuffer.length,
+            requiredFrames: REQUIRED_FRAMES,
+            requestsSent: requestsSentCount,
+            hasError: false
+          });
+        }
+      } else {
+        console.warn('⚠️ Engagement processing returned no result');
       }
     } catch (error) {
-      console.error('❌ Error sending landmarks:', error);
-    }
+      console.error('❌ Error processing engagement data:', error);    }
   }, sendIntervalSeconds * 1000);
+  
+  } catch (error) {
+    console.error('❌ Error in handleVideoResume:', error);
+  } finally {
+    resumeInProgress = false;
+  }
 };
 
 export const updateLatestLandmark = (faceMeshResults) => {
@@ -314,33 +396,52 @@ export const updateLatestLandmark = (faceMeshResults) => {
   }
 };
 
-// Handle FaceMesh error state
-export const setFaceMeshErrorState = (isError) => {
-  const previousState = hasFaceMeshError;
-  hasFaceMeshError = isError;
-  
-  // If error state changes, notify callback
-  if (previousState !== isError && onFaceMeshErrorCallback) {
-    onFaceMeshErrorCallback(isError);
-    
-    // Clear buffer when entering error state
-    if (isError && landmarkBuffer.length > 0) {
-      landmarkBuffer = [];
-      console.warn('⚠️ FaceMesh error detected - buffer cleared');
-      
-      // Update buffer status
-      if (onBufferUpdateCallback) {
-        onBufferUpdateCallback({
-          currentFrames: 0,
-          requiredFrames: REQUIRED_FRAMES,
-          requestsSent: requestsSentCount,
-          hasError: true
-        });
-      }
-    }
+// Export functions for video engagement processing
+export { 
+  initializeVideoEngagement,
+  processEngagementData,
+  getProcessingStatus
+} from './videoEngagementService';
+
+// Export ticket service functions for video events
+export {
+  getSessionStatus,
+  handleSeekEvent,
+  handleBufferResetEvent
+} from './ticketService';
+
+/**
+ * Handle video seek operation
+ * @param {number} fromTime - Previous time position
+ * @param {number} toTime - New time position
+ */
+export const handleVideoSeek = async (fromTime, toTime) => {
+  try {
+    await handleSeekEvent(fromTime, toTime);
+    // Reset buffer after seek to ensure fresh engagement data
+    await handleBufferResetEvent(toTime);
+    console.log(`🎯 Video seek handled: ${fromTime}s → ${toTime}s`);
+  } catch (error) {
+    console.error('❌ Error handling video seek:', error);
   }
-  
-  return isError;
+};
+
+/**
+ * Handle buffer reset (e.g., when engagement tracking needs to restart)
+ * @param {number} currentTime - Current video time
+ */
+export const handleTrackingReset = async (currentTime) => {
+  try {
+    await handleBufferResetEvent(currentTime);
+    
+    // Clear local buffer
+    landmarkBuffer = [];
+    lastUsedLandmarks = null;
+    
+    console.log(`🔄 Tracking buffer reset at ${currentTime}s`);
+  } catch (error) {
+    console.error('❌ Error handling tracking reset:', error);
+  }
 };
 
 export const fetchLastWatchTime = async (youtube_id) => {

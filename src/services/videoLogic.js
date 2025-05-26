@@ -99,6 +99,11 @@ export const handleEngagementDetection = ({
   setPauseStatus,
   setUserPaused
 }) => {
+  // Early return if player reference is invalid
+  if (!playerRef || !playerRef.current) {
+    console.warn('[DEBUGQ] Player reference is null, skipping engagement detection');
+    return;
+  }
   // Skip if engagement detection is disabled and no manual trigger is active
   if (!isEngagementDetectionEnabled && !manualTriggerActive) {
     console.log('[DEBUGQ] Engagement detection disabled, skipping');
@@ -148,23 +153,31 @@ export const handleEngagementDetection = ({
     console.log('[DEBUGQ] Question is active, skipping engagement actions');
     return;
   }
-
   if (stableGaze.current === 'Looking center') {
     // Auto-resume playback when looking back at center
+    if (!playerRef.current) {
+      console.warn('[DEBUGQ] Player reference is null, cannot resume playback');
+      return;
+    }
+    
     const ytState = playerRef.current?.getPlayerState?.();
     const isActuallyPaused = ytState !== 1;
     const shouldResume = isActuallyPaused && !userPausedRef.current && stableDuration >= CENTER_THRESHOLD_MS;
     
     if (shouldResume && playerRef.current && !window.noStop) {
       console.log('[DEBUGQ] Looking center for', stableDuration, 'ms, resuming video');
-      playerRef.current.playVideo();
-      setTimeout(() => {
-        if (playerRef.current.getPlayerState() === 1) {
-          setIsPlaying(true);
-          setPauseStatus('Playing');
-          setUserPaused(false);
-        }
-      }, 200);
+      try {
+        playerRef.current.playVideo();
+        setTimeout(() => {
+          if (playerRef.current && playerRef.current.getPlayerState() === 1) {
+            setIsPlaying(true);
+            setPauseStatus('Playing');
+            setUserPaused(false);
+          }
+        }, 200);
+      } catch (error) {
+        console.error('[DEBUGQ] Error resuming video playback:', error);
+      }
     }
   } else {
     // When looking away, check if we're playing and should trigger question

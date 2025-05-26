@@ -26,7 +26,7 @@ export const loadOnnxModelFromUrl = async (url) => {
 };
 
 // Function to load the ONNX model from a URL or create a dataURL from a base64 string
-export const getOnnxModelUri = async () => {
+export const getOnnxModelUri = async (modelFilename = 'engagement_multitask_v4.onnx') => {
   // Try loading from URL first with various paths that might work
   const baseUrl = window.location.origin;
   const basePath = window.location.pathname.endsWith('/') 
@@ -34,17 +34,17 @@ export const getOnnxModelUri = async () => {
     : window.location.pathname + '/';
   
   const urls = [
-    './models/engagement_multitask_v4.onnx',
-    '/models/engagement_multitask_v4.onnx',
-    '/focus-flow-client/models/engagement_multitask_v4.onnx',
-    baseUrl + '/models/engagement_multitask_v4.onnx',
-    baseUrl + '/focus-flow-client/models/engagement_multitask_v4.onnx',
-    baseUrl + basePath + 'models/engagement_multitask_v4.onnx',
-    new URL('models/engagement_multitask_v4.onnx', baseUrl + basePath).href
+    `./models/${modelFilename}`,
+    `/models/${modelFilename}`,
+    `/focus-flow-client/models/${modelFilename}`,
+    baseUrl + `/models/${modelFilename}`,
+    baseUrl + `/focus-flow-client/models/${modelFilename}`,
+    baseUrl + basePath + `models/${modelFilename}`,
+    new URL(`models/${modelFilename}`, baseUrl + basePath).href
   ];
   
   // Log all URLs we're going to try
-  console.log('Attempting to load ONNX model from the following URLs:', urls);
+  console.log(`Attempting to load ONNX model '${modelFilename}' from the following URLs:`, urls);
   
   for (const url of urls) {
     const modelBuffer = await loadOnnxModelFromUrl(url);

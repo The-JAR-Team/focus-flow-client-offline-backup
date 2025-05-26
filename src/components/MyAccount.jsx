@@ -3,6 +3,7 @@ import { fetchUserStats } from '../services/userService';
 import Navbar from './Navbar';
 import Spinner from './Spinner';
 import PasswordChangeModal from './PasswordChangeModal';
+import ModelSelector from './ModelSelector';
 import '../styles/MyAccount.css';
 
 function MyAccount() {  const [userStats, setUserStats] = useState(null);
@@ -122,7 +123,17 @@ function MyAccount() {  const [userStats, setUserStats] = useState(null);
               </div>
             </div>
           )}
-        </div>        {userStats?.recentPlaylists && userStats.recentPlaylists.length > 0 && (
+        </div>        
+
+        {/* Model Configuration Section */}
+        <div className="settings-section">
+          <h2>AI Model Settings</h2>
+          <div className="settings-card">
+            <ModelSelector />
+          </div>
+        </div>
+
+        {userStats?.recentPlaylists && userStats.recentPlaylists.length > 0 && (
           <div className="recent-activity">
             <h2>Recent Playlists</h2>
             <div className="recent-playlists">

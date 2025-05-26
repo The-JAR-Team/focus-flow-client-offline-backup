@@ -155,3 +155,85 @@
       justify-content: center;
     }
   }
+  
+  /* Model Configuration Section */
+.model-configuration {
+  background-color: rgba(0, 0, 0, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 20px;
+}
+
+.model-configuration .model-selector {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+.model-configuration .model-selector-header h3 {
+  color: #ffffff;
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+}
+
+.model-configuration .current-model-info {
+  margin-bottom: 10px;
+}
+
+.model-configuration .model-name {
+  color: #4a9eff;
+  font-weight: 500;
+}
+
+.model-configuration .status-indicator {
+  background-color: rgba(74, 158, 255, 0.2);
+  color: #4a9eff;
+  border: 1px solid #4a9eff;
+}
+
+.model-configuration .model-version {
+  color: #cccccc;
+  font-size: 0.85rem;
+}
+
+.model-configuration .toggle-details-btn {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.model-configuration .toggle-details-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.model-configuration .model-details {
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.model-configuration .model-option {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.model-configuration .model-option:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.model-configuration .model-option.active {
+  background-color: rgba(74, 158, 255, 0.2);
+  border-color: #4a9eff;
+}
+
+.model-configuration .reload-model-btn {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.model-configuration .reload-model-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}

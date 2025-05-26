@@ -4,6 +4,7 @@ import axios from 'axios';
 import { config, ONNX_CONFIG } from '../config/config';
 import '../styles/EngagementMonitor.css';
 import { initializeOnnxModel, predictEngagement } from '../services/engagementOnnxService';
+import ModelSelector from './ModelSelector';
 
 const EngagementMonitor = () => {
   const videoRef = useRef(null);
@@ -364,7 +365,11 @@ const EngagementMonitor = () => {
               Retry
             </button>
           )}
-        </div>
+        </div>      </div>
+
+      {/* Model Configuration */}
+      <div className="model-configuration">
+        <ModelSelector />
       </div>
 
       <div className="video-container">

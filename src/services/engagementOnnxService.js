@@ -1,62 +1,60 @@
 import * as ort from 'onnxruntime-web';
 import { getOnnxModelUri } from './onnxModelLoader';
 import { fetchModelFromHooks } from './onnxHooksFallback';
-
-// Constants matching the server implementation
-const SEQ_LEN = 100;
-const NUM_LANDMARKS = 478;
-const NUM_COORDS = 3;
+import { getActiveModelConfig, getModelPaths } from '../config/modelConfig';
 
 // Reference landmark indices for distance normalization
 const NOSE_TIP_IDX = 1;
 const LEFT_EYE_OUTER_IDX = 33;
 const RIGHT_EYE_OUTER_IDX = 263;
 
-// Maps for converting model outputs to engagement levels
-const IDX_TO_NAME_MAP = {
-  0: 'Not Engaged',
-  1: 'Barely Engaged',
-  2: 'Engaged',
-  3: 'Highly Engaged',
-  4: 'SNP'
-};
-
 // ONNX model session - will be initialized once
 let onnxSession = null;
+let currentModelConfig = null;
+
+// Helper function to get model dimensions
+const getModelDimensions = () => {
+  const config = currentModelConfig || getActiveModelConfig();
+  return {
+    SEQ_LEN: config.inputFormat.sequenceLength,
+    NUM_LANDMARKS: config.inputFormat.numLandmarks,
+    NUM_COORDS: config.inputFormat.numCoords
+  };
+};
 
 /**
  * Initialize the ONNX model session
+ * @param {string} modelId - Optional model ID to use (if not provided, uses active model)
  * @returns {Promise<boolean>} Success status
  */
-export const initializeOnnxModel = async () => {
+export const initializeOnnxModel = async (modelId = null) => {
   try {
-    console.log('Initializing ONNX model...');
+    // Get the model configuration
+    currentModelConfig = getActiveModelConfig();
+    if (modelId) {
+      const { setActiveModel } = await import('../config/modelConfig');
+      if (setActiveModel(modelId)) {
+        currentModelConfig = getActiveModelConfig();
+      }
+    }
     
-    // Set up ONNX runtime options
+    console.log(`Initializing ONNX model: ${currentModelConfig.name} (${currentModelConfig.id})`);
+    
+    // Set up ONNX runtime options from model config
     const options = {
-      executionProviders: ['wasm'],
-      graphOptimizationLevel: 'all'
+      executionProviders: currentModelConfig.processingOptions.executionProviders,
+      graphOptimizationLevel: currentModelConfig.processingOptions.graphOptimizationLevel
     };
     
-    // Try multiple possible paths for the model
-    const possiblePaths = [
-      './models/engagement_multitask_v4.onnx',
-      '/models/engagement_multitask_v4.onnx',
-      '/focus-flow-client/models/engagement_multitask_v4.onnx',
-      '../hooks/engagement_multitask_v4.onnx',
-      window.location.pathname + 'models/engagement_multitask_v4.onnx',
-      window.location.origin + '/models/engagement_multitask_v4.onnx',
-      window.location.origin + '/focus-flow-client/models/engagement_multitask_v4.onnx',
-      // Use the direct full path as fallback
-      window.location.origin + window.location.pathname + 'models/engagement_multitask_v4.onnx'
-    ];
+    // Get possible paths for the current model
+    const possiblePaths = getModelPaths(currentModelConfig.filename);
     
     let modelLoaded = false;
     let lastError = null;
     
     // Method 1: Try the model loader to get a blob URL
     try {
-      const modelUri = await getOnnxModelUri();
+      const modelUri = await getOnnxModelUri(currentModelConfig.filename);
       if (modelUri) {
         console.log(`Loading ONNX model from blob URL: ${modelUri}`);
         onnxSession = await ort.InferenceSession.create(modelUri, options);
@@ -70,7 +68,7 @@ export const initializeOnnxModel = async () => {
     
     // Method 2: Try fetching directly from hooks folder
     try {
-      const hooksModelUri = await fetchModelFromHooks();
+      const hooksModelUri = await fetchModelFromHooks(currentModelConfig.filename);
       if (hooksModelUri) {
         console.log(`Loading ONNX model from hooks blob URL: ${hooksModelUri}`);
         onnxSession = await ort.InferenceSession.create(hooksModelUri, options);
@@ -118,6 +116,9 @@ export const preprocessLandmarks = (landmarksSequence) => {
     return null;
   }
 
+  // Get current model dimensions
+  const { SEQ_LEN, NUM_LANDMARKS, NUM_COORDS } = getModelDimensions();
+
   // First, prepare 3D array with shape [SEQ_LEN, NUM_LANDMARKS, NUM_COORDS]
   const processedFrames = [];
   
@@ -155,12 +156,16 @@ export const preprocessLandmarks = (landmarksSequence) => {
     }
   }
   
-  // Apply distance normalization
-  const normalizedFrames = applyDistanceNormalization(processedFrames);
+  // Apply distance normalization if required
+  const config = currentModelConfig || getActiveModelConfig();
+  let finalFrames = processedFrames;
+  if (config.inputFormat.requiresNormalization) {
+    finalFrames = applyDistanceNormalization(processedFrames);
+  }
   
   // Flatten the 3D array to 1D for ONNX input
   const flattenedArray = [];
-  for (const frame of normalizedFrames) {
+  for (const frame of finalFrames) {
     for (const landmark of frame) {
       flattenedArray.push(...landmark);
     }
@@ -278,14 +283,24 @@ export const applyDistanceNormalization = (landmarksFrames) => {
 /**
  * Map a continuous regression score to a discrete class
  * @param {number} score - Engagement score (0.0 to 1.0)
+ * @param {Object} classLabels - Custom class labels mapping (optional)
  * @returns {Object} - Class details including index and name
  */
-export const mapScoreToClassDetails = (score) => {
+export const mapScoreToClassDetails = (score, classLabels = null) => {
   const details = { index: -1, name: "Prediction Failed", score };
   
   if (score === null || score === undefined) {
     return details;
   }
+  
+  // Use provided class labels or fallback to default
+  const labelMap = classLabels || {
+    0: 'Not Engaged',
+    1: 'Barely Engaged',
+    2: 'Engaged',
+    3: 'Highly Engaged',
+    4: 'SNP'
+  };
   
   let classIndex = -1;
   
@@ -308,7 +323,7 @@ export const mapScoreToClassDetails = (score) => {
   
   if (classIndex !== -1) {
     details.index = classIndex;
-    details.name = IDX_TO_NAME_MAP[classIndex] || "Unknown Index";
+    details.name = labelMap[classIndex] || "Unknown Index";
   }
   
   return details;
@@ -319,7 +334,7 @@ export const mapScoreToClassDetails = (score) => {
  * @param {Array} logits - Raw logits from model
  * @returns {Object} - Classification details
  */
-export const mapClassificationLogitsToClassDetails = (logits) => {
+export const mapClassificationLogitsToClassDetails = (logits, classLabels = null) => {
   const details = { 
     index: -1, 
     name: "Classification Failed", 
@@ -329,6 +344,15 @@ export const mapClassificationLogitsToClassDetails = (logits) => {
   if (!logits || !Array.isArray(logits)) {
     return details;
   }
+  
+  // Use provided class labels or fallback to default
+  const labelMap = classLabels || {
+    0: 'Not Engaged',
+    1: 'Barely Engaged',
+    2: 'Engaged',
+    3: 'Highly Engaged',
+    4: 'SNP'
+  };
   
   details.raw_logits = logits;
   
@@ -349,7 +373,7 @@ export const mapClassificationLogitsToClassDetails = (logits) => {
     }
   }
   
-  const className = IDX_TO_NAME_MAP[classIndex] || "Unknown Index";
+  const className = labelMap[classIndex] || "Unknown Index";
   
   details.index = classIndex;
   details.name = className;
@@ -374,7 +398,11 @@ export const predictEngagement = async (landmarksData) => {
       }
     }
     
-    console.log(`Processing ${landmarksData.length} landmark frames`);
+    // Get current model configuration
+    const config = currentModelConfig || getActiveModelConfig();
+    const { SEQ_LEN, NUM_LANDMARKS, NUM_COORDS } = getModelDimensions();
+    
+    console.log(`Processing ${landmarksData.length} landmark frames with model: ${config.name}`);
     console.log("First frame sample:", landmarksData[0][0]);
     
     // Preprocess landmarks
@@ -387,11 +415,11 @@ export const predictEngagement = async (landmarksData) => {
     console.log(`Preprocessed landmarks shape: ${preprocessedLandmarks.length} elements`);
     console.log(`Expected elements: ${1 * SEQ_LEN * NUM_LANDMARKS * NUM_COORDS}`);
     
-    // Create tensor with shape [1, SEQ_LEN, NUM_LANDMARKS, NUM_COORDS]
+    // Create tensor with configured shape
     const inputTensor = new ort.Tensor(
       'float32', 
       preprocessedLandmarks, 
-      [1, SEQ_LEN, NUM_LANDMARKS, NUM_COORDS]
+      config.inputFormat.tensorShape
     );
     
     console.log("Running ONNX inference with input shape:", inputTensor.dims);
@@ -403,43 +431,177 @@ export const predictEngagement = async (landmarksData) => {
     console.log("ONNX output names:", onnxSession.outputNames);
     
     const results = await onnxSession.run(feeds);
-    console.log("ONNX inference completed");
+    console.log("ONNX inference completed");    // Extract results based on model configuration
+    const modelConfig = currentModelConfig || getActiveModelConfig();
     
-    // Extract results
-    const regressionScores = results[onnxSession.outputNames[0]].data;
-    const classificationLogits = results[onnxSession.outputNames[1]].data;
+    // Handle different output formats based on model
+    let regressionScore, predictionDetailsReg, predictionDetailsCls;
     
-    console.log("Raw regression scores:", Array.from(regressionScores));
-    console.log("Raw classification logits:", Array.from(classificationLogits));
-    
-    // Get and clamp regression score
-    const rawRegressionScore = regressionScores[0];
-    const regressionScore = Math.max(0.0, Math.min(1.0, rawRegressionScore));
-    
-    // Map score to class details
-    const predictionDetailsReg = mapScoreToClassDetails(regressionScore);
-    
-    // Process classification output
-    const predictionDetailsCls = mapClassificationLogitsToClassDetails(
-      Array.from(classificationLogits)
-    );
-    
-    // Create result object similar to server response
-    const result = {
-      score: regressionScore,
-      name: predictionDetailsReg.name,
-      index: predictionDetailsReg.index,
-      classification_head_name: predictionDetailsCls.name,
-      classification_head_index: predictionDetailsCls.index,
-      classification_head_probabilities: predictionDetailsCls.probabilities,
-      raw_regression_score: rawRegressionScore,
-      raw_classification_logits: predictionDetailsCls.raw_logits
-    };
-    
-    console.log("Final engagement prediction:", result);
-    return result;
+    if (modelConfig.outputFormat.outputType === 'classification' && onnxSession.outputNames.length >= 2) {
+      // Multi-output model (like v4 with regression + classification)
+      const regressionScores = results[onnxSession.outputNames[0]].data;
+      const classificationLogits = results[onnxSession.outputNames[1]].data;
+      
+      console.log("Raw regression scores:", Array.from(regressionScores));
+      console.log("Raw classification logits:", Array.from(classificationLogits));
+      
+      // Get and clamp regression score
+      const rawRegressionScore = regressionScores[0];
+      regressionScore = Math.max(0.0, Math.min(1.0, rawRegressionScore));
+      
+      // Map score to class details using model's class labels
+      predictionDetailsReg = mapScoreToClassDetails(regressionScore, modelConfig.outputFormat.classLabels);
+      
+      // Process classification output
+      predictionDetailsCls = mapClassificationLogitsToClassDetails(
+        Array.from(classificationLogits), modelConfig.outputFormat.classLabels
+      );
+      
+      // Create result object similar to server response
+      const result = {
+        score: regressionScore,
+        name: predictionDetailsReg.name,
+        index: predictionDetailsReg.index,
+        classification_head_name: predictionDetailsCls.name,
+        classification_head_index: predictionDetailsCls.index,
+        classification_head_probabilities: predictionDetailsCls.probabilities,
+        raw_regression_score: rawRegressionScore,
+        raw_classification_logits: predictionDetailsCls.raw_logits,
+        model_used: modelConfig.name,
+        model_id: modelConfig.id
+      };
+      
+      console.log(`Final engagement prediction using ${modelConfig.name}:`, result);
+      return result;
+    } else {
+      // Single output model (classification only)
+      const outputData = results[onnxSession.outputNames[0]].data;
+      console.log("Raw model output:", Array.from(outputData));
+      
+      if (outputData.length === 1) {
+        // Single regression score
+        const rawScore = outputData[0];
+        regressionScore = Math.max(0.0, Math.min(1.0, rawScore));
+        predictionDetailsReg = mapScoreToClassDetails(regressionScore, modelConfig.outputFormat.classLabels);
+        
+        const result = {
+          score: regressionScore,
+          name: predictionDetailsReg.name,
+          index: predictionDetailsReg.index,
+          raw_regression_score: rawScore,
+          model_used: modelConfig.name,
+          model_id: modelConfig.id
+        };
+        
+        console.log(`Final engagement prediction using ${modelConfig.name}:`, result);
+        return result;
+      } else {
+        // Classification logits
+        predictionDetailsCls = mapClassificationLogitsToClassDetails(
+          Array.from(outputData), modelConfig.outputFormat.classLabels
+        );
+        
+        const result = {
+          score: predictionDetailsCls.probabilities ? Math.max(...predictionDetailsCls.probabilities) : 0,
+          name: predictionDetailsCls.name,
+          index: predictionDetailsCls.index,
+          classification_head_name: predictionDetailsCls.name,
+          classification_head_index: predictionDetailsCls.index,
+          classification_head_probabilities: predictionDetailsCls.probabilities,
+          raw_classification_logits: predictionDetailsCls.raw_logits,
+          model_used: modelConfig.name,
+          model_id: modelConfig.id
+        };
+        
+        console.log(`Final engagement prediction using ${modelConfig.name}:`, result);
+        return result;
+      }
+    }
   } catch (error) {
     console.error('ONNX prediction error:', error);
     return null;
+  }
+};
+
+/**
+ * Get the currently active model information
+ * @returns {Object} Current model configuration
+ */
+export const getCurrentModelInfo = () => {
+  return currentModelConfig || getActiveModelConfig();
+};
+
+/**
+ * Switch to a different ONNX model
+ * @param {string} modelId - ID of the model to switch to
+ * @returns {Promise<boolean>} Success status
+ */
+export const switchModel = async (modelId) => {
+  try {
+    const { setActiveModel, getModelConfig } = await import('../config/modelConfig');
+    
+    // Validate model exists
+    const newModelConfig = getModelConfig(modelId);
+    if (!newModelConfig) {
+      console.error(`Model '${modelId}' not found`);
+      return false;
+    }
+    
+    // Set the new active model
+    if (!setActiveModel(modelId)) {
+      return false;
+    }
+    
+    // Clear current session to force re-initialization
+    onnxSession = null;
+    currentModelConfig = null;
+    
+    console.log(`Switched to model: ${newModelConfig.name} (${modelId})`);
+    console.log('Model will be loaded on next prediction request');
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to switch model:', error);
+    return false;
+  }
+};
+
+/**
+ * Get available models for selection
+ * @returns {Promise<Object>} Available models configuration
+ */
+export const getAvailableModels = async () => {
+  try {
+    const { getAllModelConfigs } = await import('../config/modelConfig');
+    return getAllModelConfigs();
+  } catch (error) {
+    console.error('Failed to get available models:', error);
+    return {};
+  }
+};
+
+/**
+ * Check if a model is currently loaded and ready
+ * @returns {boolean} Whether model is loaded
+ */
+export const isModelLoaded = () => {
+  return onnxSession !== null;
+};
+
+/**
+ * Force reload the current model
+ * @returns {Promise<boolean>} Success status
+ */
+export const reloadCurrentModel = async () => {
+  try {
+    // Clear current session
+    onnxSession = null;
+    currentModelConfig = null;
+    
+    // Re-initialize with current active model
+    return await initializeOnnxModel();
+  } catch (error) {
+    console.error('Failed to reload model:', error);
+    return false;
   }
 };
