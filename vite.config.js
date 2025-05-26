@@ -9,15 +9,13 @@ export default defineConfig({
     react(),
     {
       name: 'onnx-model-middleware',
-      configureServer(server) {
-        // Custom middleware to serve ONNX files with proper headers
+      configureServer(server) {        // Custom middleware to serve ONNX files with proper headers
         server.middlewares.use((req, res, next) => {
           if (req.url.endsWith('.onnx')) {
-            // Set CORS headers
-            res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-            res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+            // Set CORS headers only for ONNX files
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Content-Type', 'application/octet-stream');
+            res.setHeader('Cache-Control', 'public, max-age=31536000');
             
             // Try to serve from public/models
             const onnxPath = resolve('public', req.url.slice(1));
@@ -33,11 +31,11 @@ export default defineConfig({
         });
       }
     }
-  ],
-  server: {
+  ],  server: {
     headers: {
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Cross-Origin-Opener-Policy': 'same-origin'
+      // Remove global COEP headers that block YouTube
+      // 'Cross-Origin-Embedder-Policy': 'require-corp',
+      // 'Cross-Origin-Opener-Policy': 'same-origin'
     }
   },
   optimizeDeps: {

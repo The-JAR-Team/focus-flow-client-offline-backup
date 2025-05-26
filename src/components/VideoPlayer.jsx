@@ -13,12 +13,18 @@ import {
   updateLatestLandmark,
   handleVideoPause,
   handleVideoResume,
+  handleVideoSeek,
+  handleTrackingReset,
   setModelResultCallback,
   setBufferUpdateCallback,
   setFaceMeshErrorCallback,
   cancelAllRequests,
+  getSessionStatus,
   REQUIRED_FRAMES,
 } from '../services/videos';
+import {
+  resetSessionAndGetNewTicket
+} from '../services/ticketService';
 import {
   setEngagementDetectionEnabled,
   getEngagementDetectionEnabled,
@@ -156,10 +162,26 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const AWAY_THRESHOLD_MS = 400;
 
   const MODEL_THRESHOLD = -1.0;  const [lastModelResult, setLastModelResult] = useState(null);
-  
   // Buffer tracking state
   const [bufferFrames, setBufferFrames] = useState(0);
   const [requestsSent, setRequestsSent] = useState(0);
+    // Session tracking state
+  const [sessionStatus, setSessionStatus] = useState(null);
+  const [showStatusInfo, setShowStatusInfo] = useState(true);
+
+  // Update session status periodically
+  useEffect(() => {
+    const updateSessionStatus = () => {
+      const status = getSessionStatus();
+      setSessionStatus(status);
+    };
+
+    // Update immediately and then every 5 seconds
+    updateSessionStatus();
+    const sessionInterval = setInterval(updateSessionStatus, 5000);
+
+    return () => clearInterval(sessionInterval);
+  }, []);
 
   const [sensitivity, setSensitivity] = useState(7);
   const [currentGaze, setCurrentGaze] = useState(''); // track current gaze
@@ -214,10 +236,10 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       } catch (e) {
         console.error('Error during request cancellation:', e);
       }
-      
-      // Stop tracking and intervals
+        // Stop tracking and intervals
       resetTracking();
-      handleVideoPause();
+      const finalTime = playerRef.current?.getCurrentTime() || 0;
+      handleVideoPause(finalTime);
       setModelResultCallback(null);
       setBufferUpdateCallback(null);
       setFaceMeshErrorCallback(null);
@@ -262,12 +284,27 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   useEffect(() => {
     questionActiveRef.current = currentQuestion;
   }, [currentQuestion]);
-
+  // Track last known time for seek detection
+  const lastKnownTime = useRef(0);
+  const lastTimeUpdate = useRef(Date.now());
+  
   useEffect(() => {
     let intervalId = null;
     if (isPlaying && playerRef.current) {
       intervalId = setInterval(() => {
         const time = playerRef.current?.getCurrentTime() || 0;
+        const now = Date.now();
+        const timeDiff = Math.abs(time - lastKnownTime.current);
+        const realTimeDiff = (now - lastTimeUpdate.current) / 1000;
+        
+        // Detect seek: if video time jumped more than 2 seconds compared to real time passed
+        if (timeDiff > 2 && realTimeDiff < timeDiff - 1) {
+          console.log(`🎯 Seek detected: ${lastKnownTime.current.toFixed(1)}s → ${time.toFixed(1)}s`);
+          handleVideoSeek(lastKnownTime.current, time);
+        }
+        
+        lastKnownTime.current = time;
+        lastTimeUpdate.current = now;
         setCurrentTime(time);
       }, 1000); // Update every second
     } else {
@@ -275,6 +312,27 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     }
     return () => clearInterval(intervalId); // Cleanup interval on unmount or when isPlaying changes
   }, [isPlaying]); // Rerun effect when isPlaying changes
+
+  // Update session status periodically
+  useEffect(() => {
+    const updateSessionStatus = async () => {
+      try {
+        const status = await getSessionStatus();
+        setSessionStatus(status);
+      } catch (error) {
+        console.warn('Failed to get session status:', error);
+        setSessionStatus(null);
+      }
+    };
+
+    // Update immediately
+    updateSessionStatus();
+
+    // Update every 5 seconds
+    const statusInterval = setInterval(updateSessionStatus, 5000);
+
+    return () => clearInterval(statusInterval);
+  }, []);
 
   const handleNoClientPauseToggle = () => {
     // First stop all existing tracking
@@ -532,13 +590,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     isPlaying, currentQuestion, mode, selectedLanguage,
     answeredQIDs, isHebrewLoading, isEnglishLoading, exitFullScreenIfActive
   ]);
-
   const handleVideoPlayback = useCallback((newGaze) => {
     // Log every gaze event
     //console.log('[DEBUGQ] handleVideoPlayback incoming gaze:', newGaze);
     
     // Skip only if engagement detection is disabled
     if (!getEngagementDetectionEnabled()) return;
+    
+    // Skip if player reference is null (component is unmounting or between videos)
+    if (!playerRef.current) {
+      console.warn('[DEBUGQ] Player reference is null, skipping video playback handling');
+      return;
+    }
 
     // Proceed with engagement detection
     handleEngagementDetection({
@@ -562,13 +625,18 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       setUserPaused
     });
   }, [isPlaying, currentQuestion, mode, handleLowEngagement]);
-
   const handleFaceMeshResults = useCallback((results) => {
     // First update the latest landmark regardless of errors
     updateLatestLandmark(results);
     
     // Debug gaze detection and engagement state
     //console.log('[DEBUGQ] FaceMesh processing frame, questionActive:', !!questionActiveRef.current, 'noClientPause:', noClientPause);
+    
+    // Skip processing if player reference is null (component unmounting or between videos)
+    if (!playerRef.current) {
+      console.warn('[DEBUGQ] Player reference is null, skipping FaceMesh results processing');
+      return;
+    }
     
     // Proceed only if we're not in server mode and have landmarks
     if (!noClientPause && 
@@ -592,12 +660,13 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       } catch (error) {
         // Log error but don't break the application flow
         console.log('Gaze estimation error, will retry on next frame:', error.message);
-        // Still show status but don't set error state
-        setCurrentGaze('Looking center');
+        // Still show status but don't set error state        setCurrentGaze('Looking center');
         setFaceMeshStatus('Waiting for clearer face detection');
         
-        // Return to looking center as fallback
-        handleVideoPlayback('Looking center');
+        // Return to looking center as fallback (with player validation)
+        if (playerRef.current) {
+          handleVideoPlayback('Looking center');
+        }
       }
     } else if (!noClientPause) {
       // No landmarks but not an error - just waiting
@@ -796,11 +865,11 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         } else {
           setPauseStatus('Paused Manually');
           setUserPaused(true);
-        }
-        setIsPlaying(false);
+        }        setIsPlaying(false);
         setIsVideoPaused(true);
         setVideoPlaying(false);
-        handleVideoPause();
+        const pauseTime = playerRef.current?.getCurrentTime() || 0;
+        handleVideoPause(pauseTime);
         break;
       default:
         break;
@@ -821,11 +890,20 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       setQuestions
     );
   };
-
   useEffect(() => {
     setModelResultCallback((result) => {
       setLastModelResult(result);
-      if (noClientPause && result < MODEL_THRESHOLD) {
+      
+      // Extract engagement score from result (handle both old and new formats)
+      let engagementScore;
+      if (typeof result === 'object' && result.engagement_score !== undefined) {
+        engagementScore = result.engagement_score;
+      } else if (typeof result === 'number') {
+        engagementScore = result;
+      }
+      
+      // Trigger low engagement if score is below threshold
+      if (noClientPause && engagementScore !== undefined && engagementScore < MODEL_THRESHOLD) {
         handleLowEngagement();
       }
     });
@@ -867,11 +945,15 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const handleToggleTimeline = () => {
     setShowTimeline(prev => !prev);
   };
-
   // Add handler for seeking to timestamp when a question is clicked
   const handleQuestionClick = useCallback((timestamp) => {
     if (playerRef.current) {
+      const currentVideoTime = playerRef.current.getCurrentTime() || 0;
       console.log(`🎯 Seeking to ${formatTime(timestamp)}`);
+      
+      // Trigger seek event
+      handleVideoSeek(currentVideoTime, timestamp);
+      
       playerRef.current.seekTo(timestamp, true);
       
       // If video is paused, play it
@@ -950,11 +1032,15 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
     if (newType === 'summary' && !summaryData && lectureInfo.videoId) {
       fetchSummaryData(lectureInfo.videoId, selectedLanguage);
     }
-  };
-  // Handle timeline item click to seek video
+  };  // Handle timeline item click to seek video
   const handleTimelineItemClick = (seconds) => {
     if (playerRef.current) {
+      const currentVideoTime = playerRef.current.getCurrentTime() || 0;
       console.log(`🎯 Seeking to ${formatTime(seconds)}`);
+      
+      // Trigger seek event
+      handleVideoSeek(currentVideoTime, seconds);
+      
       playerRef.current.seekTo(seconds, true);
       
       // If video is paused, play it
@@ -963,14 +1049,70 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       }
     }
   };
+  const renderStatus = () => {
+    // Helper function to get the engagement score from model result
+    const getEngagementScore = (result) => {
+      if (result === null || result === undefined) return 'N/A';
+      
+      // Handle new object format
+      if (typeof result === 'object' && result.engagement_score !== undefined) {
+        return result.engagement_score.toFixed(3);
+      }
+      
+      // Handle old numeric format
+      if (typeof result === 'number') {
+        return result.toFixed(3);
+      }
+      
+      return 'N/A';
+    };
 
-  const renderStatus = () => (
-    <div className="status-info">
-      <p>Mode: {mode}</p>
-      <p>Status: {pauseStatus}</p>
-      <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
-      {!noClientPause && <p>Current Gaze: {currentGaze || 'N/A'}</p>}
-      <p>Server Model Result: <span>{lastModelResult !== null ? lastModelResult.toFixed(3) : 'N/A'}</span></p>
+    // Helper function to get processing mode
+    const getProcessingMode = (result) => {
+      if (result && typeof result === 'object' && result.processing_mode) {
+        return result.processing_mode === 'local_onnx' ? '🧠 Local' : '🌐 Server';
+      }
+      return '';    };    return (
+      <>
+        <button 
+          className="status-toggle-button" 
+          onClick={() => setShowStatusInfo(!showStatusInfo)}
+          style={{ 
+            margin: '10px 0', 
+            padding: '5px 10px', 
+            fontSize: '12px',
+            cursor: 'pointer'
+          }}
+        >
+          {showStatusInfo ? '📊 Hide Status' : '📊 Show Status'}
+        </button>
+        {showStatusInfo && (
+          <div className="status-info">
+            <p>Mode: {mode}</p>
+            <p>Status: {pauseStatus}</p>        <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
+            {!noClientPause && <p>Current Gaze: {currentGaze || 'N/A'}</p>}
+            <p>Model Result: <span>{getEngagementScore(lastModelResult)}</span> {getProcessingMode(lastModelResult)}</p>          {/* Session Status */}
+        {sessionStatus && (
+          <div className="session-status">
+            <p>Session: {sessionStatus.hasActiveSession ? 
+              `🎫 Active (Main: ${sessionStatus.mainTicket})` : 
+              '❌ No Session'}</p>
+            {sessionStatus.hasActiveSession && (
+              sessionStatus.isSubTicketLoading ? (
+                <p>Sub Ticket: ⏳ Loading...</p>
+              ) : sessionStatus.subTicket ? (
+                <p>Sub Ticket: {sessionStatus.subTicket}</p>
+              ) : null
+            )}
+            {sessionStatus.hasActiveSession && (
+              <>
+                <p>Video: {sessionStatus.videoId || 'N/A'}</p>
+                <p>Batch: {sessionStatus.batchSize} items | Duration: {Math.round(sessionStatus.sessionDuration / 1000)}s</p>
+                <p>Auto-batch: {sessionStatus.batchIntervalActive ? '✅ Active' : '❌ Inactive'}</p>
+              </>
+            )}
+          </div>
+        )}
 
       
       {/* Display FaceMesh error message */}
@@ -984,7 +1126,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
             </button>
           )}
         </div>
-      )}
+            )}
         {/* Buffer and Requests info - shown in both modes */}
       <div className="buffer-status">
         <p>Buffer Frames: <span className="buffer-count">{bufferFrames}/{REQUIRED_FRAMES}</span></p>
@@ -995,18 +1137,10 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           ></div>
         </div>
       </div>
-      
-      {/* Show requests info in both client and server modes */}
+        {/* Show requests info in both client and server modes */}
       <div className="requests-count">
         <p>Requests Sent: <span>{requestsSent}</span></p>
       </div>
-        {/* Server specific info */}
-      {noClientPause && (
-        <div className={`model-result ${lastModelResult !== null && lastModelResult < MODEL_THRESHOLD ? 'low-engagement' : ''}`}>
-          <p>Server Model Result: <span>{lastModelResult !== null ? lastModelResult.toFixed(3) : 'N/A'}</span>
-          {lastModelResult !== null && lastModelResult < MODEL_THRESHOLD && <span className="alert-indicator"> ⚠️ Low Engagement</span>}</p>
-        </div>
-      )}
       
       <button 
         className={`control-button ${noClientPause ? 'active' : ''}`}
@@ -1015,18 +1149,20 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         {noClientPause ? '🤖 Server Control' : '👁️ Client Control'}
       </button>
       <div style={{ margin: '15px 0' }}>
-        <label>Send Interval: {sendIntervalSeconds}s</label>
+        <label>Send Interval to ONNX: {sendIntervalSeconds}s</label>
         <input
           type="range"
           min="0.5"
           max="10"
           step="0.5"
           value={sendIntervalSeconds}
-          onChange={(e) => handleIntervalChange(e.target.value)}
-        />
+          onChange={(e) => handleIntervalChange(e.target.value)}        />
       </div>
-    </div>
-  );
+          </div>
+        )}
+      </>
+    );
+  };
 
   const renderDebugTools = () => (
     <div className="debug-tools">
@@ -1046,12 +1182,28 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         onClick={handleManualTrigger}
       >
         🎯 Trigger Question
-      </button>
-      <button 
+      </button>      <button 
         className="debug-button reset-answers"
         onClick={handleResetAnsweredQuestions}
       >
         🔄 Reset Answered Qs
+      </button>
+      <button 
+        className="debug-button reset-ticket"
+        onClick={async () => {
+          try {
+            const newTicket = await resetSessionAndGetNewTicket(lectureInfo.videoId);
+            if (newTicket) {
+              console.log(`✅ New main ticket obtained: ${newTicket}`);
+            } else {
+              console.error('❌ Failed to get new main ticket');
+            }
+          } catch (error) {
+            console.error('❌ Error resetting session:', error);
+          }
+        }}
+      >
+        🎫 Reset Main Ticket
       </button>
       <button
         className="debug-button"
