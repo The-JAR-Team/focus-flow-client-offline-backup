@@ -23,6 +23,9 @@ import {
   REQUIRED_FRAMES,
 } from '../services/videos';
 import {
+  resetSessionAndGetNewTicket
+} from '../services/ticketService';
+import {
   setEngagementDetectionEnabled,
   getEngagementDetectionEnabled,
   setVideoPlaying,
@@ -162,9 +165,9 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   // Buffer tracking state
   const [bufferFrames, setBufferFrames] = useState(0);
   const [requestsSent, setRequestsSent] = useState(0);
-  
-  // Session tracking state
+    // Session tracking state
   const [sessionStatus, setSessionStatus] = useState(null);
+  const [showStatusInfo, setShowStatusInfo] = useState(true);
 
   // Update session status periodically
   useEffect(() => {
@@ -1069,37 +1072,43 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       if (result && typeof result === 'object' && result.processing_mode) {
         return result.processing_mode === 'local_onnx' ? '🧠 Local' : '🌐 Server';
       }
-      return '';
-    };    return (
-      <div className="status-info">
-        <p>Mode: {mode}</p>
-        <p>Status: {pauseStatus}</p>        <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
-        {!noClientPause && <p>Current Gaze: {currentGaze || 'N/A'}</p>}
-        <p>Model Result: <span>{getEngagementScore(lastModelResult)}</span> {getProcessingMode(lastModelResult)}</p>
-        
-        {/* Session Status */}
+      return '';    };    return (
+      <>
+        <button 
+          className="status-toggle-button" 
+          onClick={() => setShowStatusInfo(!showStatusInfo)}
+          style={{ 
+            margin: '10px 0', 
+            padding: '5px 10px', 
+            fontSize: '12px',
+            cursor: 'pointer'
+          }}
+        >
+          {showStatusInfo ? '📊 Hide Status' : '📊 Show Status'}
+        </button>
+        {showStatusInfo && (
+          <div className="status-info">
+            <p>Mode: {mode}</p>
+            <p>Status: {pauseStatus}</p>        <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
+            {!noClientPause && <p>Current Gaze: {currentGaze || 'N/A'}</p>}
+            <p>Model Result: <span>{getEngagementScore(lastModelResult)}</span> {getProcessingMode(lastModelResult)}</p>          {/* Session Status */}
         {sessionStatus && (
           <div className="session-status">
-            <p>Session: {sessionStatus.hasActiveSession ? `🎫 Active (${sessionStatus.ticketId})` : '❌ No Session'}</p>
+            <p>Session: {sessionStatus.hasActiveSession ? 
+              `🎫 Active (Main: ${sessionStatus.mainTicket})` : 
+              '❌ No Session'}</p>
+            {sessionStatus.hasActiveSession && (
+              sessionStatus.isSubTicketLoading ? (
+                <p>Sub Ticket: ⏳ Loading...</p>
+              ) : sessionStatus.subTicket ? (
+                <p>Sub Ticket: {sessionStatus.subTicket}</p>
+              ) : null
+            )}
             {sessionStatus.hasActiveSession && (
               <>
+                <p>Video: {sessionStatus.videoId || 'N/A'}</p>
                 <p>Batch: {sessionStatus.batchSize} items | Duration: {Math.round(sessionStatus.sessionDuration / 1000)}s</p>
                 <p>Auto-batch: {sessionStatus.batchIntervalActive ? '✅ Active' : '❌ Inactive'}</p>
-              </>
-            )}
-          </div>
-        )}
-        
-        {/* Session status display */}
-        {sessionStatus && (
-          <div className="session-status">
-            <p>Session: {sessionStatus.ticketId ? '🎫 Active' : '❌ None'}</p>
-            {sessionStatus.ticketId && (
-              <>
-                <p>Video: {sessionStatus.videoId || 'N/A'}</p>
-                <p>Batch Size: {sessionStatus.batchSize || 0}</p>
-                <p>Session Age: {sessionStatus.sessionStartTime ? 
-                  Math.floor((Date.now() - new Date(sessionStatus.sessionStartTime)) / 1000) : 0}s</p>
               </>
             )}
           </div>
@@ -1147,12 +1156,13 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
           max="10"
           step="0.5"
           value={sendIntervalSeconds}
-          onChange={(e) => handleIntervalChange(e.target.value)}
-        />
+          onChange={(e) => handleIntervalChange(e.target.value)}        />
       </div>
-    </div>
-  );
-};
+          </div>
+        )}
+      </>
+    );
+  };
 
   const renderDebugTools = () => (
     <div className="debug-tools">
@@ -1172,12 +1182,28 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         onClick={handleManualTrigger}
       >
         🎯 Trigger Question
-      </button>
-      <button 
+      </button>      <button 
         className="debug-button reset-answers"
         onClick={handleResetAnsweredQuestions}
       >
         🔄 Reset Answered Qs
+      </button>
+      <button 
+        className="debug-button reset-ticket"
+        onClick={async () => {
+          try {
+            const newTicket = await resetSessionAndGetNewTicket(lectureInfo.videoId);
+            if (newTicket) {
+              console.log(`✅ New main ticket obtained: ${newTicket}`);
+            } else {
+              console.error('❌ Failed to get new main ticket');
+            }
+          } catch (error) {
+            console.error('❌ Error resetting session:', error);
+          }
+        }}
+      >
+        🎫 Reset Main Ticket
       </button>
       <button
         className="debug-button"

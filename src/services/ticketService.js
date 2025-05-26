@@ -11,11 +11,17 @@ import { config } from '../config/config';
  */
 
 // Session state management
-let currentTicketId = null;
+let currentTicketId = null; // main_ticket
+let currentSubTicketId = null; // sub_ticket  
 let currentVideoId = null;
 let engagementDataBatch = [];
 let batchInterval = null;
 let sessionStartTime = null;
+let isSubTicketLoading = false; // Track sub ticket request state
+
+// LocalStorage keys
+const MAIN_TICKET_KEY = 'focusflow_main_ticket';
+const SUB_TICKET_KEY = 'focusflow_sub_ticket';
 
 // Configuration
 const BATCH_MULTIPLIER = 6; // Send batch every sendIntervalSeconds * 6
@@ -26,26 +32,57 @@ const RETRY_DELAY = 1000; // 1 second
 /**
  * Initialize a new video watching session
  * @param {string} videoId - YouTube video ID
+ * @param {boolean} forceNew - Force creation of new ticket even if one exists
  * @returns {Promise<string|null>} - Ticket ID or null if failed
  */
-export const initializeVideoSession = async (videoId) => {
-  try {
-    console.log(`🎫 Initializing video session for: ${videoId}`);
+export const initializeVideoSession = async (videoId, forceNew = false) => {
+  try {    // Check if we already have a main ticket stored and not forcing new
+    if (!forceNew) {
+      const storedMainTicket = localStorage.getItem(MAIN_TICKET_KEY);
+      const storedSubTicket = localStorage.getItem(SUB_TICKET_KEY);
+      if (storedMainTicket) {
+        console.log(`🎫 Using existing main ticket from storage: ${storedMainTicket}`);
+        currentTicketId = storedMainTicket;
+        currentSubTicketId = storedSubTicket;
+        currentVideoId = videoId;
+        sessionStartTime = Date.now();
+        
+        if (storedSubTicket) {
+          console.log(`🎫 Using existing sub ticket from storage: ${storedSubTicket}`);
+        }
+        
+        // Clear any existing batch data
+        engagementDataBatch = [];
+        
+        return currentTicketId;
+      }
+    }
+    
+    console.log(`🎫 ${forceNew ? 'Force creating new' : 'Initializing'} video session for: ${videoId}`);
     
     const response = await axios.post(
       `${config.baseURL}/ticket/next`,
       { youtube_id: videoId },
       { withCredentials: true }
-    );    if (response.data && (response.data.main_ticket || response.data.ticket_id)) {
+    );
+
+    if (response.data && (response.data.main_ticket || response.data.ticket_id)) {
       // Handle both response formats: new API returns main_ticket, fallback to ticket_id
       currentTicketId = response.data.main_ticket || response.data.ticket_id;
+      currentSubTicketId = response.data.sub_ticket || null;
       currentVideoId = videoId;
       sessionStartTime = Date.now();
+      
+      // Store main ticket in localStorage
+      localStorage.setItem(MAIN_TICKET_KEY, currentTicketId);
+      if (currentSubTicketId) {
+        localStorage.setItem(SUB_TICKET_KEY, currentSubTicketId);
+      }
       
       // Clear any existing batch data
       engagementDataBatch = [];
       
-      console.log(`✅ Video session initialized. Ticket ID: ${currentTicketId}`);
+      console.log(`✅ Video session initialized. Main ticket: ${currentTicketId}, Sub ticket: ${currentSubTicketId || 'N/A'}`);
       return currentTicketId;
     } else {
       console.error('❌ Failed to get ticket ID from response:', response.data);
@@ -65,20 +102,25 @@ export const initializeVideoSession = async (videoId) => {
  * @returns {Promise<boolean>} - Success status
  */
 export const handleVideoEvent = async (eventType, currentTime, additionalData = {}) => {
-  if (!currentTicketId) {
-    console.warn('⚠️ No active ticket ID for video event');
+  if (!currentTicketId || !currentVideoId) {
+    console.warn('⚠️ No active ticket ID or video ID for video event');
     return false;
   }
 
   try {
-    console.log(`📡 Sending video event: ${eventType} at ${currentTime}s`);
-    
-    const payload = {
+    console.log(`📡 Sending video event: ${eventType} at ${currentTime}s`, {
       ticket_id: currentTicketId,
       event_type: eventType,
       video_time: currentTime,
-      timestamp: new Date().toISOString(),
       ...additionalData
+    });
+    
+    // Set loading state
+    isSubTicketLoading = true;
+    
+    // API only expects youtube_id in the body
+    const payload = {
+      youtube_id: currentVideoId
     };
 
     const response = await axios.post(
@@ -87,11 +129,21 @@ export const handleVideoEvent = async (eventType, currentTime, additionalData = 
       { withCredentials: true }
     );
 
-    console.log(`✅ Video event sent successfully: ${eventType}`);
+    // Check if API returned a new sub ticket and update it
+    if (response.data && response.data.sub_ticket) {
+      currentSubTicketId = response.data.sub_ticket;
+      localStorage.setItem(SUB_TICKET_KEY, currentSubTicketId);
+      console.log(`🎫 Updated sub ticket: ${currentSubTicketId}`);
+    }
+
+    console.log(`✅ Video event sent successfully: ${eventType}`, response.data);
     return true;
   } catch (error) {
     console.error(`❌ Error sending video event (${eventType}):`, error);
     return false;
+  } finally {
+    // Clear loading state
+    isSubTicketLoading = false;
   }
 };
 
@@ -260,6 +312,25 @@ export const cleanupSession = async () => {
 };
 
 /**
+ * Reset session and get new main ticket
+ * @param {string} videoId - YouTube video ID  
+ * @returns {Promise<string|null>} - New ticket ID or null if failed
+ */
+export const resetSessionAndGetNewTicket = async (videoId) => {
+  console.log('🔄 Resetting session and getting new main ticket...');
+  
+  // Clear localStorage
+  localStorage.removeItem(MAIN_TICKET_KEY);
+  localStorage.removeItem(SUB_TICKET_KEY);
+  
+  // Clean up current session
+  await cleanupSession();
+  
+  // Force new ticket creation
+  return await initializeVideoSession(videoId, true);
+};
+
+/**
  * Get current session status
  * @returns {Object} - Session status information
  */
@@ -267,10 +338,13 @@ export const getSessionStatus = () => {
   return {
     hasActiveSession: !!currentTicketId,
     ticketId: currentTicketId,
+    mainTicket: currentTicketId,
+    subTicket: currentSubTicketId,
     videoId: currentVideoId,
     batchSize: engagementDataBatch.length,
     sessionDuration: sessionStartTime ? Date.now() - sessionStartTime : 0,
-    batchIntervalActive: !!batchInterval
+    batchIntervalActive: !!batchInterval,
+    isSubTicketLoading: isSubTicketLoading
   };
 };
 
