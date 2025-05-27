@@ -7,7 +7,7 @@ This project includes an on-device engagement prediction system using ONNX Runti
 The engagement monitor uses:
 - MediaPipe Face Mesh for facial landmark detection
 - ONNX Runtime Web for running the engagement prediction model
-- A pre-trained GRU-Attention model (v4) for engagement prediction
+- Pre-trained GRU-Attention models (v4, v4.2) for engagement prediction
 
 ## How It Works
 
@@ -19,7 +19,7 @@ The engagement monitor uses:
 
 ## Setup
 
-The engagement model is included in the `public/models` directory. The system will automatically load and initialize the model when the engagement monitor component is mounted.
+The engagement models are included in the `public/models` directory. The system will automatically load and initialize the currently selected model when the engagement monitor component is mounted.
 
 ## Technical Details
 

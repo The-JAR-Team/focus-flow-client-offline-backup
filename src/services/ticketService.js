@@ -19,9 +19,7 @@ let batchInterval = null;
 let sessionStartTime = null;
 let isSubTicketLoading = false; // Track sub ticket request state
 
-// LocalStorage keys
-const MAIN_TICKET_KEY = 'focusflow_main_ticket';
-const SUB_TICKET_KEY = 'focusflow_sub_ticket';
+// Note: No longer using localStorage - all ticket state managed server-side
 
 // Configuration
 const BATCH_MULTIPLIER = 6; // Send batch every sendIntervalSeconds * 6
@@ -30,26 +28,52 @@ const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY = 1000; // 1 second
 
 /**
+ * Get existing ticket from server
+ * @param {string} videoId - YouTube video ID
+ * @returns {Promise<Object|null>} - Ticket data or null if failed
+ */
+const getCurrentTicketFromServer = async (videoId) => {
+  try {
+    console.log(`🎫 Checking for existing ticket on server for video: ${videoId}`);
+    
+    const response = await axios.get(
+      `${config.baseURL}/ticket/current?youtube_id=${videoId}`,
+      { withCredentials: true }
+    );
+
+    if (response.data && response.data.status === 'success') {
+      console.log(`✅ Found existing ticket on server:`, response.data);
+      return {
+        main_ticket: response.data.main_ticket,
+        sub_ticket: response.data.sub_ticket
+      };
+    } else {
+      console.log(`⚠️ No existing ticket found on server:`, response.data);
+      return null;
+    }
+  } catch (error) {
+    console.log(`⚠️ Failed to get ticket from server:`, error.message);
+    return null;
+  }
+};
+
+/**
  * Initialize a new video watching session
  * @param {string} videoId - YouTube video ID
  * @param {boolean} forceNew - Force creation of new ticket even if one exists
  * @returns {Promise<string|null>} - Ticket ID or null if failed
  */
 export const initializeVideoSession = async (videoId, forceNew = false) => {
-  try {    // Check if we already have a main ticket stored and not forcing new
+  try {
+    // First try to get existing ticket from server (unless forcing new)
     if (!forceNew) {
-      const storedMainTicket = localStorage.getItem(MAIN_TICKET_KEY);
-      const storedSubTicket = localStorage.getItem(SUB_TICKET_KEY);
-      if (storedMainTicket) {
-        console.log(`🎫 Using existing main ticket from storage: ${storedMainTicket}`);
-        currentTicketId = storedMainTicket;
-        currentSubTicketId = storedSubTicket;
+      const existingTicket = await getCurrentTicketFromServer(videoId);
+      if (existingTicket) {
+        console.log(`🎫 Using existing ticket from server: main=${existingTicket.main_ticket}, sub=${existingTicket.sub_ticket}`);
+        currentTicketId = existingTicket.main_ticket;
+        currentSubTicketId = existingTicket.sub_ticket;
         currentVideoId = videoId;
         sessionStartTime = Date.now();
-        
-        if (storedSubTicket) {
-          console.log(`🎫 Using existing sub ticket from storage: ${storedSubTicket}`);
-        }
         
         // Clear any existing batch data
         engagementDataBatch = [];
@@ -58,26 +82,18 @@ export const initializeVideoSession = async (videoId, forceNew = false) => {
       }
     }
     
-    console.log(`🎫 ${forceNew ? 'Force creating new' : 'Initializing'} video session for: ${videoId}`);
+    console.log(`🎫 ${forceNew ? 'Force creating new' : 'Creating new'} video session for: ${videoId}`);
     
     const response = await axios.post(
       `${config.baseURL}/ticket/next`,
       { youtube_id: videoId },
       { withCredentials: true }
-    );
-
-    if (response.data && (response.data.main_ticket || response.data.ticket_id)) {
+    );    if (response.data && (response.data.main_ticket || response.data.ticket_id)) {
       // Handle both response formats: new API returns main_ticket, fallback to ticket_id
       currentTicketId = response.data.main_ticket || response.data.ticket_id;
       currentSubTicketId = response.data.sub_ticket || null;
       currentVideoId = videoId;
       sessionStartTime = Date.now();
-      
-      // Store main ticket in localStorage
-      localStorage.setItem(MAIN_TICKET_KEY, currentTicketId);
-      if (currentSubTicketId) {
-        localStorage.setItem(SUB_TICKET_KEY, currentSubTicketId);
-      }
       
       // Clear any existing batch data
       engagementDataBatch = [];
@@ -127,12 +143,9 @@ export const handleVideoEvent = async (eventType, currentTime, additionalData = 
       `${config.baseURL}/ticket/next_sub`,
       payload,
       { withCredentials: true }
-    );
-
-    // Check if API returned a new sub ticket and update it
+    );    // Check if API returned a new sub ticket and update it
     if (response.data && response.data.sub_ticket) {
       currentSubTicketId = response.data.sub_ticket;
-      localStorage.setItem(SUB_TICKET_KEY, currentSubTicketId);
       console.log(`🎫 Updated sub ticket: ${currentSubTicketId}`);
     }
 
@@ -318,10 +331,6 @@ export const cleanupSession = async () => {
  */
 export const resetSessionAndGetNewTicket = async (videoId) => {
   console.log('🔄 Resetting session and getting new main ticket...');
-  
-  // Clear localStorage
-  localStorage.removeItem(MAIN_TICKET_KEY);
-  localStorage.removeItem(SUB_TICKET_KEY);
   
   // Clean up current session
   await cleanupSession();
