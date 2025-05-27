@@ -67,6 +67,8 @@ import { QuestionModal, DecisionModal } from './QuestionModals';
 import useFaceMesh from '../hooks/useFaceMesh';
 import QuestionTimeline from './QuestionTimeline'; // Import the question timeline component
 import SummaryTimeline from './SummaryTimeline'; // Import the summary timeline component
+import VideoPlayerStatus from './VideoPlayerStatus';
+import VideoPlayerDebugTools from './VideoPlayerDebugTools';
 
 import EyeDebugger from './EyeDebugger';
 ChartJS.register(BarElement, CategoryScale, LinearScale, TimeScale, Title, Tooltip, Legend);
@@ -1188,190 +1190,44 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       }
     }
   };
-  const renderStatus = () => {
-    // Helper function to get the engagement score from model result
-    const getEngagementScore = (result) => {
-      if (result === null || result === undefined) return 'N/A';
-      
-      // Handle new object format
-      if (typeof result === 'object' && result.engagement_score !== undefined) {
-        return result.engagement_score.toFixed(3);
-      }
-      
-      // Handle old numeric format
-      if (typeof result === 'number') {
-        return result.toFixed(3);
-      }
-      
-      return 'N/A';
-    };    // Helper function to get processing mode
-    const getProcessingMode = (result) => {
-      if (result && typeof result === 'object' && result.processing_mode) {
-        // VideoPlayer only uses local ONNX processing
-        if (result.processing_mode === 'local_onnx' || result.processing_mode === 'video_player_onnx') {
-          return '🧠 Local ONNX';
-        }
-        return '🌐 Server';
-      }
-      return '';
-    };return (
-      <>
-        <button 
-          className="status-toggle-button" 
-          onClick={() => setShowStatusInfo(!showStatusInfo)}
-          style={{ 
-            margin: '10px 0', 
-            padding: '5px 10px', 
-            fontSize: '12px',
-            cursor: 'pointer'
-          }}
-        >
-          {showStatusInfo ? '📊 Hide Status' : '📊 Show Status'}
-        </button>
-        {showStatusInfo && (
-          <div className="status-info">
-            <p>Mode: {mode}</p>
-            <p>Status: {pauseStatus}</p>        <p>FaceMesh: {noClientPause ? 'Server Logic' : faceMeshStatus}</p>
-            {!noClientPause && <p>Current Gaze: {currentGaze || 'N/A'}</p>}
-            <p>Model Result: <span>{getEngagementScore(lastModelResult)}</span> {getProcessingMode(lastModelResult)}</p>          {/* Session Status */}
-        {sessionStatus && (
-          <div className="session-status">
-            <p>Session: {sessionStatus.hasActiveSession ? 
-              `🎫 Active (Main: ${sessionStatus.mainTicket})` : 
-              '❌ No Session'}</p>
-            {sessionStatus.hasActiveSession && (
-              sessionStatus.isSubTicketLoading ? (
-                <p>Sub Ticket: ⏳ Loading...</p>
-              ) : sessionStatus.subTicket ? (
-                <p>Sub Ticket: {sessionStatus.subTicket}</p>
-              ) : null
-            )}
-            {sessionStatus.hasActiveSession && (
-              <>
-                <p>Video: {sessionStatus.videoId || 'N/A'}</p>
-                <p>Batch: {sessionStatus.batchSize} items | Duration: {Math.round(sessionStatus.sessionDuration / 1000)}s</p>
-                <p>Auto-batch: {sessionStatus.batchIntervalActive ? '✅ Active' : '❌ Inactive'}</p>
-              </>
-            )}
-          </div>
-        )}
-
-      
-      {/* Display FaceMesh error message */}
-      {faceMeshError && (
-        <div className="facemesh-error">
-          <span className="error-icon">⚠️</span>
-          FaceMesh Error - Please refresh the page or click retry below
-          {showRetryButton && (
-            <button className="retry-button" onClick={handleFaceMeshRetry}>
-              Retry FaceMesh
-            </button>
-          )}
-        </div>
-            )}
-        {/* Buffer and Requests info - shown in both modes */}
-      <div className="buffer-status">
-        <p>Buffer Frames: <span className="buffer-count">{bufferFrames}/{REQUIRED_FRAMES}</span></p>
-        <div className="buffer-progress">
-          <div 
-            className="buffer-bar" 
-            style={{ width: `${(bufferFrames / REQUIRED_FRAMES) * 100}%` }}
-          ></div>
-        </div>
-      </div>
-        {/* Show requests info in both client and server modes */}
-      <div className="requests-count">
-        <p>Requests Sent: <span>{requestsSent}</span></p>
-      </div>
-      
-      <button 
-        className={`control-button ${noClientPause ? 'active' : ''}`}
-        onClick={handleNoClientPauseToggle}
-      >
-        {noClientPause ? '🤖 Server Control' : '👁️ Client Control'}
-      </button>
-      <div style={{ margin: '15px 0' }}>
-        <label>Send Interval to ONNX: {sendIntervalSeconds}s</label>
-        <input
-          type="range"
-          min="0.5"
-          max="10"
-          step="0.5"
-          value={sendIntervalSeconds}
-          onChange={(e) => handleIntervalChange(e.target.value)}        />
-      </div>
-          </div>
-        )}
-      </>
-    );
-  };
+  const renderStatus = () => ( // Keep the function signature for now, or update to directly use VideoPlayerStatus if preferred
+    <VideoPlayerStatus
+      mode={mode}
+      pauseStatus={pauseStatus}
+      noClientPause={noClientPause}
+      faceMeshStatus={faceMeshStatus}
+      currentGaze={currentGaze}
+      lastModelResult={lastModelResult}
+      sessionStatus={sessionStatus}
+      faceMeshError={faceMeshError}
+      showRetryButton={showRetryButton}
+      handleFaceMeshRetry={handleFaceMeshRetry}
+      bufferFrames={bufferFrames}
+      REQUIRED_FRAMES={REQUIRED_FRAMES}
+      requestsSent={requestsSent}
+      handleNoClientPauseToggle={handleNoClientPauseToggle}
+      sendIntervalSeconds={sendIntervalSeconds}
+      handleIntervalChange={handleIntervalChange}
+    />
+  );
 
   const renderDebugTools = () => (
-    <div className="debug-tools">
-      <h3>Debug Tools</h3>
-      <div className="sensitivity-control">
-        <label> Engagement Sensitivity: {sensitivity}</label>
-        <input
-          type="range"
-          min="0"
-          max="10"
-          value={sensitivity}
-          onChange={e => setSensitivity(+e.target.value)}
-        />
-      </div>
-      <button 
-        className="debug-button trigger"
-        onClick={handleManualTrigger}
-      >
-        🎯 Trigger Question
-      </button>      <button 
-        className="debug-button reset-answers"
-        onClick={handleResetAnsweredQuestions}
-      >
-        🔄 Reset Answered Qs
-      </button>
-      <button 
-        className="debug-button reset-ticket"
-        onClick={async () => {
-          try {
-            const newTicket = await resetSessionAndGetNewTicket(lectureInfo.videoId);
-            if (newTicket) {
-              console.log(`✅ New main ticket obtained: ${newTicket}`);
-            } else {
-              console.error('❌ Failed to get new main ticket');
-            }
-          } catch (error) {
-            console.error('❌ Error resetting session:', error);
-          }
-        }}
-      >
-        🎫 Reset Main Ticket
-      </button>
-      <button
-        className="debug-button"
-        onClick={handlePlotResults}
-      >
-        {showResultsChart ? 'Hide Results' : 'Plot Results'}
-      </button>      <button
-        className="debug-button"
-        onClick={handleToggleTimeline}
-      >
-        {showTimeline ? 'Hide' : 'Show'} Timeline
-      </button>
-      <button
-        className="debug-button"
-        onClick={toggleTimelineType}
-      >
-        {timelineType === 'question' ? 'Switch to Summary' : 'Switch to Questions'}
-      </button>
-      <button
-        className="debug-button"
-        onClick={handleAllPlotResults}
-      >
-        {showAllResultsChart ? 'Hide all watcher\'s results' : 'Plot all watchers\' results'}
-      </button>
-
-    </div>
+    <VideoPlayerDebugTools
+      sensitivity={sensitivity}
+      setSensitivity={setSensitivity}
+      handleManualTrigger={handleManualTrigger}
+      handleResetAnsweredQuestions={handleResetAnsweredQuestions}
+      resetSessionAndGetNewTicket={resetSessionAndGetNewTicket} // Make sure this function is available in VideoPlayer scope or passed down
+      lectureVideoId={lectureInfo.videoId} // Pass lectureInfo.videoId
+      handlePlotResults={handlePlotResults}
+      showResultsChart={showResultsChart}
+      handleToggleTimeline={handleToggleTimeline}
+      showTimeline={showTimeline}
+      toggleTimelineType={toggleTimelineType}
+      timelineType={timelineType}
+      handleAllPlotResults={handleAllPlotResults}
+      showAllResultsChart={showAllResultsChart}
+    />
   );
 
   return (
