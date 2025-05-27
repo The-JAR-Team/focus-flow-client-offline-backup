@@ -36,6 +36,7 @@ import {
   markQuestionAsked,
   setGazeSensitivity
 } from '../services/videoLogic';
+import { initializeOnnxModel, predictEngagement } from '../services/engagementOnnxService';
 import {
   fetchQuestionsWithRetry,
   handleResetAnsweredQuestions as serviceResetAnsweredQuestions,
@@ -162,6 +163,14 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
   const AWAY_THRESHOLD_MS = 400;
 
   const MODEL_THRESHOLD = -1.0;  const [lastModelResult, setLastModelResult] = useState(null);
+  
+  // ONNX-related state for VideoPlayer engagement processing
+  const [onnxModelReady, setOnnxModelReady] = useState(false);
+  const [onnxStatus, setOnnxStatus] = useState('Loading ONNX model...');
+  const [videoEngagementScore, setVideoEngagementScore] = useState(null);
+  const [videoEngagementClass, setVideoEngagementClass] = useState('');
+  const sendingIntervalRef = useRef(null);
+  
   // Buffer tracking state
   const [bufferFrames, setBufferFrames] = useState(0);
   const [requestsSent, setRequestsSent] = useState(0);
@@ -624,13 +633,109 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       setPauseStatus,
       setUserPaused
     });
-  }, [isPlaying, currentQuestion, mode, handleLowEngagement]);
+  }, [isPlaying, currentQuestion, mode, handleLowEngagement]);  // Add frame buffering state for VideoPlayer
+  const landmarkBufferRef = useRef([]);
+  const lastFrameTimeRef = useRef(0);
+  const videoFrameCountRef = useRef(0);
+  const videoLastFpsLogTimeRef = useRef(Date.now());
+  
+  // Constants for 10 FPS frame collection (matching EngagementMonitor)
+  const VIDEO_FRAME_INTERVAL = 100; // Collect frame every 100ms = 10 FPS
+  const VIDEO_REQUIRED_FRAMES = 100; // Buffer for 10 seconds at 10 FPS
+  const VIDEO_SEND_INTERVAL = 1000; // Send data every 1 second (matching EngagementMonitor)
+
+  // Initialize ONNX model for VideoPlayer engagement processing
+  useEffect(() => {
+    const initVideoEngagementModel = async () => {
+      try {
+        setOnnxStatus('Starting ONNX model initialization...');
+        const initialized = await initializeOnnxModel();
+        setOnnxModelReady(initialized);
+        if (!initialized) {
+          setOnnxStatus('Failed to initialize ONNX model');
+          console.warn("VideoPlayer: Failed to initialize ONNX model");
+        } else {
+          setOnnxStatus('ONNX model initialized successfully');
+          console.log("VideoPlayer: ONNX model initialized successfully");
+        }
+      } catch (error) {
+        setOnnxStatus(`Error initializing ONNX model: ${error.message}`);
+        console.error("VideoPlayer: Error initializing ONNX model:", error);
+      }
+    };
+    
+    initVideoEngagementModel();
+  }, []);
+
+  // Initialize engagement data processing interval (similar to EngagementMonitor)
+  useEffect(() => {
+    if (onnxModelReady && !noClientPause) {
+      // Start processing engagement data at regular intervals
+      sendingIntervalRef.current = setInterval(async () => {
+        if (landmarkBufferRef.current.length < VIDEO_REQUIRED_FRAMES) {
+          console.log(`⚠️ VideoPlayer: Not enough frames yet (${landmarkBufferRef.current.length}/${VIDEO_REQUIRED_FRAMES})`);
+          return;
+        }
+        
+        try {
+          // Get the most recent frames from the buffer
+          const relevantLandmarks = landmarkBufferRef.current
+            .slice(-VIDEO_REQUIRED_FRAMES);
+
+          // Process landmarks with ONNX model
+          console.log(`📊 VideoPlayer: Processing ${relevantLandmarks.length} landmarks with ONNX model`);
+          const result = await predictEngagement(relevantLandmarks);
+          
+          if (!result) {
+            console.error('❌ VideoPlayer: ONNX prediction failed');
+            return;
+          }
+          
+          setVideoEngagementScore(result.score);
+          setVideoEngagementClass(result.name);
+          
+          console.log(`✅ VideoPlayer: Processed ${VIDEO_REQUIRED_FRAMES} frames with ONNX model. Result:`, result.score, result.name);
+            // Optional: Send to existing model result callback for integration with existing systems
+          if (result.score !== undefined) {
+            const formattedResult = {
+              engagement_score: result.score,
+              engagement_level: result.name,
+              processing_mode: 'local_onnx' // Use consistent processing mode for local ONNX
+            };
+            
+            // Call existing model result callback if needed
+            setLastModelResult(formattedResult);
+          }
+          
+        } catch (error) {
+          console.error('❌ VideoPlayer: Error processing landmarks with ONNX:', error);
+        }
+      }, VIDEO_SEND_INTERVAL);
+    }
+
+    return () => {
+      // Clean up interval when component unmounts or dependencies change
+      if (sendingIntervalRef.current) {
+        clearInterval(sendingIntervalRef.current);
+        sendingIntervalRef.current = null;
+      }
+    };
+  }, [onnxModelReady, noClientPause, VIDEO_REQUIRED_FRAMES, VIDEO_SEND_INTERVAL]);
+
   const handleFaceMeshResults = useCallback((results) => {
-    // First update the latest landmark regardless of errors
+    // Update latest landmark for immediate gaze detection
     updateLatestLandmark(results);
     
-    // Debug gaze detection and engagement state
-    //console.log('[DEBUGQ] FaceMesh processing frame, questionActive:', !!questionActiveRef.current, 'noClientPause:', noClientPause);
+    // FPS calculation for debugging
+    videoFrameCountRef.current++;
+    const now = Date.now();
+    if (now - videoLastFpsLogTimeRef.current >= 5000) { // 5 seconds
+      const elapsedSeconds = (now - videoLastFpsLogTimeRef.current) / 1000;
+      const fps = videoFrameCountRef.current / elapsedSeconds;
+      console.log(`🎥 VideoPlayer Camera FPS: ${fps.toFixed(2)}`);
+      videoFrameCountRef.current = 0;
+      videoLastFpsLogTimeRef.current = now;
+    }
     
     // Skip processing if player reference is null (component unmounting or between videos)
     if (!playerRef.current) {
@@ -638,7 +743,43 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       return;
     }
     
-    // Proceed only if we're not in server mode and have landmarks
+    // Frame buffering at 10 FPS (matching EngagementMonitor logic)
+    if (results && results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      const landmarks = results.multiFaceLandmarks[0];
+      
+      // Throttle frame collection to 10 FPS (100ms intervals)
+      const currentTime = now;
+      if (currentTime - lastFrameTimeRef.current >= VIDEO_FRAME_INTERVAL) {
+        // Add landmarks to buffer
+        landmarkBufferRef.current.push(landmarks);
+        
+        // Keep only the most recent frames (100 frames = 10 seconds at 10 FPS)
+        if (landmarkBufferRef.current.length > VIDEO_REQUIRED_FRAMES) {
+          landmarkBufferRef.current.shift();
+        }
+        
+        lastFrameTimeRef.current = currentTime;
+        console.log(`📦 VideoPlayer buffer: ${landmarkBufferRef.current.length}/${VIDEO_REQUIRED_FRAMES} frames`);
+      }
+    } else {
+      // No landmarks detected - add -1 values to maintain frame timing
+      const currentTime = now;
+      if (currentTime - lastFrameTimeRef.current >= VIDEO_FRAME_INTERVAL) {
+        // Create a placeholder frame with -1 values (468 landmarks × 3 coordinates)
+        const placeholderLandmarks = Array(468).fill().map(() => ({ x: -1, y: -1, z: -1 }));
+        landmarkBufferRef.current.push(placeholderLandmarks);
+        
+        // Keep only the most recent frames
+        if (landmarkBufferRef.current.length > VIDEO_REQUIRED_FRAMES) {
+          landmarkBufferRef.current.shift();
+        }
+        
+        lastFrameTimeRef.current = currentTime;
+        console.log(`📦 VideoPlayer buffer (no face): ${landmarkBufferRef.current.length}/${VIDEO_REQUIRED_FRAMES} frames`);
+      }
+    }
+    
+    // Proceed with immediate gaze detection only if we're not in server mode and have landmarks
     if (!noClientPause && 
         results && 
         results.multiFaceLandmarks && 
@@ -772,9 +913,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         console.log(`[DEBUGQ] Rewinding video to ${rewindTime}s`);
         playerRef.current.seekTo(rewindTime, true);
       }
-    }
-
-    if (decisionPending === true) {
+    }    if (decisionPending === true) {
       setQuestions(prev => {
         const updated = prev.filter(q => q.q_id !== currentQuestion.q_id);
         return updated;
@@ -1065,14 +1204,17 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       }
       
       return 'N/A';
-    };
-
-    // Helper function to get processing mode
+    };    // Helper function to get processing mode
     const getProcessingMode = (result) => {
       if (result && typeof result === 'object' && result.processing_mode) {
-        return result.processing_mode === 'local_onnx' ? '🧠 Local' : '🌐 Server';
+        // VideoPlayer only uses local ONNX processing
+        if (result.processing_mode === 'local_onnx' || result.processing_mode === 'video_player_onnx') {
+          return '🧠 Local ONNX';
+        }
+        return '🌐 Server';
       }
-      return '';    };    return (
+      return '';
+    };return (
       <>
         <button 
           className="status-toggle-button" 
