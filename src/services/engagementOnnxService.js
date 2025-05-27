@@ -162,7 +162,6 @@ export const preprocessLandmarks = (landmarksSequence) => {
   if (config.inputFormat.requiresNormalization) {
     finalFrames = applyDistanceNormalization(processedFrames);
   }
-  
   // Flatten the 3D array to 1D for ONNX input
   const flattenedArray = [];
   for (const frame of finalFrames) {
@@ -436,11 +435,26 @@ export const predictEngagement = async (landmarksData) => {
     
     // Handle different output formats based on model
     let regressionScore, predictionDetailsReg, predictionDetailsCls;
-    
-    if (modelConfig.outputFormat.outputType === 'classification' && onnxSession.outputNames.length >= 2) {
-      // Multi-output model (like v4 with regression + classification)
-      const regressionScores = results[onnxSession.outputNames[0]].data;
-      const classificationLogits = results[onnxSession.outputNames[1]].data;
+      if (modelConfig.outputFormat.outputType === 'classification' && onnxSession.outputNames.length >= 2) {
+      // Multi-output model (like v4 and v4_v2 with regression + classification)
+      
+      // For v4_v2 model, use named outputs if available
+      let regressionScores, classificationLogits;
+      
+      if (modelConfig.id === 'v4_v2' && modelConfig.outputFormat.outputNames) {
+        // New v4_v2 model with named outputs
+        regressionScores = results['regression_scores']?.data || results[onnxSession.outputNames[0]].data;
+        classificationLogits = results['classification_logits']?.data || results[onnxSession.outputNames[1]].data;
+        
+        // Attention weights are available but not used for engagement prediction
+        if (results['attention_weights']) {
+          console.log("Attention weights available but not used for prediction");
+        }
+      } else {
+        // Original v4 model with positional outputs
+        regressionScores = results[onnxSession.outputNames[0]].data;
+        classificationLogits = results[onnxSession.outputNames[1]].data;
+      }
       
       console.log("Raw regression scores:", Array.from(regressionScores));
       console.log("Raw classification logits:", Array.from(classificationLogits));

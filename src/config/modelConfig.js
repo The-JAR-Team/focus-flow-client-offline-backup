@@ -43,6 +43,45 @@ export const AVAILABLE_MODELS = {
       accuracy: 'High'
     }
   },
+  'v4_v2': {
+    id: 'v4_v2',
+    name: 'Engagement Multitask V4.2',
+    filename: 'engagement_multitask_v4_v2.onnx',
+    description: 'Enhanced multi-task model with improved training and better accuracy',
+    version: '4.2',
+    inputFormat: {
+      sequenceLength: 30,
+      numLandmarks: 478,
+      numCoords: 3,
+      tensorName: 'input_x',
+      tensorShape: [1, 30, 478, 3],
+      requiresNormalization: true,
+      normalizationMethod: 'distance_based'
+    },
+    outputFormat: {
+      tensorName: 'output',
+      outputType: 'classification',
+      numClasses: 5,
+      classLabels: {
+        0: 'Not Engaged',
+        1: 'Barely Engaged',
+        2: 'Engaged',
+        3: 'Highly Engaged',
+        4: 'SNP'
+      },
+      outputNames: ['regression_scores', 'classification_logits', 'attention_weights']
+    },
+    processingOptions: {
+      executionProviders: ['wasm'],
+      graphOptimizationLevel: 'all',
+      enableProfiling: false
+    },
+    performance: {
+      avgInferenceTime: '40-80ms',
+      memoryUsage: 'Medium',
+      accuracy: 'Very High'
+    }
+  },
   
   'v1': {
     id: 'v1',
@@ -87,7 +126,7 @@ export const AVAILABLE_MODELS = {
 /**
  * Default model configuration
  */
-export const DEFAULT_MODEL_ID = 'v4';
+export const DEFAULT_MODEL_ID = 'v4_v2';
 
 /**
  * Current active model configuration

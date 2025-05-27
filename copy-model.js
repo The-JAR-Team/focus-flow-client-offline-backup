@@ -18,6 +18,10 @@ const modelFiles = [
     filename: 'engagement_multitask_v4.onnx'
   },
   {
+    source: path.join(__dirname, 'public', 'models', 'engagement_multitask_v4_v2.onnx'),
+    filename: 'engagement_multitask_v4_v2.onnx'
+  },
+  {
     source: path.join(__dirname, 'public', 'models', 'v1.onnx'),
     filename: 'v1.onnx'
   }

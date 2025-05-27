@@ -3,7 +3,7 @@ import useFaceMesh from '../hooks/useFaceMesh';
 import axios from 'axios';
 import { config, ONNX_CONFIG } from '../config/config';
 import '../styles/EngagementMonitor.css';
-import { initializeOnnxModel, predictEngagement } from '../services/engagementOnnxService';
+import { initializeOnnxModel, predictEngagement, getCurrentModelInfo } from '../services/engagementOnnxService';
 import ModelSelector from './ModelSelector';
 
 const EngagementMonitor = () => {
@@ -17,9 +17,11 @@ const EngagementMonitor = () => {
   const [onnxStatus, setOnnxStatus] = useState('Loading ONNX model...');
   const [useServerFallback, setUseServerFallback] = useState(false);
   const onnxErrorCountRef = useRef(0);
-  
-  // Buffer for landmark data
+    // Buffer for landmark data
   const landmarkBufferRef = useRef([]);
+  
+  // Dynamic model configuration
+  const [requiredFrames, setRequiredFrames] = useState(100); // Default fallback
   
   // For FPS calculation
   const frameCountRef = useRef(0);
@@ -28,7 +30,6 @@ const EngagementMonitor = () => {
   // Constants for data collection
   const FPS = 10;
   const FRAME_INTERVAL = 100; // Collect frame every 100ms
-  const REQUIRED_FRAMES = 100; // We need 100 frames (10 seconds at 10fps)
   const SEND_INTERVAL = 1000; // Send data every 1 second
   
   // References for intervals
@@ -149,9 +150,8 @@ const EngagementMonitor = () => {
     if (isActive && landmarks) {
       // Store only the landmarks data, not the timestamp
       landmarkBufferRef.current.push(landmarks);
-      
-      // Keep only the most recent frames needed
-      if (landmarkBufferRef.current.length > REQUIRED_FRAMES) {
+        // Keep only the most recent frames needed
+      if (landmarkBufferRef.current.length > requiredFrames) {
         landmarkBufferRef.current.shift();
       }
     }
@@ -254,16 +254,14 @@ const EngagementMonitor = () => {
         // This is just to ensure the buffer doesn't grow too large
         // Actual collection happens in handleResults
       }, FRAME_INTERVAL);      // Start processing engagement data at regular intervals
-      sendingIntervalRef.current = setInterval(async () => {
-        if (landmarkBufferRef.current.length < REQUIRED_FRAMES) {
-          console.log(`⚠️ Not enough frames yet (${landmarkBufferRef.current.length}/${REQUIRED_FRAMES})`);
+      sendingIntervalRef.current = setInterval(async () => {        if (landmarkBufferRef.current.length < requiredFrames) {
+          console.log(`⚠️ Not enough frames yet (${landmarkBufferRef.current.length}/${requiredFrames})`);
           return;
         }
         
-        try {
-          // Get the most recent frames from the buffer
+        try {          // Get the most recent frames from the buffer
           const relevantLandmarks = landmarkBufferRef.current
-            .slice(-REQUIRED_FRAMES);
+            .slice(-requiredFrames);
 
           // Check if ONNX model is ready
           if (!onnxModelReady) {
@@ -284,7 +282,7 @@ const EngagementMonitor = () => {
           setEngagementScore(result.score);
           setEngagementClass(result.name);
           
-          console.log(`✅ Processed ${REQUIRED_FRAMES} frames with ONNX model. Result:`, result.score, result.name);
+          console.log(`✅ Processed ${requiredFrames} frames with ONNX model. Result:`, result.score, result.name);
         } catch (error) {
           console.error('❌ Error processing landmarks with ONNX:', error);
           setErrorMessage("Error processing landmarks: " + (error.message || "Unknown error"));
@@ -299,9 +297,32 @@ const EngagementMonitor = () => {
       }
       if (sendingIntervalRef.current) {
         clearInterval(sendingIntervalRef.current);
+      }    };
+  }, [isActive, onnxModelReady, requiredFrames]);
+
+  // Update required frames based on current model
+  useEffect(() => {
+    const updateModelConfig = () => {
+      try {
+        const modelInfo = getCurrentModelInfo();
+        if (modelInfo && modelInfo.inputFormat) {
+          const newRequiredFrames = modelInfo.inputFormat.sequenceLength;
+          setRequiredFrames(newRequiredFrames);
+          console.log(`📏 Updated required frames to ${newRequiredFrames} for model: ${modelInfo.name}`);
+        }
+      } catch (error) {
+        console.warn('Failed to get model info, using default required frames:', error);
       }
     };
-  }, [isActive, onnxModelReady]);
+    
+    // Update immediately
+    updateModelConfig();
+    
+    // Also update when ONNX model becomes ready
+    if (onnxModelReady) {
+      updateModelConfig();
+    }
+  }, [onnxModelReady]);
 
   // Toggle active state
   const toggleActive = () => {
