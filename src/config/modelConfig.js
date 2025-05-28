@@ -75,11 +75,50 @@ export const AVAILABLE_MODELS = {
       executionProviders: ['wasm'],
       graphOptimizationLevel: 'all',
       enableProfiling: false
-    },
-    performance: {
+    },    performance: {
       avgInferenceTime: '40-80ms',
       memoryUsage: 'Medium',
       accuracy: 'Very High'
+    }
+  },
+
+  'v4_v3': {
+    id: 'v4_v3',
+    name: 'Engagement Multitask V4.3',
+    filename: 'multitask_v4_v3.onnx',
+    description: 'Latest multi-task model with enhanced performance and accuracy',
+    version: '4.3',
+    inputFormat: {
+      sequenceLength: 30,
+      numLandmarks: 478,
+      numCoords: 3,
+      tensorName: 'input_x',
+      tensorShape: [1, 30, 478, 3],
+      requiresNormalization: true,
+      normalizationMethod: 'distance_based'
+    },
+    outputFormat: {
+      tensorName: 'output',
+      outputType: 'classification',
+      numClasses: 5,
+      classLabels: {
+        0: 'Not Engaged',
+        1: 'Barely Engaged',
+        2: 'Engaged',
+        3: 'Highly Engaged',
+        4: 'SNP'
+      },
+      outputNames: ['regression_scores', 'classification_logits', 'attention_weights']
+    },
+    processingOptions: {
+      executionProviders: ['wasm'],
+      graphOptimizationLevel: 'all',
+      enableProfiling: false
+    },
+    performance: {
+      avgInferenceTime: '35-75ms',
+      memoryUsage: 'Medium',
+      accuracy: 'Excellent'
     }
   },
   
@@ -109,8 +148,7 @@ export const AVAILABLE_MODELS = {
         3: 'Highly Engaged',
         4: 'SNP'
       }
-    },
-    processingOptions: {
+    },    processingOptions: {
       executionProviders: ['wasm'],
       graphOptimizationLevel: 'all',
       enableProfiling: false
@@ -120,13 +158,52 @@ export const AVAILABLE_MODELS = {
       memoryUsage: 'Low',
       accuracy: 'Medium'
     }
+  },
+  
+  'v3_gru_attention': {
+    id: 'v3_gru_attention',
+    name: 'GRU with Attention V3',
+    filename: 'v3_gru_attention.onnx',
+    description: 'GRU-based model with attention mechanism for enhanced engagement prediction',
+    version: '3.0',
+    inputFormat: {
+      sequenceLength: 100,
+      numLandmarks: 478,
+      numCoords: 3,
+      tensorName: 'input',
+      tensorShape: [1, 100, 478, 3],
+      requiresNormalization: true,
+      normalizationMethod: 'distance_based'
+    },
+    outputFormat: {
+      tensorName: 'output',
+      outputType: 'classification',
+      numClasses: 5,
+      classLabels: {
+        0: 'Not Engaged',
+        1: 'Barely Engaged',
+        2: 'Engaged', 
+        3: 'Highly Engaged',
+        4: 'SNP'
+      }
+    },
+    processingOptions: {
+      executionProviders: ['wasm'],
+      graphOptimizationLevel: 'all',
+      enableProfiling: false
+    },
+    performance: {
+      avgInferenceTime: '35-75ms',
+      memoryUsage: 'Low-Medium',
+      accuracy: 'High'
+    }
   }
 };
 
 /**
  * Default model configuration
  */
-export const DEFAULT_MODEL_ID = 'v4_v2';
+export const DEFAULT_MODEL_ID = 'v4_v3';
 
 /**
  * Current active model configuration

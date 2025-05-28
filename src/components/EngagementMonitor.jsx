@@ -145,12 +145,17 @@ const EngagementMonitor = () => {
     }
 
     // Get bounding box from face landmarks
-    const landmarks = results.multiFaceLandmarks[0];
-      // Store the landmark data
+    const landmarks = results.multiFaceLandmarks[0];    // Store the landmark data
     if (isActive && landmarks) {
       // Store only the landmarks data, not the timestamp
       landmarkBufferRef.current.push(landmarks);
-        // Keep only the most recent frames needed
+      
+      // Debug: Log landmark collection every 50 frames to avoid spam
+      if (landmarkBufferRef.current.length % 50 === 0) {
+        console.log(`📥 Collected ${landmarkBufferRef.current.length} landmark frames (${landmarks.length} landmarks per frame)`);
+      }
+      
+      // Keep only the most recent frames needed
       if (landmarkBufferRef.current.length > requiredFrames) {
         landmarkBufferRef.current.shift();
       }
@@ -267,17 +272,52 @@ const EngagementMonitor = () => {
           if (!onnxModelReady) {
             console.log("⚠️ ONNX model not ready yet");
             return;
-          }
-
-          // Process landmarks with ONNX model
+          }          // Process landmarks with ONNX model
           console.log(`Processing ${relevantLandmarks.length} landmarks with ONNX model`);
-          const result = await predictEngagement(relevantLandmarks);
           
-          if (!result) {
+          // Debug: Print landmarks being sent to ONNX
+          console.log('🔍 DEBUG: Landmarks sent to ONNX model:');
+          console.log(`📊 Total frames: ${relevantLandmarks.length}`);
+          console.log(`📏 Landmarks per frame: ${relevantLandmarks[0]?.length || 'N/A'}`);
+          
+          // Sample first and last frame landmarks for debugging
+          if (relevantLandmarks.length > 0) {
+            console.log('🎯 First frame sample landmarks (first 5):');
+            console.log(relevantLandmarks[0].slice(0, 5).map(landmark => ({
+              x: landmark.x.toFixed(4),
+              y: landmark.y.toFixed(4),
+              z: landmark.z?.toFixed(4) || 'N/A'
+            })));
+            
+            console.log('🎯 Last frame sample landmarks (first 5):');
+            const lastFrame = relevantLandmarks[relevantLandmarks.length - 1];
+            console.log(lastFrame.slice(0, 5).map(landmark => ({
+              x: landmark.x.toFixed(4),
+              y: landmark.y.toFixed(4),
+              z: landmark.z?.toFixed(4) || 'N/A'
+            })));
+            
+            // Print statistics about landmark values
+            const allX = relevantLandmarks.flat().map(l => l.x);
+            const allY = relevantLandmarks.flat().map(l => l.y);
+            console.log('📈 Landmark statistics:');
+            console.log(`   X range: ${Math.min(...allX).toFixed(4)} to ${Math.max(...allX).toFixed(4)}`);
+            console.log(`   Y range: ${Math.min(...allY).toFixed(4)} to ${Math.max(...allY).toFixed(4)}`);
+          }
+          
+          const result = await predictEngagement(relevantLandmarks);
+            if (!result) {
             console.error('❌ ONNX prediction failed');
             setErrorMessage("ONNX prediction failed");
             return;
           }
+          
+          // Debug: Log ONNX prediction result
+          console.log('🎯 DEBUG: ONNX prediction result:', {
+            score: result.score,
+            name: result.name,
+            timestamp: new Date().toISOString()
+          });
           
           setEngagementScore(result.score);
           setEngagementClass(result.name);
