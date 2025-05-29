@@ -311,13 +311,53 @@ const EngagementMonitor = () => {
             setErrorMessage("ONNX prediction failed");
             return;
           }
-          
-          // Debug: Log ONNX prediction result
+            // Debug: Log ONNX prediction result
           console.log('🎯 DEBUG: ONNX prediction result:', {
             score: result.score,
             name: result.name,
             timestamp: new Date().toISOString()
           });
+          
+          // Debug: Print last 100 frames when SNP is detected
+          if (result.name === 'SNP' || result.index === 4) {
+            console.log('⚠️ SNP DETECTED - Printing last 100 frames for analysis:');
+            console.log(`📊 Total frames available: ${landmarkBufferRef.current.length}`);
+            
+            const framesToPrint = Math.min(100, landmarkBufferRef.current.length);
+            console.log(`🔍 Printing last ${framesToPrint} frames:`);
+            
+            for (let i = landmarkBufferRef.current.length - framesToPrint; i < landmarkBufferRef.current.length; i++) {
+              const frame = landmarkBufferRef.current[i];
+              const frameIndex = i + 1;
+              
+              // Check if frame has valid landmarks or -1 placeholders
+              const hasValidLandmarks = frame && frame.length > 0 && frame[0].x !== -1;
+              
+              if (hasValidLandmarks) {
+                // Sample first 3 landmarks for valid frames
+                const sampleLandmarks = frame.slice(0, 3).map(l => ({
+                  x: l.x.toFixed(4),
+                  y: l.y.toFixed(4),
+                  z: l.z?.toFixed(4) || 'N/A'
+                }));
+                console.log(`📍 Frame ${frameIndex}: VALID - Sample landmarks:`, sampleLandmarks);
+              } else {
+                // For -1 placeholder frames
+                console.log(`❌ Frame ${frameIndex}: NO FACE DETECTED (placeholder frame)`);
+              }
+            }
+            
+            // Print frame type statistics
+            const validFrames = landmarkBufferRef.current.filter(frame => 
+              frame && frame.length > 0 && frame[0].x !== -1
+            ).length;
+            const invalidFrames = landmarkBufferRef.current.length - validFrames;
+            
+            console.log(`📈 SNP Frame Analysis Summary:`);
+            console.log(`   Valid face frames: ${validFrames}/${landmarkBufferRef.current.length}`);
+            console.log(`   No face frames: ${invalidFrames}/${landmarkBufferRef.current.length}`);
+            console.log(`   Valid frame percentage: ${((validFrames / landmarkBufferRef.current.length) * 100).toFixed(1)}%`);
+          }
           
           setEngagementScore(result.score);
           setEngagementClass(result.name);

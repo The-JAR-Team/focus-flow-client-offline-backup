@@ -677,15 +677,50 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         if (landmarkBufferRef.current.length < VIDEO_REQUIRED_FRAMES) {
           console.log(`⚠️ VideoPlayer: Not enough frames yet (${landmarkBufferRef.current.length}/${VIDEO_REQUIRED_FRAMES})`);
           return;
-        }
-        
-        try {
+        }          try {
           // Get the most recent frames from the buffer
           const relevantLandmarks = landmarkBufferRef.current
             .slice(-VIDEO_REQUIRED_FRAMES);
-
-          // Process landmarks with ONNX model
-          console.log(`📊 VideoPlayer: Processing ${relevantLandmarks.length} landmarks with ONNX model`);
+          
+          // Print the exactly 100 frames being sent to ONNX
+          console.log(`📊 VideoPlayer: Sending exactly ${relevantLandmarks.length} frames to ONNX`);
+          console.log(`🔍 VideoPlayer: Frame-by-frame analysis of data sent to ONNX:`);
+            relevantLandmarks.forEach((frame, frameIndex) => {
+            if (frame && frame.length > 0) {
+              const hasValidLandmarks = frame[0].x !== -1;
+              if (hasValidLandmarks) {
+                console.log(`  Frame ${frameIndex}: Valid landmarks (${frame.length} landmarks)`);
+                console.log(`    Sample landmarks:`, frame.slice(0, 3).map(l => ({
+                  x: l.x.toFixed(4),
+                  y: l.y.toFixed(4),
+                  z: l.z?.toFixed(4) || 'N/A'
+                })));
+              } else {
+                console.log(`  Frame ${frameIndex}: No face detected - landmarks:`, frame.slice(0, 3).map(l => ({
+                  x: l.x,
+                  y: l.y,
+                  z: l.z
+                })));
+              }
+            } else {
+              console.log(`  Frame ${frameIndex}: Empty/null frame`);
+            }
+          });
+          
+          // Summary statistics
+          const validFrames = relevantLandmarks.filter(frame => 
+            frame && frame.length > 0 && frame[0].x !== -1
+          ).length;
+          const placeholderFrames = relevantLandmarks.length - validFrames;
+          
+          console.log(`📈 VideoPlayer: Frame statistics for ONNX input:`);
+          console.log(`  Total frames: ${relevantLandmarks.length}`);
+          console.log(`  Valid frames (face detected): ${validFrames}`);
+          console.log(`  Placeholder frames (no face): ${placeholderFrames}`);          console.log(`  Valid frame percentage: ${((validFrames / relevantLandmarks.length) * 100).toFixed(1)}%`);
+          
+          // Log exactly what we send to ONNX
+          console.log(`🎯 VideoPlayer: EXACTLY what we send to ONNX:`, relevantLandmarks);
+          
           const result = await predictEngagement(relevantLandmarks);
           
           if (!result) {
@@ -762,13 +797,12 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         
         lastFrameTimeRef.current = currentTime;
         console.log(`📦 VideoPlayer buffer: ${landmarkBufferRef.current.length}/${VIDEO_REQUIRED_FRAMES} frames`);
-      }
-    } else {
+      }    } else {
       // No landmarks detected - add -1 values to maintain frame timing
       const currentTime = now;
       if (currentTime - lastFrameTimeRef.current >= VIDEO_FRAME_INTERVAL) {
-        // Create a placeholder frame with -1 values (468 landmarks × 3 coordinates)
-        const placeholderLandmarks = Array(468).fill().map(() => ({ x: -1, y: -1, z: -1 }));
+        // Create a placeholder frame with -1 values (478 landmarks × 3 coordinates)
+        const placeholderLandmarks = Array(478).fill().map(() => ({ x: -1, y: -1, z: -1 }));
         landmarkBufferRef.current.push(placeholderLandmarks);
         
         // Keep only the most recent frames
@@ -1030,8 +1064,7 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
       questionsRef,
       setQuestions
     );
-  };
-  useEffect(() => {
+  };  useEffect(() => {
     setModelResultCallback((result) => {
       setLastModelResult(result);
       
@@ -1041,6 +1074,47 @@ function VideoPlayer({ lectureInfo, mode, onVideoPlayerReady }) {
         engagementScore = result.engagement_score;
       } else if (typeof result === 'number') {
         engagementScore = result;
+      }
+      
+      // Debug: Print last 100 frames when SNP is detected in VideoPlayer
+      //if (typeof result === 'object' && (result.name === 'SNP' || result.index === 4)) {
+        console.log('🎬 VideoPlayer - SNP DETECTED - Printing last 100 frames for analysis:');
+        console.log(`📊 VideoPlayer total frames available: ${landmarkBufferRef.current.length}`);
+        
+        const framesToPrint = Math.min(100, landmarkBufferRef.current.length);
+        console.log(`🔍 VideoPlayer printing last ${framesToPrint} frames:`);
+        
+        for (let i = landmarkBufferRef.current.length - framesToPrint; i < landmarkBufferRef.current.length; i++) {
+          const frame = landmarkBufferRef.current[i];
+          const frameIndex = i + 1;
+          
+          // Check if frame has valid landmarks or -1 placeholders
+          const hasValidLandmarks = frame && frame.length > 0 && frame[0].x !== -1;
+          
+          if (hasValidLandmarks) {
+            // Sample first 3 landmarks for valid frames
+            const sampleLandmarks = frame.slice(0, 3).map(l => ({
+              x: l.x.toFixed(4),
+              y: l.y.toFixed(4),
+              z: l.z?.toFixed(4) || 'N/A'
+            }));
+            console.log(`📍 VideoPlayer Frame ${frameIndex}: VALID - Sample landmarks:`, sampleLandmarks);
+          } else {
+            // For -1 placeholder frames
+            console.log(`❌ VideoPlayer Frame ${frameIndex}: NO FACE DETECTED (placeholder frame)`);
+          }
+        
+        
+        // Print frame type statistics
+        const validFrames = landmarkBufferRef.current.filter(frame => 
+          frame && frame.length > 0 && frame[0].x !== -1
+        ).length;
+        const invalidFrames = landmarkBufferRef.current.length - validFrames;
+        
+        console.log(`📈 VideoPlayer SNP Frame Analysis Summary:`);
+        console.log(`   Valid face frames: ${validFrames}/${landmarkBufferRef.current.length}`);
+        console.log(`   No face frames: ${invalidFrames}/${landmarkBufferRef.current.length}`);
+        console.log(`   Valid frame percentage: ${((validFrames / landmarkBufferRef.current.length) * 100).toFixed(1)}%`);
       }
       
       // Trigger low engagement if score is below threshold

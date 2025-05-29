@@ -37,8 +37,7 @@ export const initializeOnnxModel = async (modelId = null) => {
         currentModelConfig = getActiveModelConfig();
       }
     }
-    
-    console.log(`Initializing ONNX model: ${currentModelConfig.name} (${currentModelConfig.id})`);
+      console.log(`Initializing ONNX model: ${currentModelConfig.name}`);
     
     // Set up ONNX runtime options from model config
     const options = {
@@ -56,9 +55,8 @@ export const initializeOnnxModel = async (modelId = null) => {
     try {
       const modelUri = await getOnnxModelUri(currentModelConfig.filename);
       if (modelUri) {
-        console.log(`Loading ONNX model from blob URL: ${modelUri}`);
         onnxSession = await ort.InferenceSession.create(modelUri, options);
-        console.log('ONNX model loaded successfully from blob URL');
+        console.log('ONNX model loaded successfully');
         return true;
       }
     } catch (error) {
@@ -70,9 +68,8 @@ export const initializeOnnxModel = async (modelId = null) => {
     try {
       const hooksModelUri = await fetchModelFromHooks(currentModelConfig.filename);
       if (hooksModelUri) {
-        console.log(`Loading ONNX model from hooks blob URL: ${hooksModelUri}`);
         onnxSession = await ort.InferenceSession.create(hooksModelUri, options);
-        console.log('ONNX model loaded successfully from hooks blob URL');
+        console.log('ONNX model loaded successfully');
         return true;
       }
     } catch (error) {
@@ -83,7 +80,6 @@ export const initializeOnnxModel = async (modelId = null) => {
     // Method 3: Try each path directly
     for (const path of possiblePaths) {
       try {
-        console.log(`Attempting to load ONNX model from: ${path}`);
         onnxSession = await ort.InferenceSession.create(path, options);
         console.log(`ONNX model loaded successfully from: ${path}`);
         modelLoaded = true;
@@ -184,8 +180,10 @@ export const applyDistanceNormalization = (landmarksFrames) => {
   for (let frameIdx = 0; frameIdx < landmarksFrames.length; frameIdx++) {
     const frameLandmarks = landmarksFrames[frameIdx];
     
-    // Check for padding frames (all -1.0)
-    if (frameLandmarks.every(coords => coords.every(val => val === -1.0))) {
+    // Check if entire frame consists of -1 values (skip normalization for these frames)
+    const isEntireFrameInvalid = frameLandmarks.every(coords => coords.every(val => val === -1.0));
+    
+    if (isEntireFrameInvalid) {
       normalizedFrames.push(frameLandmarks);
       continue;
     }
@@ -387,10 +385,8 @@ export const mapClassificationLogitsToClassDetails = (logits, classLabels = null
  * @returns {Object|null} - Prediction result with engagement score and class
  */
 export const predictEngagement = async (landmarksData) => {
-  try {
-    // Make sure model is initialized
+  try {    // Make sure model is initialized
     if (!onnxSession) {
-      console.log("ONNX session not initialized, attempting to initialize now...");
       const initialized = await initializeOnnxModel();
       if (!initialized) {
         throw new Error('ONNX model initialization failed');
@@ -401,18 +397,12 @@ export const predictEngagement = async (landmarksData) => {
     const config = currentModelConfig || getActiveModelConfig();
     const { SEQ_LEN, NUM_LANDMARKS, NUM_COORDS } = getModelDimensions();
     
-    console.log(`Processing ${landmarksData.length} landmark frames with model: ${config.name}`);
-    console.log("First frame sample:", landmarksData[0][0]);
-    
     // Preprocess landmarks
     const preprocessedLandmarks = preprocessLandmarks(landmarksData);
     
     if (!preprocessedLandmarks) {
       throw new Error('Failed to preprocess landmarks');
     }
-    
-    console.log(`Preprocessed landmarks shape: ${preprocessedLandmarks.length} elements`);
-    console.log(`Expected elements: ${1 * SEQ_LEN * NUM_LANDMARKS * NUM_COORDS}`);
     
     // Create tensor with configured shape
     const inputTensor = new ort.Tensor(
@@ -421,16 +411,10 @@ export const predictEngagement = async (landmarksData) => {
       config.inputFormat.tensorShape
     );
     
-    console.log("Running ONNX inference with input shape:", inputTensor.dims);
-    
     // Run inference
     const feeds = {};
     feeds[onnxSession.inputNames[0]] = inputTensor;
-    console.log("ONNX input name:", onnxSession.inputNames[0]);
-    console.log("ONNX output names:", onnxSession.outputNames);
-    
-    const results = await onnxSession.run(feeds);
-    console.log("ONNX inference completed");    // Extract results based on model configuration
+    const results = await onnxSession.run(feeds);// Extract results based on model configuration
     const modelConfig = currentModelConfig || getActiveModelConfig();
     
     // Handle different output formats based on model
@@ -440,24 +424,15 @@ export const predictEngagement = async (landmarksData) => {
       
       // For v4_v2 model, use named outputs if available
       let regressionScores, classificationLogits;
-      
-      if (modelConfig.id === 'v4_v2' && modelConfig.outputFormat.outputNames) {
+        if (modelConfig.id === 'v4_v2' && modelConfig.outputFormat.outputNames) {
         // New v4_v2 model with named outputs
         regressionScores = results['regression_scores']?.data || results[onnxSession.outputNames[0]].data;
         classificationLogits = results['classification_logits']?.data || results[onnxSession.outputNames[1]].data;
-        
-        // Attention weights are available but not used for engagement prediction
-        if (results['attention_weights']) {
-          console.log("Attention weights available but not used for prediction");
-        }
       } else {
         // Original v4 model with positional outputs
         regressionScores = results[onnxSession.outputNames[0]].data;
         classificationLogits = results[onnxSession.outputNames[1]].data;
       }
-      
-      console.log("Raw regression scores:", Array.from(regressionScores));
-      console.log("Raw classification logits:", Array.from(classificationLogits));
       
       // Get and clamp regression score
       const rawRegressionScore = regressionScores[0];
@@ -470,8 +445,7 @@ export const predictEngagement = async (landmarksData) => {
       predictionDetailsCls = mapClassificationLogitsToClassDetails(
         Array.from(classificationLogits), modelConfig.outputFormat.classLabels
       );
-      
-      // Create result object similar to server response
+        // Create result object similar to server response
       const result = {
         score: regressionScore,
         name: predictionDetailsReg.name,
@@ -485,12 +459,9 @@ export const predictEngagement = async (landmarksData) => {
         model_id: modelConfig.id
       };
       
-      console.log(`Final engagement prediction using ${modelConfig.name}:`, result);
-      return result;
-    } else {
+      return result;    } else {
       // Single output model (classification only)
       const outputData = results[onnxSession.outputNames[0]].data;
-      console.log("Raw model output:", Array.from(outputData));
       
       if (outputData.length === 1) {
         // Single regression score
@@ -507,15 +478,13 @@ export const predictEngagement = async (landmarksData) => {
           model_id: modelConfig.id
         };
         
-        console.log(`Final engagement prediction using ${modelConfig.name}:`, result);
         return result;
       } else {
         // Classification logits
         predictionDetailsCls = mapClassificationLogitsToClassDetails(
           Array.from(outputData), modelConfig.outputFormat.classLabels
         );
-        
-        const result = {
+          const result = {
           score: predictionDetailsCls.probabilities ? Math.max(...predictionDetailsCls.probabilities) : 0,
           name: predictionDetailsCls.name,
           index: predictionDetailsCls.index,
@@ -527,7 +496,6 @@ export const predictEngagement = async (landmarksData) => {
           model_id: modelConfig.id
         };
         
-        console.log(`Final engagement prediction using ${modelConfig.name}:`, result);
         return result;
       }
     }
@@ -565,13 +533,11 @@ export const switchModel = async (modelId) => {
     if (!setActiveModel(modelId)) {
       return false;
     }
-    
-    // Clear current session to force re-initialization
+      // Clear current session to force re-initialization
     onnxSession = null;
     currentModelConfig = null;
     
-    console.log(`Switched to model: ${newModelConfig.name} (${modelId})`);
-    console.log('Model will be loaded on next prediction request');
+    console.log(`Switched to model: ${newModelConfig.name}`);
     
     return true;
   } catch (error) {

@@ -114,9 +114,48 @@ export const AVAILABLE_MODELS = {
       executionProviders: ['wasm'],
       graphOptimizationLevel: 'all',
       enableProfiling: false
+    },    performance: {
+      avgInferenceTime: '35-75ms',
+      memoryUsage: 'Medium',
+      accuracy: 'Excellent'
+    }
+  },
+
+  'v4_v4': {
+    id: 'v4_v4',
+    name: 'Engagement Multitask V4.4',
+    filename: 'multitask_v4_4.onnx',
+    description: 'Latest multi-task model with further enhanced performance and accuracy',
+    version: '4.4',
+    inputFormat: {
+      sequenceLength: 30,
+      numLandmarks: 478,
+      numCoords: 3,
+      tensorName: 'input_x',
+      tensorShape: [1, 30, 478, 3],
+      requiresNormalization: true,
+      normalizationMethod: 'distance_based'
+    },
+    outputFormat: {
+      tensorName: 'output',
+      outputType: 'classification',
+      numClasses: 5,
+      classLabels: {
+        0: 'Not Engaged',
+        1: 'Barely Engaged',
+        2: 'Engaged',
+        3: 'Highly Engaged',
+        4: 'SNP'
+      },
+      outputNames: ['regression_scores', 'classification_logits', 'attention_weights']
+    },
+    processingOptions: {
+      executionProviders: ['wasm'],
+      graphOptimizationLevel: 'all',
+      enableProfiling: false
     },
     performance: {
-      avgInferenceTime: '35-75ms',
+      avgInferenceTime: '30-70ms',
       memoryUsage: 'Medium',
       accuracy: 'Excellent'
     }
