@@ -134,10 +134,18 @@ const ModelSelector = () => {
                 <span>{currentModel.performance.memoryUsage}</span>
               </div>
             </div>
-          )}
-
-          <div className="model-selection">
-            <h4>Available Models</h4>
+          )}          <div className="model-selection">
+            <div className="model-selection-header">
+              <h4>Available Models</h4>
+              <button 
+                className="reload-model-btn"
+                onClick={handleReloadModel}
+                disabled={isLoading}
+                title="Reload current model"
+              >
+                {isLoading ? '⏳' : 'Click To Reload 🔄'}
+              </button>
+            </div>
             <div className="model-list">
               {Object.values(availableModels).map((model) => (
                 <button
@@ -159,16 +167,6 @@ const ModelSelector = () => {
                 </button>
               ))}
             </div>
-          </div>
-
-          <div className="model-actions">
-            <button 
-              className="reload-model-btn"
-              onClick={handleReloadModel}
-              disabled={isLoading}
-            >
-              {isLoading ? '⏳ Loading...' : '🔄 Reload Model'}
-            </button>
           </div>
         </div>
       )}

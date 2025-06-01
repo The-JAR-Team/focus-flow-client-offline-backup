@@ -90,8 +90,7 @@
   margin-top: 16px;
 }
 
-.current-model-details h4,
-.model-selection h4 {
+.current-model-details h4 {
   margin: 0 0 12px 0;
   font-size: 14px;
   font-weight: 600;
@@ -120,10 +119,50 @@
   margin: 20px 0;
 }
 
+.model-selection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.model-selection-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #343a40;
+}
+
 .model-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 4px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 8px;
+  background-color: #fafbfc;
+}
+
+/* Custom scrollbar styling */
+.model-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.model-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.model-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.model-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .model-option {
@@ -186,23 +225,21 @@
   font-weight: 500;
 }
 
-.model-actions {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #dee2e6;
-}
-
 .reload-model-btn {
   background-color: #6c757d;
   color: white;
   border: none;
   border-radius: 4px;
-  padding: 8px 16px;
+  padding: 6px 10px;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  width: 100%;
+  min-width: 40px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .reload-model-btn:hover:not(:disabled) {
