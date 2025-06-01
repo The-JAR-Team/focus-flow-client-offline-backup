@@ -117,23 +117,21 @@ export const AVAILABLE_MODELS = {
     },    performance: {
       avgInferenceTime: '35-75ms',
       memoryUsage: 'Medium',
-      accuracy: 'Excellent'
-    }
+      accuracy: 'Excellent'    }
   },
-
-  'v4_v4': {
-    id: 'v4_v4',
-    name: 'Engagement Multitask V4.4',
-    filename: 'multitask_v4_4.onnx',
-    description: 'Latest multi-task model with further enhanced performance and accuracy',
-    version: '4.4',
+  'v4_v7': {
+    id: 'v4_v7',
+    name: 'Engagement Multitask V4.7',
+    filename: 'multitask_v4_7.onnx',
+    description: 'Advanced multi-task model with latest optimizations and enhanced accuracy',
+    version: '4.7',
     inputFormat: {
       sequenceLength: 30,
       numLandmarks: 478,
       numCoords: 3,
       tensorName: 'input_x',
       tensorShape: [1, 30, 478, 3],
-      requiresNormalization: true,
+      requiresNormalization: false,
       normalizationMethod: 'distance_based'
     },
     outputFormat: {
@@ -154,18 +152,18 @@ export const AVAILABLE_MODELS = {
       graphOptimizationLevel: 'all',
       enableProfiling: false
     },    performance: {
-      avgInferenceTime: '30-70ms',
+      avgInferenceTime: '25-65ms',
       memoryUsage: 'Medium',
       accuracy: 'Excellent'
     }
   },
 
-  'v4_v7': {
-    id: 'v4_v7',
-    name: 'Engagement Multitask V4.7',
-    filename: 'multitask_v4_7.onnx',
-    description: 'Advanced multi-task model with latest optimizations and enhanced accuracy',
-    version: '4.7',
+  'v4_v66': {
+    id: 'v4_v66',
+    name: 'Engagement Multitask V4.66',
+    filename: 'multitask_v4_66.onnx',
+    description: 'Enhanced multi-task model with improved training and optimized performance',
+    version: '4.66',
     inputFormat: {
       sequenceLength: 30,
       numLandmarks: 478,
@@ -194,7 +192,7 @@ export const AVAILABLE_MODELS = {
       enableProfiling: false
     },
     performance: {
-      avgInferenceTime: '25-65ms',
+      avgInferenceTime: '22-60ms',
       memoryUsage: 'Medium',
       accuracy: 'Excellent'
     }
