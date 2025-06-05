@@ -120,6 +120,16 @@
     opacity: 1;
 }
 
+.permission-edit-actions{
+    position: relative;
+    justify-content: center;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.5rem;
+}
+
 .permission-toggles-group {
     display: flex;
     border-radius: 6px;
