@@ -41,7 +41,7 @@ function UnsubscribeModal({ playlistId, onClose, onUnsubscribed }) {
         <form onSubmit={handleUnsubscribe}>
           <input
             type="email"
-            placeholder="Enter your email"
+            placeholder="Enter email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
