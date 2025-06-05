@@ -30,7 +30,7 @@
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
 }
 
 /* Match input precisely to title */
@@ -44,7 +44,7 @@
     border: none;
     background: transparent;
     outline: none;
-    width: auto;
+    width: 100%;
 }
 
 .playlist-name-input:focus {
