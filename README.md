@@ -46,8 +46,6 @@ To upload a new video:
    - **Title**: Give your video a descriptive name
    - **Description**: Add details about the video content
    - **Video Link**: Any link from youtube or his id
-   - **Thumbnail**: Upload a custom thumbnail image
-   - **Privacy Settings**: Choose between public or private
 3. Click **"Upload"** to process and add your video
 
 ![Add Video](https://i.imgur.com/p5fnuHC.png)
