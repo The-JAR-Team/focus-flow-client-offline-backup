@@ -75,18 +75,11 @@ FocusFlow's advanced video player includes several interactive features:
 #### 📊 Summary Timeline
 - **Visual Timeline**: See a visual representation of the video content below the player
 - **Key Moments**: Important sections are highlighted on the timeline
-- **Engagement Points**: Areas where quizzes or interactions occurred are marked
 - **Quick Navigation**: Click on timeline segments to jump to specific moments
 - **Progress Indicators**: Track your viewing progress and completion status
 
 ![Timeline](https://i.imgur.com/L72svhO.png)
 *Visual timeline showing key moments and engagement points*
-
-#### 🎮 Interactive Controls
-- **Playback Speed**: Adjust video speed for optimal learning
-- **Quality Selection**: Choose video quality based on your connection
-- **Fullscreen Mode**: Immersive viewing experience
-- **Keyboard Shortcuts**: Quick controls for efficient navigation
 
 ### 5. Playlist Management
 
