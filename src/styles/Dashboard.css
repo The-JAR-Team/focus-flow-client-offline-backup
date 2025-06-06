@@ -628,6 +628,13 @@ h2:hover {
 
 .my-videos-grid {
   margin-bottom: 40px; /* Extra space after my videos grid */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 25%));
+  justify-content: center;
+  gap: 30px;
+  padding: 20px;
+  width: 100%;
+  min-height: 100px;
 }
 
 .public-videos-grid {

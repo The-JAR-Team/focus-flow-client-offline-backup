@@ -245,7 +245,7 @@ function PlaylistView() {
                 onChange={(e) => setEditedName(e.target.value)}
                 autoFocus
                 className="playlist-name-input"
-                maxLength={50}
+                maxLength={255}
               />
               <div className="edit-actions">
                 <button 
@@ -271,7 +271,7 @@ function PlaylistView() {
               <h2>{playlistData.playlist_name}</h2>
               {isOwner && (
                 <button
-                  className="edit-icon"
+                  className="edit-icon edit-title-btn"
                   onClick={() => setIsEditingName(true)}
                   title="Edit playlist name"
                 >
@@ -345,19 +345,21 @@ function PlaylistView() {
               </div>
             )}
           </div>
-
-          <p>Owner: {playlistData.playlist_owner_name}</p>
+          
+          <div className='playlist-owner'>
+            <p>Owner: {playlistData.playlist_owner_name}</p>
+          </div>
           {subscriberCount !== null && (
-            <>
+            <div className="subscriber-actions-group">
               <p>Subscribers: {subscriberCount}</p>
               <button className="subscribe-button" onClick={() => setShowSubscribeModal(true)}>
-                Add Subscriber
+                Add
               </button>
               |
               <button className="unsubscribe-button" onClick={() => setShowUnsubscribeModal(true)}>
-                Remove Subscription
+                Remove
               </button>
-            </>
+            </div>
           )}
         </div>
         <div className="content-grid-playlist">

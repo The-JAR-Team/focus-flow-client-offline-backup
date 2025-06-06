@@ -3,7 +3,8 @@
   "homepage": "https://The-JAR-Team.github.io/focus-flow-client/",
   "private": true,
   "version": "0.0.0",
-  "type": "module",  "scripts": {
+  "type": "module",
+  "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
