@@ -99,13 +99,17 @@ FocusFlow's advanced video player includes several interactive features:
 3. Add title, description, and privacy settings
 4. Add videos by searching or selecting from your library
 
-![Playlist](https://i.imgur.com/rYiNGmw.png)
-*Create and manage custom playlists*
+![Playlist](https://i.imgur.com/WEyBT2k.png)
+*Create Playlist*
+
 
 **Managing Playlists:**
 - Add or remove videos anytime
 - Share public playlists with others
 - Track playlist completion progress
+
+![Playlist](https://i.imgur.com/rYiNGmw.png)
+*Make the playlist public of unlisted and share it*
 
 ### 6. Analytics & Progress Tracking
 
