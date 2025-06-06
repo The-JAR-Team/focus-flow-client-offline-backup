@@ -54,9 +54,8 @@ To upload a new video:
 *Video upload interface with metadata and privacy settings*
 
 **Supported Features:**
-- Multiple video formats (MP4, AVI, MOV, etc.)
-- Custom thumbnails
-- Privacy controls
+- choose to which playlist to add
+- add youtube video link
 - Automatic processing and optimization
 
 ### 4. Video Player Features
