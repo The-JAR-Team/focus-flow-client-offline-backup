@@ -2,6 +2,7 @@
 .playlist-title-container {
     position: relative; /* Important for absolute positioning */
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     margin-bottom: 1rem;
@@ -15,6 +16,15 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+    width: 100%;
+}
+
+.playlist-title-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
     width: 100%;
 }
 

@@ -271,7 +271,7 @@ function PlaylistView() {
               <h2>{playlistData.playlist_name}</h2>
               {isOwner && (
                 <button
-                  className="edit-icon"
+                  className="edit-icon edit-title-btn"
                   onClick={() => setIsEditingName(true)}
                   title="Edit playlist name"
                 >
