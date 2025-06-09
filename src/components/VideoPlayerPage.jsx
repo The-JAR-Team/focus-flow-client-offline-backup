@@ -13,8 +13,9 @@ function VideoPlayerPage() {
   const [error, setError] = useState(null);
   
   // Get the mode from localStorage (or default to 'pause')
-  const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'question');
-  
+  //const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'question');
+  const [mode, setMode] = useState('question');
+
   // Get current playlist information from Redux store
   const { playlist } = useSelector(state => state.playlist);
 
