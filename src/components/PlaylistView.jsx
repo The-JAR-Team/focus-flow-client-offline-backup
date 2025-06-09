@@ -17,7 +17,7 @@ function PlaylistView() {
   const { playlistId } = useParams();
   
   // All state hooks at the top level
-  const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'pause');
+  const [mode, setMode] = useState(() => localStorage.getItem('mode') || 'question');
   const [subscriberCount, setSubscriberCount] = useState(null);
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   const [showUnsubscribeModal, setShowUnsubscribeModal] = useState(false);
