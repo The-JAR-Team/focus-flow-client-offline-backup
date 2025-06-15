@@ -51,7 +51,8 @@ function Register() {
     }
     
     // Redirect to the confirmation URL with the code
-    window.location.href = `https://focus-flow-236589840712.me-west1.run.app/confirm_email?passcode=${confirmationCode}`;
+    // window.location.href = `https://focus-flow-236589840712.me-west1.run.app/confirm_email?passcode=${confirmationCode}`;
+    window.location.href = `${config.baseURL}/confirm_email?passcode=${confirmationCode}`;
   };
   return (
     <div className="register-container">
