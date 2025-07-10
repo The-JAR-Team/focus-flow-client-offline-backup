@@ -129,6 +129,7 @@ function Register() {
           </p>
           <label>
             Confirmation Code:
+            (Check The Spam Folder if you don't see the email)
             <input 
               type="text" 
               value={confirmationCode} 
