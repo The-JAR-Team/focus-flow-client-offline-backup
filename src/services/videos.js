@@ -198,7 +198,7 @@ export const resetTracking = async () => {
 export const handleVideoPause = async (currentTime = 0) => {
   resetTracking();
   
-
+  // Send pause event to ticket system
   try {
     await handlePauseEvent(currentTime);
   } catch (error) {
@@ -211,7 +211,7 @@ export const handleVideoPause = async (currentTime = 0) => {
 export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSeconds = 10, getCurrentTime = () => 0) => {
   // Prevent multiple simultaneous calls
   if (resumeInProgress) {
-    console.log('⚠️ Video resume already in progress, skipping duplicate');
+    console.log('⚠️ Video resume already in progress, skipping duplicate call');
     return;
   }
   

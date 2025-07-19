@@ -34,14 +34,6 @@ export default defineConfig({
   ],  server: {
 
 
-        proxy: {
-      '/api': {
-        target: 'https://focus-flow-server-465005663226.me-west1.run.app', 
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-    },
-
     
     headers: {
       // Remove global COEP headers that block YouTube
