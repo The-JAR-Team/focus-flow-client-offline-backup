@@ -198,7 +198,7 @@ export const resetTracking = async () => {
 export const handleVideoPause = async (currentTime = 0) => {
   resetTracking();
   
-  // Send pause event to ticket system
+
   try {
     await handlePauseEvent(currentTime);
   } catch (error) {
