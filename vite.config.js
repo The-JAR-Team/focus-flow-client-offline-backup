@@ -36,7 +36,7 @@ export default defineConfig({
 
         proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000', // IMPORTANT: Your Python backend address
+        target: 'https://focus-flow-server-465005663226.me-west1.run.app', 
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
