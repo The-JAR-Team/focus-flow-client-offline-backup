@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { loginUser, fetchUserInfo } from '../services/api';
 import '../styles/Login.css';
 import { useDispatch } from 'react-redux';
@@ -12,11 +12,25 @@ const DEBUG_MODE = false;
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+
+    
+    const params = new URLSearchParams(location.search);
+    
+    
+    // Use React Router's location.search for HashRouter
+    if (params.get('isGuest') === 'true') {
+      console.log('Guest login triggered');
+      handleGuestLogin();
+    }
+  }, [location.search]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
