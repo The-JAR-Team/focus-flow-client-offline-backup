@@ -211,7 +211,7 @@ export const handleVideoPause = async (currentTime = 0) => {
 export const handleVideoResume = async (youtube_id, model = 'v1', sendIntervalSeconds = 10, getCurrentTime = () => 0) => {
   // Prevent multiple simultaneous calls
   if (resumeInProgress) {
-    console.log('⚠️ Video resume already in progress, skipping duplicate call');
+    console.log('⚠️ Video resume already in progress, skipping duplicate');
     return;
   }
   
