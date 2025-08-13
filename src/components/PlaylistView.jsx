@@ -362,6 +362,15 @@ function PlaylistView() {
               </button>
             </div>
           )}
+          
+          <div className="playlist-summary-action">
+            <button 
+              className="view-all-summaries-button" 
+              onClick={() => navigate(`/playlist/${playlistId}/summaries`)}
+            >
+              📝 View Summary of All Videos
+            </button>
+          </div>
         </div>
         <div className="content-grid-playlist">
           {playlistData.playlist_items && playlistData.playlist_items.map(video => (

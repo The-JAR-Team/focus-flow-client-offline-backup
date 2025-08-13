@@ -10,6 +10,38 @@
     padding-bottom: 40px; /* Extra space below for buttons */
 }
 
+/* Playlist Summary Action */
+.playlist-summary-action {
+    margin: 1.5rem 0;
+    text-align: center;
+}
+
+.view-all-summaries-button {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.view-all-summaries-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+}
+
+.view-all-summaries-button:active {
+    transform: translateY(0);
+}
+
 /* Title display - centered */
 .playlist-title-display {
     display: flex;

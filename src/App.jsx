@@ -5,6 +5,7 @@ import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import AddVideo from './components/AddVideo';
 import PlaylistView from './components/PlaylistView';
+import PlaylistSummaryView from './components/PlaylistSummaryView';
 import VideoPlayerPage from './components/VideoPlayerPage';
 import Trivia from './components/Trivia';
 import TriviaVideoPage from './components/TriviaVideoPage';
@@ -32,6 +33,7 @@ function App() {
         <Route path="/add-video" element={<PrivateRoute><AddVideo /></PrivateRoute>} />
         <Route path="/create-playlist" element={<PrivateRoute><CreatePlaylist /></PrivateRoute>} />
         <Route path="/playlist/:playlistId" element={<PrivateRoute><PlaylistView /></PrivateRoute>} />
+        <Route path="/playlist/:playlistId/summaries" element={<PrivateRoute><PlaylistSummaryView /></PrivateRoute>} />
         <Route path="/playlist/:playlistId/video/:videoId" element={<PrivateRoute><VideoPlayerPage /></PrivateRoute>} />
         <Route path="/trivia" element={<PrivateRoute><Trivia /></PrivateRoute>} />        
         <Route path="/trivia/:videoId" element={<PrivateRoute><TriviaVideoPage /></PrivateRoute>} />
