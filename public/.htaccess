@@ -1,0 +1,18 @@
+# Required for ONNX Runtime Web
+<IfModule mod_headers.c>
+  Header set Cross-Origin-Embedder-Policy "require-corp"
+  Header set Cross-Origin-Opener-Policy "same-origin"
+</IfModule>
+
+# Add proper MIME types for ONNX files and WASM files
+<IfModule mod_mime.c>
+  AddType application/wasm .wasm
+  AddType application/octet-stream .onnx
+</IfModule>
+
+# Enable CORS
+<IfModule mod_headers.c>
+  <FilesMatch "\.(onnx|wasm)$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>
