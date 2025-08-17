@@ -4,7 +4,7 @@ import { resolve } from 'path';
 import fs from 'fs';
 
 export default defineConfig({
-  base: '/focus-flow-client/', 
+  base: '/focus-flow-client-offline-backup/', 
   plugins: [
     react(),
     {
