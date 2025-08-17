@@ -1,115 +1,57 @@
-import axios from "axios";
-import { config } from '../config/config';
+// Offline videos service: remove all remote calls and work from local JSON
 import { 
   initializeVideoEngagement, 
   processEngagementData,
   getProcessingStatus
 } from './videoEngagementService';
-import {
-  initializeVideoSession,
-  addEngagementData,
-  startBatchInterval,
-  stopBatchInterval,
-  cleanupSession,
-  handlePauseEvent,
-  handleSeekEvent,
-  handleBufferResetEvent,
-  getSessionStatus
-} from './ticketService';
+// Ticketing is disabled offline; provide no-op wrappers for callers
+const initializeVideoSession = async () => null;
+const addEngagementData = () => {};
+const startBatchInterval = () => {};
+const stopBatchInterval = () => {};
+const cleanupSession = async () => {};
+const handlePauseEvent = async () => true;
+const handleSeekEvent = async () => true;
+const handleBufferResetEvent = async () => true;
+// getSessionStatus is re-exported from ticketService below
 
 const VIDEO_METADATA_URL = 'https://raw.githubusercontent.com/The-JAR-Team/viewDataFromDataBase/refs/heads/main/fetch/video_metadata.json';
 const VIDEO_TRANSCRIPT_URL = 'https://raw.githubusercontent.com/The-JAR-Team/viewDataFromDataBase/refs/heads/main/transcripts';
 
 export const fetchVideoMetadata = async () => {
-  const response = await axios.get(`${config.baseURL}/videos/accessible`, { withCredentials: true });
-  if (response.status !== 200) throw new Error("Failed to fetch video metadata");
-  return response.data;
+  // Read from public/offline/accessible..json
+  const res = await fetch(`${import.meta.env.BASE_URL}offline/accessible..json`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load offline accessible data');
+  return await res.json();
 };
 
 // Track active requests to allow cancellation
 export const activeRequests = {};
 
-export const fetchTranscriptQuestions = async (videoId, language, abortSignal) => {
+export const fetchTranscriptQuestions = async (videoId, language) => {
   try {
-    // Add timestamp to prevent caching
-    const timestamp = Date.now();
-    const requestKey = `${videoId}_${language}_${timestamp}`;
-    
-    // Create a request-specific abort controller if none provided
-    const controller = abortSignal?.signal ? undefined : new AbortController();
-    const signal = abortSignal?.signal || controller?.signal;
-    
-    // Track this request for potential cancellation
-    if (controller) {
-      activeRequests[requestKey] = controller;
+    const langSuffix = language === 'Hebrew' ? 'Hebrew' : 'English';
+  const url = `${import.meta.env.BASE_URL}offline/${videoId}questions=${langSuffix}.json`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) {
+      console.warn('Offline questions file not found:', url);
+      return { video_questions: { questions: [] }, status: 'failed' };
     }
-    
-    const response = await axios.get(
-      `${config.baseURL}/videos/${videoId}/questions?lang=${language}`, 
-      { 
-        withCredentials: true,
-        timeout: 15000, // 15 second timeout
-        signal // Use the abort signal
-      }
-    );
-    
-    // Clean up tracking for completed request
-    if (controller) {
-      delete activeRequests[requestKey];
-    }
-    
-    console.log(`📝 Fetched ${language} questions:`, response.data?.status || 'unknown status');
-    return response.data;
+    const data = await res.json();
+    return data;
   } catch (error) {
-    if (axios.isCancel(error)) {
-      console.log(`🛑 Request cancelled for ${language} questions`);
-      return { status: 'cancelled' };
-    }
-    console.error(`❌ Error fetching ${language} questions:`, error);
-    return { video_questions: { questions: [] } };
+    console.error(`❌ Error loading offline questions (${language}):`, error);
+    return { video_questions: { questions: [] }, status: 'failed' };
   }
 };
 
-export const fetchTranscriptQuestionsForVideo = async (externalId, lang = 'Hebrew', abortSignal) => {
-  try {
-    const requestKey = `transcriptFor_${externalId}_${lang}`;
-    
-    // Create a request-specific abort controller if none provided
-    const controller = abortSignal?.signal ? undefined : new AbortController();
-    const signal = abortSignal?.signal || controller?.signal;
-    
-    // Track this request for potential cancellation
-    if (controller) {
-      activeRequests[requestKey] = controller;
-    }
-    
-    const response = await axios.get(
-      `${config.baseURL}/videos/${externalId}/questions?lang=${lang}`,
-      { 
-        withCredentials: true,
-        signal // Use the abort signal
-      }
-    );
-    
-    // Clean up tracking for completed request
-    if (controller) {
-      delete activeRequests[requestKey];
-    }
-    
-    const data = response.data;
-    return [
-      ...(data.video_questions?.questions || []),
-      ...(data.generic_questions?.questions || []),
-      ...(data.subject_questions?.questions || [])
-    ];
-  } catch (error) {
-    if (axios.isCancel(error)) {
-      console.log(`🛑 Request cancelled for transcript ${lang}`);
-      return [];
-    }
-    console.error('Error fetching questions:', error);
-    return [];
-  }
+export const fetchTranscriptQuestionsForVideo = async (externalId, lang = 'Hebrew') => {
+  const data = await fetchTranscriptQuestions(externalId, lang);
+  return [
+    ...(data.video_questions?.questions || []),
+    ...(data.generic_questions?.questions || []),
+    ...(data.subject_questions?.questions || [])
+  ];
 };
 
 // Function to cancel all active requests
@@ -444,32 +386,6 @@ export const handleTrackingReset = async (currentTime) => {
   }
 };
 
-export const fetchLastWatchTime = async (youtube_id) => {
-  try {
-    const response = await axios.post(
-      `${config.baseURL}/watch/get`,
-      { youtube_id },
-      { withCredentials: true }
-    );
-    return response.data?.watch_item?.current_time || 0;
-  } catch (error) {
-    console.error('❌ Error fetching last watched time:', error);
-    return 0;
-  }
-};
+export const fetchLastWatchTime = async () => 0;
 
-export const fetchWatchItemResults = async (youtube_id, option) => {
-  try {
-    if (!option) 
-      option = 'alone';
-    const response = await axios.get(
-      `${config.baseURL}/watch/get_results?youtube_id=${youtube_id}&option=${option}`,
-      { withCredentials: true }
-    );
-    // return response.data;
-    return response.data.results_by_user;
-  } catch (error) {
-    console.error('❌ Error fetching results:', error);
-    return 0;
-  }
-};
+export const fetchWatchItemResults = async () => 0;

@@ -1,73 +1,24 @@
-import axios from 'axios';
-import { config } from '../config/config';
+// Offline API replacements: read from public/offline and work without a server.
 
-axios.defaults.withCredentials = true; // Global setting for credentials
-
-// services/api.js
-
-// Define your base URL and endpoints
-const LOGIN_ENDPOINT = `${config.baseURL}/login`;
-const REGISTER_ENDPOINT = `${config.baseURL}/register`;
-
-const DEBUG_MODE = true;
-
-// Simulated login API call
-export const loginUser = async ({ email, password }) => {
-  try {
-    //const response = await axios.post(LOGIN_ENDPOINT, { email, password }); // using axios
-        const response = await axios.post(LOGIN_ENDPOINT, { email, password }, { withCredentials: true });
-    return response.data;
-  } catch (error) {
-    // changed: throw error.response.data if reason available
-    if (error.response?.data?.reason) {
-      throw error.response.data;
-    }
-    throw error;
-  }
+// Simulated login – always succeed in offline mode
+export const loginUser = async () => {
+  return { status: 'success' };
 };
 
-// Simulated register API call
-export const registerUser = async ({ email, password, firstName, lastName, age }) => {
-  try {
-    const response = await axios.post(REGISTER_ENDPOINT, {
-      "email": email,
-      "password": password,
-      "first name": firstName, // changed key
-      "last name": lastName,   // changed key
-      "age": age,
-    }, { withCredentials: true }); // using axios with credentials
-    return response.data;
-  } catch (error) {
-    if (error.response?.data?.reason) {
-      throw error.response.data;
-    }
-    throw error;
-  }
+// Simulated register – not supported offline
+export const registerUser = async () => {
+  return { status: 'failed', reason: 'Registration is disabled in offline mode' };
 };
 
+// Load user info from offline JSON
 export const fetchUserInfo = async () => {
-  try {
-    const response = await axios.get(`${config.baseURL}/user_info`, { withCredentials: true });
-    if (response.status !== 200) throw new Error("Failed to fetch user info");
-    return response.data.user;
-  } catch (error) {
-    if (error.response?.data?.reason) {
-      throw error.response.data;
-    }
-    throw error;
-  }
+  const res = await fetch(`${import.meta.env.BASE_URL}offline/user_info.json`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load offline user info');
+  const data = await res.json();
+  return data.user;
 };
 
-// New logout API call
+// Offline logout – nothing to do, caller should clear local state
 export const logoutUser = async () => {
-  try {
-    const response = await axios.post(`${config.baseURL}/logout`, {}, { withCredentials: true });
-    if (response.status !== 200) throw new Error("Failed to logout");
-    return response.data;
-  } catch (error) {
-    if (error.response?.data?.reason) {
-      throw error.response.data;
-    }
-    throw error;
-  }
+  return { status: 'success' };
 };

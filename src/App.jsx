@@ -1,7 +1,6 @@
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import Login from './components/Login';
-import Register from './components/Register';
+// Login/Register removed in offline mode
 import Dashboard from './components/Dashboard';
 import AddVideo from './components/AddVideo';
 import PlaylistView from './components/PlaylistView';
@@ -18,7 +17,7 @@ import OnnxModelPreloader from './components/OnnxModelPreloader';
 import './styles/App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import PrivateRoute from './components/PrivateRoute';
+// PrivateRoute not needed in offline mode
 
 function App() {
   return (
@@ -27,20 +26,19 @@ function App() {
       <OnnxModelPreloader />
       
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        <Route path="/add-video" element={<PrivateRoute><AddVideo /></PrivateRoute>} />
-        <Route path="/create-playlist" element={<PrivateRoute><CreatePlaylist /></PrivateRoute>} />
-        <Route path="/playlist/:playlistId" element={<PrivateRoute><PlaylistView /></PrivateRoute>} />
-        <Route path="/playlist/:playlistId/summaries" element={<PrivateRoute><PlaylistSummaryView /></PrivateRoute>} />
-        <Route path="/playlist/:playlistId/video/:videoId" element={<PrivateRoute><VideoPlayerPage /></PrivateRoute>} />
-        <Route path="/trivia" element={<PrivateRoute><Trivia /></PrivateRoute>} />        
-        <Route path="/trivia/:videoId" element={<PrivateRoute><TriviaVideoPage /></PrivateRoute>} />
-        <Route path="/trivia/:videoId/summary" element={<PrivateRoute><SummaryView /></PrivateRoute>} />
-        <Route path="/engagement-monitor" element={<PrivateRoute><EngagementMonitor /></PrivateRoute>} />
-        <Route path="/my-account" element={<PrivateRoute><MyAccount /></PrivateRoute>} />
-        <Route path="/groups" element={<PrivateRoute><GroupsPage /></PrivateRoute>} />
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/add-video" element={<AddVideo />} />
+        <Route path="/create-playlist" element={<CreatePlaylist />} />
+        <Route path="/playlist/:playlistId" element={<PlaylistView />} />
+        <Route path="/playlist/:playlistId/summaries" element={<PlaylistSummaryView />} />
+        <Route path="/playlist/:playlistId/video/:videoId" element={<VideoPlayerPage />} />
+        <Route path="/trivia" element={<Trivia />} />        
+        <Route path="/trivia/:videoId" element={<TriviaVideoPage />} />
+        <Route path="/trivia/:videoId/summary" element={<SummaryView />} />
+        <Route path="/engagement-monitor" element={<EngagementMonitor />} />
+        <Route path="/my-account" element={<MyAccount />} />
+        <Route path="/groups" element={<GroupsPage />} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />
     </HashRouter>

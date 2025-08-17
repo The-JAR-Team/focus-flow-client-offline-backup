@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import axios from 'axios';
-import { config } from '../config/config';
+import { fetchVideoSummary } from '../services/summaryTimelineService';
 import '../styles/PlaylistSummaryView.css';
 import Spinner from './Spinner';
 import Navbar from './Navbar';
@@ -70,23 +69,19 @@ const PlaylistSummaryView = () => {
       }));
 
       try {
-        const response = await axios.get(
-          `${config.baseURL}/videos/${externalId}/summary?lang=${language}`,
-          { withCredentials: true }
-        );
-
-        if (response.data && response.data.status === 'success') {
+        const data = await fetchVideoSummary(externalId, language);
+        if (data && data.summary) {
           return {
             videoId,
             externalId,
             videoName: video.video_name,
             subject: video.subject,
             length: video.length,
-            summary: response.data.video_summary
+            summary: data
           };
         }
       } catch (err) {
-        console.error(`Error fetching summary for video ${videoId}:`, err);
+        console.error(`Error fetching offline summary for video ${videoId}:`, err);
       } finally {
         setLoadingSummaries(prev => ({
           ...prev,

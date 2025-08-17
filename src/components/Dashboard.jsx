@@ -64,32 +64,20 @@ function Dashboard() {
 
   // Initialize dashboard data on component mount
   useEffect(() => {
-    if (currentUser && !isLoaded) {
+    if (!isLoaded) {
       refreshDashboard();
     }
-  }, [currentUser]);
+  }, [isLoaded]);
   // Fetch user groups
   useEffect(() => {
     const fetchUserGroups = async () => {
       try {
-        if (currentUser) {
-          const response = await getAllUserGroupsWithItems();          if (response && response.groups) {
-            setUserGroups(response.groups);
-            
-            // Initialize expandedSections for each group (collapsed by default)
-            const newExpandedSections = {...expandedSections};
-            response.groups.forEach(group => {
-              if (group.group_name === 'favorites') {
-                newExpandedSections[group.group_name] = true; // favorites expanded by default
-              } else {
-                newExpandedSections[group.group_name] = false; // other groups collapsed by default
-              }
-            });
-            setExpandedSections(newExpandedSections);
-          }
-        }
+        // Offline: no groups API; start with favorites only for logged/guest users
+        setUserGroups([{ group_id: 1, group_name: 'favorites', playlists: [], videos: [] }]);
+        const newExpandedSections = { ...expandedSections, favorites: true };
+        setExpandedSections(newExpandedSections);
       } catch (error) {
-        console.error('Error fetching user groups:', error);
+        console.error('Error initializing groups (offline):', error);
       }
     };
 
@@ -180,7 +168,7 @@ function Dashboard() {
     <div className="dashboard-container">
       <Navbar />
       <div className="dashboard-content">
-        {currentUser ? (          <>
+  {currentUser ? (          <>
             <div className="user-greeting">
               <h1>Hello {currentUser.first_name} {currentUser.last_name}</h1>
               {isGuestMode && (

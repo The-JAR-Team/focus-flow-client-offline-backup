@@ -22,9 +22,7 @@ import {
   getSessionStatus,
   REQUIRED_FRAMES,
 } from '../services/videos';
-import {
-  resetSessionAndGetNewTicket
-} from '../services/ticketService';
+import { resetSessionAndGetNewTicket } from '../services/ticketService';
 import {
   setEngagementDetectionEnabled,
   getEngagementDetectionEnabled,

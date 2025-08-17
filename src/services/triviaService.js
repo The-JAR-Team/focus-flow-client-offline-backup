@@ -1,31 +1,16 @@
-import axios from 'axios';
-import { config } from '../config/config';
-
-// Fetch questions for a specific video
-export const getVideoQuestions = async (videoId) => {
-  try {
-    const response = await axios.get(`${config.baseURL}/videos/${videoId}/questions`, {
-      withCredentials: true
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Failed to fetch questions:', error);
-    throw new Error('Failed to fetch questions');
-  }
+// Offline trivia service
+export const getVideoQuestions = async (videoId, language = 'English') => {
+  const langSuffix = language === 'Hebrew' ? 'Hebrew' : 'English';
+  const res = await fetch(`${import.meta.env.BASE_URL}offline/${videoId}questions=${langSuffix}.json`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Offline questions not found');
+  return await res.json();
 };
 
-// Fetch all accessible videos and playlists
+// Fetch all accessible videos and playlists from offline file
 export const fetchTriviaData = async () => {
-  try {
-    const response = await axios.get(`${config.baseURL}/videos/accessible`, { 
-      withCredentials: true 
-    });
-    if (response.status !== 200) throw new Error("Failed to fetch video metadata");
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching trivia data:', error);
-    throw error;
-  }
+  const res = await fetch(`${import.meta.env.BASE_URL}offline/accessible..json`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load offline accessible data');
+  return await res.json();
 };
 
 // Extract playlists from the response data

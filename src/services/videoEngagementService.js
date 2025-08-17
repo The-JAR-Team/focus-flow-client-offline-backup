@@ -1,6 +1,5 @@
 import { initializeOnnxModel, predictEngagement } from './engagementOnnxService';
 import { ONNX_CONFIG } from '../config/config';
-import axios from 'axios';
 
 // Local state for ONNX processing
 let onnxInitialized = false;
@@ -51,8 +50,13 @@ export const initializeVideoEngagement = async () => {
  */
 export const processEngagementData = async (landmarksData, videoId, currentTime) => {
   // If we're using server fallback or haven't initialized ONNX
-  if (useServerFallback || !onnxInitialized) {
-    return await processWithServerFallback(landmarksData, videoId, currentTime);
+  // In offline mode, do not use server fallback; ensure ONNX is initialized
+  if (!onnxInitialized) {
+    const ok = await initializeVideoEngagement();
+    if (!ok) {
+      console.warn('ONNX not initialized and no server available');
+      return null;
+    }
   }
 
   try {
@@ -89,14 +93,8 @@ export const processEngagementData = async (landmarksData, videoId, currentTime)
     // Increment error count
     onnxErrorCount++;
     
-    // Switch to server fallback if too many errors
-    if (onnxErrorCount >= ONNX_CONFIG.maxLocalErrors) {
-      console.warn(`⚠️ Too many ONNX errors (${onnxErrorCount}), switching to server fallback`);
-      useServerFallback = true;
-    }
-
-    // Use server fallback for this request
-    return await processWithServerFallback(landmarksData, videoId, currentTime);
+  // Do not fallback to server in offline mode
+  return null;
   }
 };
 
@@ -107,45 +105,7 @@ export const processEngagementData = async (landmarksData, videoId, currentTime)
  * @param {number} currentTime - Current video time
  * @returns {Promise<Object|null>} - Server processing result
  */
-const processWithServerFallback = async (landmarksData, videoId, currentTime) => {
-  try {
-    if (ONNX_CONFIG.debug) {
-      console.log(`🌐 Using server fallback for ${landmarksData.length} frames`);
-    }
-
-    // Format data for server (matching the original format)
-    const payload = {
-      youtube_id: videoId,
-      current_time: currentTime,
-      extraction: "mediapipe",
-      extraction_payload: {
-        fps: 10,
-        interval: 10,
-        number_of_landmarks: 478,
-        landmarks: [landmarksData]
-      },          
-      model: "v4"
-    };
-
-    const response = await axios.post(ONNX_CONFIG.fallbackEndpoint, payload, { 
-      withCredentials: true 
-    });
-
-    const modelResult = response.data?.model_result;
-    
-    if (modelResult) {
-      // Add processing mode indicator
-      modelResult.processing_mode = 'server_fallback';
-      console.log('✅ Server fallback processing successful');
-    }
-
-    return modelResult;
-
-  } catch (error) {
-    console.error('❌ Server fallback also failed:', error);
-    return null;
-  }
-};
+// Removed server fallback function in offline mode
 
 /**
  * Get current processing status

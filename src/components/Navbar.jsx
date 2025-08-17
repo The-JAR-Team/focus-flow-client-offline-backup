@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/Navbar.css';
-import { logoutUser } from '../services/api';
 import { useDispatch } from 'react-redux'; 
 import { persistor } from '../redux/store';
 
@@ -10,17 +9,10 @@ function Navbar() {
   const dispatch = useDispatch();
 
   const handleLogout = async () => {
-    try {
-      await logoutUser();
-      // Clear session data from Redux store
-      dispatch({ type: 'user/logoutUser' });
-      await persistor.purge();
-
-    } catch (err) {
-      console.error('Logout failed:', err);
-    }
-    navigate('/');
-
+    // Offline: simply clear local state and go to dashboard
+    dispatch({ type: 'user/logoutUser' });
+    await persistor.purge();
+    navigate('/dashboard');
   };
 
   return (    <nav className="navbar">      <div className="navbar-left">

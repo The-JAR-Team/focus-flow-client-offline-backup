@@ -1,6 +1,4 @@
 import { parseTimeToSeconds } from './videoPlayerService';
-import axios from 'axios';
-import { config } from '../config/config';
 
 export const formatTime = (seconds) => {
   if (isNaN(seconds) || seconds < 0) return '0:00';
@@ -20,24 +18,12 @@ export const parseTimeFromString = (timeStr) => {
  * @returns {Promise<Object>} - Video summary data
  */
 export const fetchVideoSummary = async (videoId, language = 'English') => {
-  try {
-    // Ensure language is either 'English' or 'Hebrew'
-    const lang = language === 'Hebrew' ? 'Hebrew' : 'English';
-    
-    const response = await axios.get(
-      `${config.baseURL}/videos/${videoId}/summary?lang=${lang}`,
-      { withCredentials: true }
-    );
-
-    if (response.status !== 200 || response.data.status !== 'success') {
-      throw new Error('Failed to fetch video summary');
-    }
-
-    return response.data.video_summary;
-  } catch (error) {
-    console.error('Error fetching video summary:', error);
-    throw error;
-  }
+  const lang = language === 'Hebrew' ? 'Hebrew' : 'English';
+  const res = await fetch(`${import.meta.env.BASE_URL}offline/${videoId}summary=${lang}.json`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Offline summary not found');
+  const data = await res.json();
+  // Offline file may already be the summary object or wrapped; try common shapes
+  return data.video_summary || data.summary || data;
 };
 
 /**

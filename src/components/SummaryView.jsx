@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
-import { config } from '../config/config';
+import { fetchVideoSummary } from '../services/summaryTimelineService';
 import '../styles/SummaryView.css';
 import Spinner from './Spinner';
 import Navbar from './Navbar';
@@ -14,14 +13,7 @@ const SummaryView = () => {
   const [error, setError] = useState(null);
   const [expandedSubjects, setExpandedSubjects] = useState({});
   const [externalId, setExternalId] = useState(null); // YouTube ID
-  const [summaryStatus, setSummaryStatus] = useState({
-    English: 'idle', // idle, pending, success, failed
-    Hebrew: 'idle'
-  });
-  const [checkCount, setCheckCount] = useState({
-    English: 0,
-    Hebrew: 0
-  });
+  const [summaryStatus, setSummaryStatus] = useState({ English: 'idle', Hebrew: 'idle' });
   const pollingRef = useRef(null);
   const [hasAutoScroll, setHasAutoScroll] = useState(false);  
 
@@ -45,163 +37,89 @@ const SummaryView = () => {
   const fetchAccessibleVideos = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${config.baseURL}/videos/accessible`,
-        { withCredentials: true }
-      );
-      
-      if (response.data && response.data.playlists) {
-        // Search through all playlists for the matching video ID
+      // Offline: read from local accessible JSON
+  const res = await fetch(`${import.meta.env.BASE_URL}offline/accessible..json`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load offline accessible list');
+      const data = await res.json();
+      if (data && data.playlists) {
+        // Try to interpret param as either DB video_id or YouTube id
         let foundExternalId = null;
-        
-        // Loop through all playlists
-        for (const playlist of response.data.playlists) {
-          // Loop through all items in each playlist
+        const vidParam = String(videoId);
+        for (const playlist of data.playlists) {
           for (const item of playlist.playlist_items) {
-            if (parseInt(item.video_id) === parseInt(videoId)) {
+            if (
+              String(item.video_id) === vidParam || // DB id match
+              String(item.external_id) === vidParam // Already a YT id
+            ) {
               foundExternalId = item.external_id;
-              console.log(`Found matching video ID ${videoId}, external ID: ${foundExternalId}`);
               break;
             }
           }
           if (foundExternalId) break;
         }
-        
+
         if (foundExternalId) {
           setExternalId(foundExternalId);
-          
-          // Check status for both languages
           await checkBothLanguages(foundExternalId);
-          
-          // Fetch the summary for the current language
           fetchSummary(foundExternalId);
         } else {
-          setError(`Could not find external ID for video ID: ${videoId}`);
+          setError(`Could not find external ID for video: ${videoId}`);
           setLoading(false);
         }
       } else {
-        setError('Failed to fetch accessible videos');
+        setError('Offline accessible data missing');
         setLoading(false);
       }
     } catch (err) {
-      console.error('Error fetching accessible videos:', err);
+      console.error('Error loading offline accessible videos:', err);
       setError(`Error: ${err.message || 'Unknown error occurred'}`);
       setLoading(false);
     }
   };
 
-  const fetchSummary = async (videoExternalId, checkOnly = false) => {
-    if (!checkOnly) {
-      setLoading(true);
-      setError(null);
-    }
-    
+  const fetchSummary = async (videoExternalId) => {
+    setLoading(true);
+    setError(null);
     const currentLang = language;
-    
     try {
-      // Use the YouTube external ID instead of the database ID
-      const response = await axios.get(
-        `${config.baseURL}/videos/${videoExternalId}/summary?lang=${currentLang}`,
-        { withCredentials: true }
-      );
-
-      if (response.data && response.data.status === 'success') {
-        // Update the status to success
-        setSummaryStatus(prev => ({
-          ...prev,
-          [currentLang]: 'success'
-        }));
-        
-        // If we're not just checking status, set the summary data
-        if (!checkOnly) {
-          setSummary(response.data.video_summary);
-          // Initialize all subjects as collapsed
-          const initialExpanded = {};
-          if (response.data.video_summary.summary && response.data.video_summary.summary.Subject) {
-            response.data.video_summary.summary.Subject.forEach((_, index) => {
-              initialExpanded[index] = false;
-            });
-          }
-          setExpandedSubjects(initialExpanded);
-        }
-        
-        // Stop polling if this is the current language
-        if (currentLang === language && pollingRef.current) {
-          clearInterval(pollingRef.current);
-        }
-      } else if (response.data && response.data.status === 'pending') {
-        console.log(`Summary for ${currentLang} still generating... (Check: ${checkCount[currentLang] + 1})`);
-        
-        // Update the status to pending
-        setSummaryStatus(prev => ({
-          ...prev,
-          [currentLang]: 'pending'
-        }));
-        
-        // Increment check count
-        setCheckCount(prev => ({
-          ...prev,
-          [currentLang]: prev[currentLang] + 1
-        }));
-        
-        // If not already polling and this is not a check-only call, start polling
-        if (!pollingRef.current && !checkOnly) {
-          pollingRef.current = setInterval(() => {
-            fetchSummary(videoExternalId, true);
-          }, 10000); // Check every 10 seconds
-        }
-        
-        // If we're just checking, don't update loading state
-        if (!checkOnly) {
-          setError(null);
-          setLoading(true);
-        }
-      } else {
-        if (!checkOnly) {
-          setError('Failed to fetch summary data');
-          setLoading(false);
-        }
-        
-        setSummaryStatus(prev => ({
-          ...prev,
-          [currentLang]: 'failed'
-        }));
+      const data = await fetchVideoSummary(videoExternalId, currentLang);
+      // Normalize shape: expect { summary: { Subject: [...] } }
+      const normalized = data;
+      setSummary(normalized);
+      // Initialize collapsed map
+      const initialExpanded = {};
+      if (normalized.summary && normalized.summary.Subject) {
+        normalized.summary.Subject.forEach((_, idx) => {
+          initialExpanded[idx] = false;
+        });
       }
+      setExpandedSubjects(initialExpanded);
+      setSummaryStatus(prev => ({ ...prev, [currentLang]: 'success' }));
     } catch (err) {
-      console.error(`Error fetching ${currentLang} summary:`, err);
-      
-      // Only update error state if this is not a background check
-      if (!checkOnly) {
-        setError(`Error: ${err.message || 'Unknown error occurred'}`);
-        setLoading(false);
-      }
-      
-      setSummaryStatus(prev => ({
-        ...prev,
-        [currentLang]: 'failed'
-      }));
+      console.error(`Offline summary not available for ${currentLang}:`, err);
+      setSummaryStatus(prev => ({ ...prev, [currentLang]: 'failed' }));
+      setError(`No offline summary found for ${currentLang}.`);
     } finally {
-      // Only update loading state if this is not a background check
-      if (!checkOnly) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
   const checkBothLanguages = async (videoExternalId) => {
-    // Check if English summary is available
-    const tempLang = language;
-    
-    // Check English first
-    setLanguage('English');
-    await fetchSummary(videoExternalId, true);
-    
-    // Then check Hebrew
-    setLanguage('Hebrew');
-    await fetchSummary(videoExternalId, true);
-    
-    // Restore original language
-    setLanguage(tempLang);
+    // Offline: just try fetching headers to see if files exist
+    // English
+    try {
+      await fetchVideoSummary(videoExternalId, 'English');
+      setSummaryStatus(prev => ({ ...prev, English: 'success' }));
+    } catch {
+      setSummaryStatus(prev => ({ ...prev, English: 'failed' }));
+    }
+    // Hebrew
+    try {
+      await fetchVideoSummary(videoExternalId, 'Hebrew');
+      setSummaryStatus(prev => ({ ...prev, Hebrew: 'success' }));
+    } catch {
+      setSummaryStatus(prev => ({ ...prev, Hebrew: 'failed' }));
+    }
   };
 
   const toggleSubject = (index) => {
@@ -212,9 +130,11 @@ const SummaryView = () => {
   };
 
   const formatTime = (timeString) => {
-    // Converts time string like "00:01:24" to a more readable format
+    // Offline summary already provides formatted times
     return timeString;
-  };  if (loading) {
+  };
+
+  if (loading) {
     return (
       <>
         <div style={{ padding: '20px' }}>
@@ -226,11 +146,11 @@ const SummaryView = () => {
             {externalId ? `Loading ${language} summary...` : 'Finding video data...'}
           </p>
           
-          {externalId && summaryStatus[language] === 'pending' && (
+      {externalId && summaryStatus[language] === 'pending' && (
             <div className="language-loading-status">
               <p>
                 <strong>{language} summary is being generated.</strong>
-                {checkCount[language] > 0 && ` (Check #${checkCount[language]})`}
+                
               </p>
               <div className="loading-progress">
                 <div 
@@ -240,7 +160,7 @@ const SummaryView = () => {
               </div>
               
               {/* Show language buttons if at least one language is available */}
-              {(summaryStatus.English === 'success' || summaryStatus.Hebrew === 'success') && (
+        {(summaryStatus.English === 'success' || summaryStatus.Hebrew === 'success') && (
                 <div style={{ marginTop: '20px' }}>
                   <p>Try another available language:</p>
                   <button 
@@ -265,7 +185,9 @@ const SummaryView = () => {
         </div>
       </>
     );
-  }  if (error) {
+  }
+
+  if (error) {
     return (
       <>
         <div style={{ padding: '20px' }}>
@@ -283,7 +205,9 @@ const SummaryView = () => {
         </div>
       </>
     );
-  }  if (!summary || !summary.summary || !summary.summary.Subject) {
+  }
+
+  if (!summary || !summary.summary || !summary.summary.Subject) {
     return (
       <>
         <div style={{ padding: '20px' }}>
@@ -299,10 +223,10 @@ const SummaryView = () => {
                 Check #{checkCount.English} - This may take a few minutes.
               </p>
             )}
-            {summaryStatus.Hebrew === 'pending' && (
+      {summaryStatus.Hebrew === 'pending' && (
               <p>
                 <strong>Hebrew summary is being generated.</strong>
-                Check #{checkCount.Hebrew} - This may take a few minutes.
+        This may take a few minutes.
               </p>
             )}
             

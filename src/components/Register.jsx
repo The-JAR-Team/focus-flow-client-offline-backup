@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { registerUser } from '../services/api';
-import axios from 'axios';
-import { config } from '../config/config';
 import '../styles/Register.css';
 
 function Register() {
@@ -52,7 +50,8 @@ function Register() {
     
     // Redirect to the confirmation URL with the code
     // window.location.href = `https://focus-flow-236589840712.me-west1.run.app/confirm_email?passcode=${confirmationCode}`;
-    window.location.href = `${config.baseURL}/confirm_email?passcode=${confirmationCode}`;
+  // Offline: no confirmation endpoint
+  alert('Offline mode: email confirmation is disabled.');
   };
   return (
     <div className="register-container">

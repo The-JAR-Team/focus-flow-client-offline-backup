@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { config } from '../config/config';
+// Offline: uploads and playlist API are disabled; provide local stubs
 
 // Expected video upload body:
 // {
@@ -12,25 +11,23 @@ import { config } from '../config/config';
 //   "uploadby": "Prof. Jane AI"
 // }
 export async function uploadVideo(videoData) {
-  try {
-    const response = await axios.post(`${config.baseURL}/videos/upload`, videoData, {
-      headers: { 'Content-Type': 'application/json' },
-      withCredentials: true  // keep for internal API calls
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  // Not supported offline
+  return { status: 'failed', reason: 'Video upload disabled in offline mode' };
 }
 
 export async function getPlaylists() {
+  // Build a simple list of playlist names from offline accessible data
   try {
-    const response = await axios.get(`${config.baseURL}/playlists`, {
-      headers: { 'Content-Type': 'application/json' }
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
+  const res = await fetch(`${import.meta.env.BASE_URL}offline/accessible..json`, { cache: 'no-store' });
+    if (!res.ok) return { status: 'failed' };
+    const data = await res.json();
+    const playlists = (data.playlists || []).map(p => ({
+      playlist_id: p.playlist_id,
+      playlist_name: p.playlist_name
+    }));
+    return { status: 'success', playlists };
+  } catch {
+    return { status: 'failed' };
   }
 }
 

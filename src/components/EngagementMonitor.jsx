@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import useFaceMesh from '../hooks/useFaceMesh';
-import axios from 'axios';
-import { config, ONNX_CONFIG } from '../config/config';
+import { ONNX_CONFIG } from '../config/config';
 import '../styles/EngagementMonitor.css';
 import { initializeOnnxModel, predictEngagement, getCurrentModelInfo } from '../services/engagementOnnxService';
 import ModelSelector from './ModelSelector';
@@ -65,34 +64,23 @@ const EngagementMonitor = () => {
   useEffect(() => {
     const fetchPublicVideo = async () => {
       try {
-        const response = await axios.get(
-          `${config.baseURL}/videos/accessible`, 
-          { withCredentials: true }
-        );
-        
-        // Find the first video in any public/unlisted playlist
-        if (response.data && response.data.playlists) {
-          for (const playlist of response.data.playlists) {
-            if (playlist.playlist_permission === 'public' || playlist.playlist_permission === 'unlisted') {
-              if (playlist.playlist_items.length > 0) {
-                setPublicVideoId(playlist.playlist_items[0].external_id);
-                console.log("Using video ID for engagement API:", playlist.playlist_items[0].external_id);
-                return;
-              }
+  const res = await fetch(`${import.meta.env.BASE_URL}offline/accessible..json`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('offline accessible missing');
+        const data = await res.json();
+        if (data.playlists) {
+          for (const playlist of data.playlists) {
+            if (playlist.playlist_items.length > 0) {
+              setPublicVideoId(playlist.playlist_items[0].external_id);
+              return;
             }
           }
         }
-        // For local ONNX processing, we don't strictly need a video ID
-        console.log("No public videos found, but continuing with local processing");
       } catch (error) {
-        console.error("Error fetching accessible videos:", error);
-        // For local ONNX processing, we can continue without the video ID
-        console.log("Error fetching videos, but continuing with local processing");
+        console.log('No public video id found offline; continuing without it');
       }
     };
-    
     fetchPublicVideo();
-    lastFpsLogTimeRef.current = Date.now(); // Initialize FPS log time
+    lastFpsLogTimeRef.current = Date.now();
   }, []);
 
   // Handle FaceMesh results

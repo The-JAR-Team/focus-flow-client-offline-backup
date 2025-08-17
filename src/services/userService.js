@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { config } from '../config/config';
+// Offline user service: read from local JSON files
 
 /**
  * Fetch user statistics including watch history, playlists, etc.
@@ -7,30 +6,18 @@ import { config } from '../config/config';
  */
 export const fetchUserStats = async () => {
   try {
-    // First get basic user info
-    const userInfoResponse = await axios.get(
-      `${config.baseURL}/user_info`,
-      { withCredentials: true }
-    );
-
-    // Then get accessible videos which contains all playlists
-    const accessibleVideosResponse = await axios.get(
-      `${config.baseURL}/videos/accessible`,
-      { withCredentials: true }
-    );
-
-    // Process and combine the data
-    const userData = userInfoResponse.data.user;
-    const videosData = accessibleVideosResponse.data;
-      // Extract statistics from the data
+    const [userRes, videosRes] = await Promise.all([
+  fetch(`${import.meta.env.BASE_URL}offline/user_info.json`, { cache: 'no-store' }),
+  fetch(`${import.meta.env.BASE_URL}offline/accessible..json`, { cache: 'no-store' })
+    ]);
+    if (!userRes.ok || !videosRes.ok) throw new Error('Offline files not found');
+    const userInfo = await userRes.json();
+    const videosData = await videosRes.json();
+    const userData = userInfo.user || userInfo;
     const stats = processUserStats(userData, videosData);
-    
-    // Debug log
-    console.log('Processed user stats:', stats);
-    
     return stats;
   } catch (error) {
-    console.error('Error fetching user statistics:', error);
+    console.error('Error fetching user statistics (offline):', error);
     throw new Error('Failed to fetch user statistics');
   }
 };
@@ -42,39 +29,7 @@ export const fetchUserStats = async () => {
  * @returns {Promise<Object>} Response data
  */
 export const changePassword = async (currentPassword, newPassword) => {
-  try {
-    const response = await axios.post(
-      `${config.baseURL}/change_password`,
-      {
-        old_password: currentPassword,
-        new_password: newPassword
-      },
-      { withCredentials: true }
-    );
-    
-    // Consider any 2xx response as success, even without explicit success flag
-    // Return a normalized response object
-    return {
-      success: true,
-      message: response.data.message || 'Password changed successfully!'
-    };
-  } catch (error) {
-    console.error('Error changing password:', error);
-    
-    // Handle different types of errors
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      const message = error.response.data?.message || 'Invalid credentials or server error';
-      throw new Error(message);
-    } else if (error.request) {
-      // The request was made but no response was received
-      throw new Error('No response from server. Please check your connection.');
-    } else {
-      // Something happened in setting up the request
-      throw new Error(error.message || 'Failed to change password');
-    }
-  }
+  return { success: false, message: 'Password change disabled in offline mode' };
 };
 
 /**
