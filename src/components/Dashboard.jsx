@@ -21,7 +21,7 @@ function Dashboard() {
   const [eyeDebuggerOn, setEyeDebuggerOn] = useState(false);
   const [videos, setVideos] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('All');
-  const [selectedVideo, setSelectedVideo] = useState(null);  
+  const [selectedVideo, setSelectedVideo] = useState(null);
   // Only question mode is used throughout the app
   const mode = 'question';
   const [error, setError] = useState(null);
@@ -43,7 +43,7 @@ function Dashboard() {
   // Check if user is in guest mode (permission level 0)
   const { currentUser } = useSelector(state => state.user);
   const isGuestMode = currentUser && currentUser.permission === 0;
-  
+
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -53,21 +53,22 @@ function Dashboard() {
   const dashboardState = useSelector(state => state.dashboard);
 
   const {
-    myGenericVideos = [], 
-    otherGenericVideos = [], 
-    myPlaylists = [], 
-    otherPlaylists = [], 
-    isLoaded  } = dashboardState || {}; // Ensure dashboardState itself is not undefined before destructuring
+    myGenericVideos = [],
+    otherGenericVideos = [],
+    myPlaylists = [],
+    otherPlaylists = [],
+    isLoaded } = dashboardState || {}; // Ensure dashboardState itself is not undefined before destructuring
   useEffect(() => {
     setTimeout(() => setEyeDebuggerOn(false), 5000);
   }, []);
 
-  // Initialize dashboard data on component mount
+  // Initialize dashboard data on component mount - always refresh on load
+  // Also refresh when currentUser changes (e.g., after login)
   useEffect(() => {
-    if (!isLoaded) {
+    if (currentUser) {
       refreshDashboard();
     }
-  }, [isLoaded]);
+  }, [currentUser]);
   // Fetch user groups
   useEffect(() => {
     const fetchUserGroups = async () => {
@@ -83,21 +84,21 @@ function Dashboard() {
 
     fetchUserGroups();
   }, [currentUser]);
-  
-    console.log('[Dashboard.jsx] dashboardState from useSelector:', dashboardState);
+
+  console.log('[Dashboard.jsx] dashboardState from useSelector:', dashboardState);
 
   // Print out the playlist IDs in the dashboardState for debugging
   useEffect(() => {
     if (dashboardState && dashboardState.myPlaylists) {
-      console.log('[Dashboard.jsx] Available myPlaylists IDs:', 
+      console.log('[Dashboard.jsx] Available myPlaylists IDs:',
         dashboardState.myPlaylists.map(p => p.playlist_id));
     }
     if (dashboardState && dashboardState.otherPlaylists) {
-      console.log('[Dashboard.jsx] Available otherPlaylists IDs:', 
+      console.log('[Dashboard.jsx] Available otherPlaylists IDs:',
         dashboardState.otherPlaylists.map(p => p.playlist_id));
     }
   }, [dashboardState]);
-  
+
   useEffect(() => {
     if (selectedVideo) {
       // Video selected, no action needed here
@@ -168,19 +169,19 @@ function Dashboard() {
     <div className="dashboard-container">
       <Navbar />
       <div className="dashboard-content">
-  {currentUser ? (          <>
-            <div className="user-greeting">
-              <h1>Hello {currentUser.first_name} {currentUser.last_name}</h1>
-              {isGuestMode && (
-                <div className="guest-mode-notice">
-                  <p>You are in Guest Mode. Only public playlists and videos are visible.</p><p> You can't add video , manage groups and manage playlists</p>
-                </div>
-              )}
-            </div>
-            <button className="back-button" onClick={() => refreshDashboard()}>
-              Refresh Dashboard
-            </button>
-          </>
+        {currentUser ? (<>
+          <div className="user-greeting">
+            <h1>Hello {currentUser.first_name} {currentUser.last_name}</h1>
+            {isGuestMode && (
+              <div className="guest-mode-notice">
+                <p>You are in Guest Mode. Only public playlists and videos are visible.</p><p> You can't add video , manage groups and manage playlists</p>
+              </div>
+            )}
+          </div>
+          <button className="back-button" onClick={() => refreshDashboard()}>
+            Refresh Dashboard
+          </button>
+        </>
         ) : (
           <div className="login-prompt">
             <p>{error || 'No user logged in.'}</p>
@@ -190,7 +191,7 @@ function Dashboard() {
           </div>
         )}        {!selectedVideo ? (
           <>
-            
+
             {/* Group Selection Checkboxes - Hide in Guest Mode */}
             {!isGuestMode && (
               <div className="group-selection-container">
@@ -211,29 +212,29 @@ function Dashboard() {
               </div>
             )}              {/* Favorites Section - Hide in Guest Mode */}
             {!isGuestMode && selectedGroups.has('favorites') && (
-              <FavoritesList 
-                expanded={expandedSections.favorites} 
-                toggleExpand={() => toggleSection('favorites')} 
+              <FavoritesList
+                expanded={expandedSections.favorites}
+                toggleExpand={() => toggleSection('favorites')}
               />
             )}
-            
+
             {/* Dynamic Group Sections - Hide in Guest Mode */}
             {!isGuestMode && userGroups.map(group => {
               // Skip "favorites" as it's already shown through FavoritesList
               if (group.group_name === 'favorites' || !selectedGroups.has(group.group_name)) return null;
-              
+
               return (
                 <div key={group.group_id} className="dashboard-section">
                   <div className="section-header">
-                    <h2 
-                      onClick={() => toggleSection(group.group_name)} 
+                    <h2
+                      onClick={() => toggleSection(group.group_name)}
                       className="collapsible-header"
                     >
                       {group.group_name}
                       <span className={`arrow ${expandedSections[group.group_name] ? 'expanded' : ''}`}>▼</span>
                     </h2>
                   </div>
-                  
+
                   <div className={`collapsible-content ${expandedSections[group.group_name] ? 'expanded' : ''}`}>
                     {/* Playlists in Group Section */}
                     {group.playlists && group.playlists.length > 0 && (
@@ -249,11 +250,11 @@ function Dashboard() {
                               playlist_owner_name: playlist.playlist_owner_name || currentUser.first_name + ' ' + currentUser.last_name,
                               playlist_items: playlist.playlist_items || []
                             };
-                            
+
                             // Find the full playlist data from Redux store (either myPlaylists or otherPlaylists)
-                            const fullPlaylistData = myPlaylists.find(p => p.playlist_id === playlistObj.playlist_id) || 
-                                                    otherPlaylists.find(p => p.playlist_id === playlistObj.playlist_id);
-                            
+                            const fullPlaylistData = myPlaylists.find(p => p.playlist_id === playlistObj.playlist_id) ||
+                              otherPlaylists.find(p => p.playlist_id === playlistObj.playlist_id);
+
                             if (fullPlaylistData) {
                               // Use the complete data from store, but keep some properties from the group data
                               playlistObj.playlist_items = fullPlaylistData.playlist_items;
@@ -262,16 +263,16 @@ function Dashboard() {
                                 playlistObj.description = fullPlaylistData.description;
                               }
                             }
-                            
+
                             return (
-                              <div 
-                                className="playlist-card" 
+                              <div
+                                className="playlist-card"
                                 key={playlist.playlist_id}
                                 onClick={() => handlePlaylistClick(playlistObj)}
                               >
-                                <h4>{playlist.playlist_name}</h4>                                <FavoritesStar 
+                                <h4>{playlist.playlist_name}</h4>                                <FavoritesStar
                                   playlist={playlistObj}
-                                  onToggle={() => setForceUpdate(prev => !prev)} 
+                                  onToggle={() => setForceUpdate(prev => !prev)}
                                 />
                                 {playlistObj.playlist_items ? (
                                   <StackedThumbnails videos={playlistObj.playlist_items} />
@@ -294,7 +295,7 @@ function Dashboard() {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Videos in Group Section */}
                     {group.videos && group.videos.length > 0 && (
                       <div>
@@ -310,11 +311,11 @@ function Dashboard() {
                               length: video.length,
                               uploadby: video.upload_by
                             };
-                            
+
                             return (
-                              <div 
-                                className="video-card" 
-                                key={video.video_id} 
+                              <div
+                                className="video-card"
+                                key={video.video_id}
                                 onClick={() => handleVideoSelect(videoObj)}
                               >
                                 <h4>{video.name}</h4>
@@ -330,7 +331,7 @@ function Dashboard() {
                         </div>
                       </div>
                     )}
-                    
+
                     {group.playlists.length === 0 && group.videos.length === 0 && (
                       <div className="empty-section-message">
                         No items in this group yet.
@@ -340,7 +341,7 @@ function Dashboard() {
                 </div>
               );
             })}
-            
+
             {/* My Playlists Section */}
             {!isGuestMode && (
               <div className="dashboard-section">
@@ -348,20 +349,20 @@ function Dashboard() {
                   <h2 onClick={() => toggleSection('myPlaylists')} className="collapsible-header">
                     My Playlists
                     <span className={`arrow ${expandedSections.myPlaylists ? 'expanded' : ''}`}>▼</span>
-                  </h2>              
-                </div>              
+                  </h2>
+                </div>
                 <div className={`collapsible-content ${expandedSections.myPlaylists ? 'expanded' : ''}`}>
-                  <div className="content-grid my-playlists-grid">                  
+                  <div className="content-grid my-playlists-grid">
                     {myPlaylists.map(playlist => (
-                      <div 
-                        className="playlist-card" 
+                      <div
+                        className="playlist-card"
                         key={playlist.playlist_id}
                         onClick={() => handlePlaylistClick(playlist)}
                       >
                         <h4>{playlist.playlist_name}</h4>
-                        <FavoritesStar 
-                          playlist={playlist} 
-                          onToggle={() => setForceUpdate(prev => !prev)} 
+                        <FavoritesStar
+                          playlist={playlist}
+                          onToggle={() => setForceUpdate(prev => !prev)}
                         />
                         <StackedThumbnails videos={playlist.playlist_items} />
                         <div className="playlist-info">
@@ -381,20 +382,20 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('publicPlaylists')} className="collapsible-header">
                   Public Playlists
                   <span className={`arrow ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>▼</span>
-                </h2>              
-              </div>              
+                </h2>
+              </div>
               <div className={`collapsible-content ${expandedSections.publicPlaylists ? 'expanded' : ''}`}>
-                <div className="content-grid public-playlists-grid">                  
+                <div className="content-grid public-playlists-grid">
                   {otherPlaylists.map(playlist => (
-                    <div 
-                      className="playlist-card" 
+                    <div
+                      className="playlist-card"
                       key={playlist.playlist_id}
                       onClick={() => handlePlaylistClick(playlist)}
                     >
                       <h4>{playlist.playlist_name}</h4>
-                      <FavoritesStar 
-                        playlist={playlist} 
-                        onToggle={() => setForceUpdate(prev => !prev)} 
+                      <FavoritesStar
+                        playlist={playlist}
+                        onToggle={() => setForceUpdate(prev => !prev)}
                       />
                       <StackedThumbnails videos={playlist.playlist_items} />
                       <div className="playlist-info">
@@ -415,7 +416,7 @@ function Dashboard() {
                   <h2 onClick={() => toggleSection('myVideos')} className="collapsible-header">
                     My Videos
                     <span className={`arrow ${expandedSections.myVideos ? 'expanded' : ''}`}>▼</span>
-                  </h2>              
+                  </h2>
                 </div>
                 <div className={`collapsible-content ${expandedSections.myVideos ? 'expanded' : ''}`}>
                   <div className="content-grid my-videos-grid">
@@ -440,7 +441,7 @@ function Dashboard() {
                 <h2 onClick={() => toggleSection('publicVideos')} className="collapsible-header">
                   Public Videos
                   <span className={`arrow ${expandedSections.publicVideos ? 'expanded' : ''}`}>▼</span>
-                </h2>              
+                </h2>
               </div>
               <div className={`collapsible-content ${expandedSections.publicVideos ? 'expanded' : ''}`}>
                 <div className="content-grid public-videos-grid">
@@ -464,14 +465,14 @@ function Dashboard() {
             <button className="back-button" onClick={() => setSelectedVideo(null)}>
               ← Back to Lectures
             </button>
-            <VideoPlayer 
+            <VideoPlayer
               mode={mode}
               lectureInfo={{
                 videoId: selectedVideo.external_id,
                 subject: selectedVideo.subject,
                 videoDuration: selectedVideo.length,
               }}
-                userInfo={{ name: `${currentUser.first_name} ${currentUser.last_name}`, profile: currentUser.profile }}
+              userInfo={{ name: `${currentUser.first_name} ${currentUser.last_name}`, profile: currentUser.profile }}
             />
           </>
         )}
